@@ -54,8 +54,8 @@ export async function loadMainScreen(options = {}) {
   setStatusRowMeta('resume-row', resumeTooltip);
 
   const apiTooltip = hasApiKey
-    ? 'Gemini is connected for optional AI help. Click to open the AI panel.'
-    : 'AI help is optional. Click to add or update your Gemini key in the AI panel.';
+    ? 'Gemini is connected for optional AI help. Click to open Settings.'
+    : 'AI help is optional. Click to add or update your Gemini key in Settings.';
   setBadgeState('api-status', hasApiKey ? 'Connected' : 'Optional', hasApiKey ? 'ok' : 'info', apiTooltip);
   setStatusRowMeta('api-row', apiTooltip);
 

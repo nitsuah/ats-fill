@@ -4,7 +4,7 @@
 import { $, sendMessage, sendToActiveTab, renderStatusOptions } from '../../lib/utils.js';
 import { normalizeApplicationStatus } from '../../lib/tracker.js';
 import { trackerDragState, trackerViewState, trackerSaveTimers, expandedTrackerIds } from './tracker-state.js';
-import { renderTracker, syncTrackerCardSummary, getTrackerLaneCount, toggleFinalStageGroup, toggleFinalStageBubbleSelection, clearFinalStageBubbleSelections, toggleFinalDockLane, setBubblesExpanded, areAllBubblesExpanded } from './tracker-ui.js';
+import { renderTracker, syncTrackerCardSummary, getTrackerLaneCount, toggleFinalStageGroup, toggleFinalStageBubbleSelection, clearFinalStageBubbleSelections, toggleFinalDockLane, togglePrimaryLaneCollapse, setBubblesExpanded, areAllBubblesExpanded } from './tracker-ui.js';
 import { getTrackingStatusMeta } from './tracker-meta.js';
 import { exportCsv, importTrackerCsvFile } from './tracker-csv.js';
 import { showScreen } from '../ux/navigation.js';
@@ -210,6 +210,15 @@ export function initTrackerHandlers() {
     if (finalDockToggleBtn) {
       const status = finalDockToggleBtn.dataset.finalDockToggle || '';
       toggleFinalDockLane(status);
+      await renderTracker();
+      showScreen('tracker');
+      return;
+    }
+
+    const laneCollapseToggleBtn = event.target.closest('.tracker-lane-collapse-toggle');
+    if (laneCollapseToggleBtn) {
+      const key = laneCollapseToggleBtn.dataset.laneCollapseToggle || '';
+      togglePrimaryLaneCollapse(key);
       await renderTracker();
       showScreen('tracker');
       return;

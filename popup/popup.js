@@ -1,7 +1,7 @@
 // popup.js
 // Main orchestrator for popup UI — wires up all split modules and initializes
 
-import { showScreen, isStandaloneView } from './ux/navigation.js';
+import { showScreen, isStandaloneView, initHeaderMenuToggle } from './ux/navigation.js';
 import { loadMainScreen, initMainHandlers, initStatusNavHandlers, applyInitialRequestedScreen } from './ux/main.js';
 import { initSetupHandlers, initTabs } from './ux/profile.js';
 import { initTrackerHandlers, setLoadMainScreen } from './tracker.js';
@@ -26,6 +26,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   // Wire the loadMainScreen callback into tracker handlers (avoids circular import)
   setLoadMainScreen(loadMainScreen);
+  initHeaderMenuToggle();
 
   // Initialize all modules in the original sequence
   await initTabs();

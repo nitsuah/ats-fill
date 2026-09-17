@@ -69,24 +69,41 @@
   flex-wrap: nowrap;
 }
 
+/* Below this width there's no room for the input, source grid, and buttons on
+   one line — drop the source grid to its own full-width row instead of
+   letting anything overflow or get squeezed unreadable. */
+@media (max-width: 640px) {
+  .job-search-toolbar {
+    flex-wrap: wrap;
+  }
+
+  #job-source-filters {
+    order: 3;
+    flex-basis: 100%;
+  }
+}
+
 /* Input shrinks to share the row with chips + buttons */
 #job-search-input {
   flex: 1 1 140px;
   min-width: 100px;
 }
 
-/* Source chips sit inline between the input and the Search/Filters buttons */
+/* Source chips: a compact ~3-column grid that wraps to more rows as sources
+   are added, rather than a single row that overflows/scrolls horizontally. */
 #job-source-filters {
-  display: flex;
-  flex-wrap: nowrap;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(72px, 1fr));
   gap: 5px;
-  flex-shrink: 0;
-  align-items: center;
-  overflow-x: auto;
-  scrollbar-width: none;
+  flex: 1 1 auto;
+  min-width: 0;
 }
 
-#job-source-filters::-webkit-scrollbar { display: none; }
+@media (max-width: 480px) {
+  #job-source-filters {
+    grid-template-columns: repeat(2, minmax(64px, 1fr));
+  }
+}
 
 .job-search-subbar {
   margin-top: 10px;
@@ -110,6 +127,39 @@
 .job-search-grid .job-source-note,
 .job-search-grid .empty-msg {
   grid-column: 1 / -1;
+}
+
+/* Distinctive empty/no-results state — reads as the primary search entry
+   point rather than a blank panel. */
+.job-search-empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  padding: 36px 20px;
+  border: 1px dashed rgba(74, 222, 128, 0.35);
+  border-radius: var(--radius);
+  background: rgba(74, 222, 128, 0.05);
+}
+
+.job-search-empty-icon {
+  font-size: 32px;
+  line-height: 1;
+  margin-bottom: 4px;
+}
+
+.job-search-empty-title {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--text);
+}
+
+.job-search-empty-hint {
+  margin: 0;
+  max-width: 420px;
+  font-size: 12px;
+  color: var(--text-muted);
 }
 
 .job-source-filter-row {
@@ -505,13 +555,12 @@ body[data-standalone="true"] .label-full { display: inline; }
   color: var(--text-muted);
 }
 
-.job-source-filters {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
-}
-
 .job-source-chip {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  text-overflow: ellipsis;
   font-size: 10px;
   font-weight: 600;
   padding: 3px 8px;
@@ -855,9 +904,78 @@ body[data-standalone="true"] .header-top {
 }
 
 .header-actions {
+  position: relative;
   display: flex;
   align-items: center;
   gap: 6px;
+}
+
+/* Hamburger nav — collapses Analytics/Settings/Profile/Help behind a toggle
+   below the narrow breakpoint, keeping Search/Pipeline/Interview Prep visible.
+   Selectors below use ".icon-btn.header-menu-toggle" (not just the latter
+   alone) so these `display` overrides always beat the plain `.icon-btn` rule
+   regardless of where that rule happens to sit in the file — two classes on
+   the same element outrank a same-specificity one-class rule either way. */
+.icon-btn.header-menu-toggle {
+  display: none;
+  padding: 5px 9px;
+  font-size: 14px;
+}
+
+@media (max-width: 700px) {
+  .icon-btn.header-menu-toggle {
+    display: inline-flex;
+  }
+
+  .header-secondary-nav {
+    display: none;
+    position: absolute;
+    top: 100%;
+    right: 0;
+    margin-top: 6px;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 4px;
+    padding: 8px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.35);
+    z-index: 40;
+    min-width: 168px;
+  }
+
+  .header-secondary-nav.is-open {
+    display: flex;
+  }
+
+  .header-secondary-nav .icon-btn {
+    width: 100%;
+    justify-content: flex-start;
+  }
+
+  /* Menu items always show a label — it's a deliberate list, not a cramped bar. */
+  .header-secondary-nav .tracker-btn-label {
+    display: inline;
+  }
+
+  /* At narrow widths even the standalone workspace drops primary-button text,
+     matching the icon-only treatment the popup already uses. */
+  body[data-standalone="true"] .nav-primary .tracker-btn-label {
+    display: none;
+  }
+}
+
+@media (min-width: 701px) {
+  .icon-btn.header-menu-toggle {
+    display: none;
+  }
+
+  /* display:contents keeps these buttons as direct flex children of
+     .header-actions at wide widths, so nothing about their layout changes. */
+  .header-secondary-nav {
+    display: contents;
+  }
 }
 
 .logo-btn {
@@ -1463,23 +1581,31 @@ details[open] > .collapsible-summary::after {
   overflow: auto;
 }
 
+/* A solid card, not a fading gradient strip — the previous transparent-to-
+   opaque gradient let scrolled content show through behind the buttons,
+   which read as overlapping the grid instead of belonging to the page. */
 .profile-save-bar {
   position: sticky;
   bottom: 0;
-  padding-top: 4px;
-  background: linear-gradient(180deg, rgba(15, 17, 23, 0), rgba(15, 17, 23, 0.96) 26%);
+  margin-top: 12px;
+  padding: 10px 12px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  box-shadow: 0 -6px 18px rgba(0, 0, 0, 0.28);
 }
 
 .profile-save-actions {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 8px;
-  /* Compact, fixed max width rather than spanning the whole workspace. */
+  /* Compact, fixed max width, centered in the card rather than left-hugging. */
   max-width: 440px;
+  margin: 0 auto;
 }
 
 .profile-save-bar .status-msg {
-  text-align: left;
+  text-align: center;
 }
 
 /* ── Settings ── */
@@ -2049,13 +2175,24 @@ body[data-standalone="true"][data-screen="main"] .screen > * {
   border-left-width: 3px;
 }
 
-/* AI card labels match Help section h3 size (12px) for visual consistency. */
+/* AI card titles match Help section h3 size (12px) for visual consistency. */
 #profile-api-section { border-left-color: var(--accent); }
-#profile-api-section > label:first-of-type { color: var(--accent); font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; }
+#profile-api-section > summary .profile-section-title { color: var(--accent); }
 #job-sources-section { border-left-color: var(--blue); }
-#job-sources-section > label:first-of-type { color: var(--blue); font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; }
+#job-sources-section > summary .profile-section-title { color: var(--blue); }
 #linkedin-oauth-section { border-left-color: var(--purple); }
-#linkedin-oauth-section > label:first-of-type { color: var(--purple); font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; }
+#linkedin-oauth-section > summary .profile-section-title { color: var(--purple); }
+#google-oauth-section { border-left-color: var(--blue); }
+#custom-sources-section { border-left-color: var(--purple); }
+
+/* Collapsed/configured indicator shown in each Settings card's summary row. */
+.config-badge {
+  margin-left: auto;
+  font-size: 10px;
+  font-weight: 700;
+  color: var(--accent);
+  white-space: nowrap;
+}
 
 /* ── Help: legal sections as content-sized cards ── */
 .help-card.help-grid {
@@ -2261,6 +2398,133 @@ body[data-standalone="true"][data-screen="main"] .screen > * {
 
 .tracker-home-btn {
   white-space: nowrap;
+}
+
+/* ── Interview prep ── */
+.interview-prep-content {
+  display: grid;
+  gap: 14px;
+}
+
+.interview-prep-job-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 10px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+}
+
+.interview-prep-job-bubble {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  background: var(--surface-2);
+  color: var(--text-muted);
+  font-size: 11px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: border-color 0.12s, color 0.12s, background 0.12s;
+}
+
+.interview-prep-job-bubble:hover {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+.interview-prep-job-bubble.is-active {
+  border-color: var(--accent);
+  color: var(--accent);
+  background: rgba(74, 222, 128, 0.15);
+}
+
+.interview-prep-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 12px;
+}
+
+.interview-prep-job-info h3 {
+  margin: 0 0 4px;
+  font-size: 15px;
+  color: var(--text);
+}
+
+.interview-prep-job-info p {
+  margin: 0 0 2px;
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
+.interview-prep-questions-list {
+  display: grid;
+  gap: 10px;
+}
+
+.interview-prep-question-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 12px;
+}
+
+.interview-prep-question-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.interview-prep-question-text {
+  margin: 0;
+  font-size: 13px;
+  color: var(--text);
+}
+
+.interview-prep-question-type {
+  flex-shrink: 0;
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--text-muted);
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  padding: 2px 8px;
+}
+
+.interview-prep-answer-input {
+  width: 100%;
+}
+
+.interview-prep-question-actions {
+  display: flex;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.interview-prep-suggestion {
+  margin-top: 8px;
+  padding: 8px 10px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border);
+  background: var(--surface-2);
+  color: var(--text-muted);
+  font-size: 12px;
+  white-space: pre-wrap;
 }
 
 .tracker-actions {
@@ -2795,6 +3059,12 @@ body[data-standalone="true"][data-screen="tracker"] .tracker-summary-note {
   min-width: 0;
   min-height: 28px;
   border-radius: var(--radius-sm);
+}
+
+/* Collapsed column: expanded card previews are simply not rendered (see
+   tracker-ui.js), so just tidy up the now-empty cards container. */
+.tracker-lane.is-collapsed .tracker-lane-cards {
+  min-height: 0;
 }
 
 .tracker-lane-cards.drag-target {

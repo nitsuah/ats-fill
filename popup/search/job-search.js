@@ -256,6 +256,17 @@ function updateSourceChipCounts(sourceResults = []) {
 
 // ── Results ──────────────────────────────────────────────────────────────────
 
+/** Shared markup for the distinctive empty/no-results state. */
+function emptyStateHtml(icon, title, hint) {
+  return `
+    <div class="empty-msg job-search-empty-state">
+      <span class="job-search-empty-icon" aria-hidden="true">${esc(icon)}</span>
+      <p class="job-search-empty-title">${esc(title)}</p>
+      <p class="job-search-empty-hint">${esc(hint)}</p>
+    </div>
+  `;
+}
+
 function applyAndRender() {
   const payCfg = { enabled: payIsActive() || payFilter.hideUnknown, mode: payFilter.mode, min: payFilter.min, max: payFilter.max, hideUnknown: payFilter.hideUnknown };
   const filtered = lastRawResults.filter((j) => jobPassesPayFilter(j, payCfg) && jobPassesExtraFilters(j));
@@ -270,10 +281,9 @@ export function renderJobSearchResults(results, sources = []) {
   (results || []).forEach((job) => { if (job?.id) lastResultsById.set(job.id, job); });
 
   if (!results || results.length === 0) {
-    const note = payIsActive() && lastRawResults.length
-      ? '<p class="empty-msg">No jobs match the current pay filter.</p>'
-      : '<p class="empty-msg">No jobs found for this search.</p>';
-    resultsDiv.innerHTML = note;
+    resultsDiv.innerHTML = payIsActive() && lastRawResults.length
+      ? emptyStateHtml('🎚️', 'No jobs match the current pay filter', 'Widen the pay range in Filters, or turn off "Hide jobs without posted salary".')
+      : emptyStateHtml('🔍', 'No jobs found for this search', 'Try a broader query, add more sources in Filters, or check Settings for boards that need a free API key.');
     return;
   }
 

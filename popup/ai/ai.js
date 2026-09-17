@@ -25,6 +25,49 @@ function readAiSettings() {
   };
 }
 
+// ── Settings cards: collapse into a compact summary once configured ────────
+// Each Settings card is a <details> — expanded by default while empty (so
+// setup stays inviting), collapsed to a "✅ Configured" summary once it has
+// saved values. Clicking the summary (native <details> behavior) is the
+// "Edit" action that reopens the full editor.
+
+function isJobSourcesConfigured(settings = {}) {
+  return !!(
+    (settings.adzuna_app_id && settings.adzuna_app_key) ||
+    (settings.usajobs_email && settings.usajobs_api_key) ||
+    settings.reed_api_key ||
+    settings.jooble_api_key
+  );
+}
+
+function setCardConfigured(id, configured) {
+  const card = document.getElementById(id);
+  if (!card) return;
+  card.querySelector('[data-config-badge]')?.classList.toggle('hidden', !configured);
+  card.open = !configured;
+}
+
+/**
+ * Sync every Settings card's collapsed/expanded state from a settings object
+ * (either freshly saved, or loaded from storage on hydration).
+ */
+// Cards with their own in-place status message (OAuth connect) or an
+// open-ended list a user edits repeatedly (custom sources) only get their
+// badge refreshed by their own actions — never a forced collapse, which would
+// hide the very status text / list the user is looking at. The deliberate
+// "Save settings" button is the one action that collapses everything.
+function setCardBadgeOnly(id, configured) {
+  document.getElementById(id)?.querySelector('[data-config-badge]')?.classList.toggle('hidden', !configured);
+}
+
+export function syncSettingsCardsFromState(settings = {}, hasApiKey = false) {
+  setCardConfigured('profile-api-section', !!hasApiKey);
+  setCardConfigured('job-sources-section', isJobSourcesConfigured(settings));
+  setCardConfigured('linkedin-oauth-section', !!(settings.linkedin_client_id && settings.linkedin_client_secret));
+  setCardConfigured('google-oauth-section', !!(settings.google_client_id && settings.google_client_secret));
+  setCardConfigured('custom-sources-section', Array.isArray(settings.custom_job_sources) && settings.custom_job_sources.length > 0);
+}
+
 // ── Custom job sources (user-configured RSS boards) ─────────────────────────
 
 let customJobSources = [];
@@ -122,6 +165,7 @@ export async function addCustomJobSource() {
     if (nameInput) nameInput.value = '';
     if (urlInput) urlInput.value = '';
     renderCustomJobSourcesList(customJobSources);
+    setCardBadgeOnly('custom-sources-section', customJobSources.length > 0);
     setStatus('custom-source-status', `✅ Added "${name}".`, 'success');
   } catch (err) {
     setStatus('custom-source-status', '❌ ' + (err?.message || 'Failed to save custom source.'), 'error');
@@ -135,6 +179,7 @@ export async function removeCustomJobSource(id) {
     await persistCustomJobSources(next);
     customJobSources = next;
     renderCustomJobSourcesList(customJobSources);
+    setCardBadgeOnly('custom-sources-section', customJobSources.length > 0);
     setStatus('custom-source-status', `Removed "${removed?.label || id}".`, '');
   } catch (err) {
     setStatus('custom-source-status', '❌ ' + (err?.message || 'Failed to remove custom source.'), 'error');
@@ -166,6 +211,7 @@ async function connectLinkedIn() {
     const profile = resp.profile || {};
     if (profile.full_name && $('profile-full-name')) $('profile-full-name').value = profile.full_name;
     if (profile.email && $('profile-email')) $('profile-email').value = profile.email;
+    setCardBadgeOnly('linkedin-oauth-section', true);
     setStatus('linkedin-status', `✅ Imported ${profile.full_name || 'your profile'} — open Profile to review and Save.`, 'success');
   } catch (err) {
     setStatus('linkedin-status', '❌ ' + (err?.message || 'LinkedIn connect failed.'), 'error');
@@ -188,6 +234,7 @@ async function connectGoogle() {
     const profile = resp.profile || {};
     if (profile.full_name && $('profile-full-name')) $('profile-full-name').value = profile.full_name;
     if (profile.email && $('profile-email')) $('profile-email').value = profile.email;
+    setCardBadgeOnly('google-oauth-section', true);
     setStatus('google-status', `✅ Imported ${profile.full_name || 'your profile'} — open Profile to review and Save.`, 'success');
   } catch (err) {
     setStatus('google-status', '❌ ' + (err?.message || 'Google connect failed.'), 'error');
@@ -206,10 +253,12 @@ export async function handleSaveAiSettings() {
       type: 'SAVE_SETTINGS_ONLY',
       payload: { settings },
     });
-    if (!resp?.success) throw new Error(resp?.error || 'Failed to save AI settings.');
-    setStatus('ai-status', '✅ AI settings saved!', 'success');
+    if (!resp?.success) throw new Error(resp?.error || 'Failed to save settings.');
+    // A deliberate Save is the moment each now-configured card collapses.
+    syncSettingsCardsFromState(settings, !!settings.gemini_api_key);
+    setStatus('ai-status', '✅ Settings saved!', 'success');
   } catch (err) {
-    setStatus('ai-status', '❌ ' + (err.message || 'Failed to save AI settings.'), 'error');
+    setStatus('ai-status', '❌ ' + (err.message || 'Failed to save settings.'), 'error');
   }
 }
 

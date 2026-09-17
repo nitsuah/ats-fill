@@ -79,3 +79,23 @@ test('screenshot: AI settings panel', async () => {
   await expect(page.locator('#ai-screen')).toBeVisible({ timeout: 10000 });
   await page.screenshot({ path: 'screenshots/ai-settings.png' });
 });
+
+test('screenshot: help and privacy panel', async () => {
+  const page = await context.newPage();
+  await page.setViewportSize({ width: 1100, height: 780 });
+  await page.goto(`chrome-extension://${extensionId}/popup/popup.html?standalone=1`);
+  await expect(page.locator('.screen:not(.hidden)')).toBeVisible({ timeout: 30000 });
+  await page.locator('#header-help-btn').click();
+  await expect(page.locator('#help-screen')).toBeVisible({ timeout: 10000 });
+  await page.screenshot({ path: 'screenshots/help-privacy.png' });
+});
+
+test('screenshot: interview prep', async () => {
+  const page = await context.newPage();
+  await page.setViewportSize({ width: 1100, height: 780 });
+  await page.goto(`chrome-extension://${extensionId}/popup/popup.html?standalone=1`);
+  await expect(page.locator('.screen:not(.hidden)')).toBeVisible({ timeout: 30000 });
+  await page.locator('#header-interview-prep-btn').click();
+  await expect(page.locator('#interview-prep-screen')).toBeVisible({ timeout: 10000 });
+  await page.screenshot({ path: 'screenshots/interview-prep.png' });
+});

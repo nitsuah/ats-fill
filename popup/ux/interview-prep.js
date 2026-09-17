@@ -1,7 +1,8 @@
 // interview-prep.js
 // Handles interview prep mode: generating questions, editing answers, saving/loading
 
-import { $, sendMessage, sendToActiveTab } from '../../lib/utils.js';
+import { $, sendMessage, sendToActiveTab, esc, escAttr } from '../../lib/utils.js';
+import { filterApplicationsForQuery, normalizeApplicationStatus } from '../../lib/tracker.js';
 import { setStatus } from './state.js';
 import { showScreen } from './navigation.js';
 
@@ -28,18 +29,66 @@ export async function initInterviewPrep() {
   $('interview-prep-generate-btn')?.addEventListener('click', async () => {
     await generateInterviewQuestions();
   });
+
+  // Job readiness bar — clicking a bubble switches which tracked application
+  // is being prepped for.
+  $('interview-prep-job-bar')?.addEventListener('click', async (event) => {
+    const bubble = event.target.closest('[data-app-id]');
+    if (!bubble) return;
+    const id = bubble.dataset.appId;
+    if (!id || id === currentApplicationId) return;
+    try {
+      await openInterviewPrepForApplication(id);
+    } catch (err) {
+      setStatus('interview-prep-status', '❌ ' + err.message, 'error');
+    }
+  });
+}
+
+/**
+ * Applications worth prepping for — everything still in flight. Reuses the
+ * same "active" definition the Pipeline screen uses (lib/tracker.js) rather
+ * than inventing a second notion of which jobs are relevant.
+ */
+function getActiveApplications(applications = []) {
+  return filterApplicationsForQuery(applications, '', { activeOnly: true });
+}
+
+async function fetchApplications() {
+  const state = await sendMessage({ type: 'GET_STATE' });
+  return state?.applications || [];
+}
+
+/** Compact bubble row of in-flight pipeline jobs, selectable to switch context. */
+function renderJobReadinessBar(applications = [], activeId = null) {
+  const bar = $('interview-prep-job-bar');
+  if (!bar) return;
+
+  const active = getActiveApplications(applications);
+  if (!active.length) {
+    bar.innerHTML = '';
+    bar.classList.add('hidden');
+    return;
+  }
+
+  bar.classList.remove('hidden');
+  bar.innerHTML = active.map((app) => {
+    const status = normalizeApplicationStatus(app.status);
+    const label = `${app.company || 'Unknown company'} — ${app.title || 'Untitled role'} (${status})`;
+    const initial = String(app.company || app.title || '?').trim().charAt(0).toUpperCase() || '?';
+    const isActive = String(app.id) === String(activeId);
+    return `<button type="button" class="interview-prep-job-bubble${isActive ? ' is-active' : ''}" data-app-id="${escAttr(app.id)}" data-status="${escAttr(status)}" title="${escAttr(label)}" aria-pressed="${isActive ? 'true' : 'false'}" aria-label="${escAttr(label)}">${esc(initial)}</button>`;
+  }).join('');
 }
 
 export async function openInterviewPrepForApplication(applicationId) {
-  currentApplicationId = applicationId;
-
-  // Fetch application details
-  const resp = await sendMessage({ type: 'GET_APPLICATION', payload: { id: applicationId } });
-  if (!resp?.success || !resp.application) {
-    throw new Error(resp?.error || 'Could not load application.');
+  const applications = await fetchApplications();
+  const app = applications.find((a) => String(a.id) === String(applicationId));
+  if (!app) {
+    throw new Error('Could not find that application in your tracker.');
   }
 
-  const app = resp.application;
+  currentApplicationId = applicationId;
 
   // Populate job info
   $('interview-prep-company').textContent = app.company || 'Unknown Company';
@@ -58,6 +107,8 @@ export async function openInterviewPrepForApplication(applicationId) {
   if (questions) questions.classList.add('hidden');
   generatedQuestions = [];
 
+  renderJobReadinessBar(applications, applicationId);
+
   // Load any existing interview prep data
   await loadInterviewPrepData(applicationId);
 
@@ -66,69 +117,82 @@ export async function openInterviewPrepForApplication(applicationId) {
 
 export async function openInterviewPrepForCurrentJob() {
   // Try to get the currently active job from the page
-  let resp;
+  let jobResp;
   try {
-    resp = await sendToActiveTab({ type: 'GET_JOB_INFO' });
+    jobResp = await sendToActiveTab({ type: 'GET_JOB_INFO' });
   } catch {
-    resp = null;
+    jobResp = null;
   }
-  if (!resp?.success || !resp.job) {
-    // No job page detected — show the interview-prep screen with a helpful
-    // empty state instead of failing silently.
+
+  const applications = await fetchApplications();
+
+  if (jobResp?.success && jobResp.job) {
+    // Check if this job is already in the tracker
+    const existing = applications.find((a) =>
+      a.company === jobResp.job.company && a.title === jobResp.job.title
+    );
+
+    if (existing) {
+      await openInterviewPrepForApplication(existing.id);
+      return;
+    }
+
+    // Untracked job on the current page — prep against it directly.
     currentApplicationId = null;
-    generatedQuestions = [];
-    $('interview-prep-company').textContent = 'No job detected';
-    $('interview-prep-title').textContent = 'Open a job posting to prep for it, or pick one from your tracker.';
-    $('interview-prep-meta').textContent = '';
+    const app = {
+      company: jobResp.job.company || 'Unknown Company',
+      title: jobResp.job.title || 'Untitled Position',
+      location: jobResp.job.location || '',
+      employment_type: jobResp.job.employment_type || '',
+      remote: jobResp.job.remote || false,
+    };
+
+    $('interview-prep-company').textContent = app.company;
+    $('interview-prep-title').textContent = app.title;
+    const metaParts = [];
+    if (app.location) metaParts.push(app.location);
+    if (app.employment_type) metaParts.push(app.employment_type);
+    if (app.remote) metaParts.push('Remote');
+    $('interview-prep-meta').textContent = metaParts.join(' · ') || '—';
+
     const jobInfo = $('interview-prep-job-info');
     if (jobInfo) jobInfo.classList.remove('hidden');
     const genBtn = $('interview-prep-generate-btn');
-    if (genBtn) genBtn.disabled = true;
+    if (genBtn) genBtn.disabled = false;
     const questions = $('interview-prep-questions');
     if (questions) questions.classList.add('hidden');
-    setStatus('interview-prep-status', 'ℹ️ Open a job posting page, or select a tracked application, to generate interview questions.', '');
+    generatedQuestions = [];
+
+    renderJobReadinessBar(applications, null);
     await showScreen('interview-prep');
     return;
   }
 
-  // Check if this job is already in tracker
-  const state = await sendMessage({ type: 'GET_STATE' });
-  const applications = state?.applications || [];
-  const existing = applications.find(a =>
-    a.company === resp.job.company && a.title === resp.job.title
-  );
-
-  if (existing) {
-    await openInterviewPrepForApplication(existing.id);
+  // No job page detected — fall back to whatever's already in the pipeline
+  // instead of dead-ending with "no job detected" when jobs exist.
+  const activeApplications = getActiveApplications(applications);
+  if (activeApplications.length) {
+    const mostRecent = [...activeApplications].sort((a, b) =>
+      (Date.parse(b.updated_at || '') || 0) - (Date.parse(a.updated_at || '') || 0)
+    )[0];
+    await openInterviewPrepForApplication(mostRecent.id);
     return;
   }
 
-  // Create a temporary application object
+  // Genuinely nothing to prep for: no active tab job, no pipeline jobs.
   currentApplicationId = null;
-  const app = {
-    company: resp.job.company || 'Unknown Company',
-    title: resp.job.title || 'Untitled Position',
-    location: resp.job.location || '',
-    employment_type: resp.job.employment_type || '',
-    remote: resp.job.remote || false,
-  };
-
-  $('interview-prep-company').textContent = app.company;
-  $('interview-prep-title').textContent = app.title;
-  const metaParts = [];
-  if (app.location) metaParts.push(app.location);
-  if (app.employment_type) metaParts.push(app.employment_type);
-  if (app.remote) metaParts.push('Remote');
-  $('interview-prep-meta').textContent = metaParts.join(' · ') || '—';
-
+  generatedQuestions = [];
+  $('interview-prep-company').textContent = 'No job detected';
+  $('interview-prep-title').textContent = 'Open a job posting to prep for it, or add one to your pipeline first.';
+  $('interview-prep-meta').textContent = '';
   const jobInfo = $('interview-prep-job-info');
   if (jobInfo) jobInfo.classList.remove('hidden');
   const genBtn = $('interview-prep-generate-btn');
-  if (genBtn) genBtn.disabled = false;
+  if (genBtn) genBtn.disabled = true;
   const questions = $('interview-prep-questions');
   if (questions) questions.classList.add('hidden');
-  generatedQuestions = [];
-
+  renderJobReadinessBar([], null);
+  setStatus('interview-prep-status', 'ℹ️ Open a job posting page, or add a job to your pipeline, to generate interview questions.', '');
   await showScreen('interview-prep');
 }
 
@@ -182,24 +246,19 @@ async function generateInterviewQuestions() {
   const prepSessionToken = Symbol('prep-session');
 
   try {
-    // Get the application details for context
+    // Get user profile + application context in one round trip.
+    const state = await sendMessage({ type: 'GET_STATE' });
+    const profile = state?.profile || {};
+    const resume = state?.resume?.structured || {};
+
     let context = {};
     if (activeAppId) {
-      const resp = await sendMessage({ type: 'GET_APPLICATION', payload: { id: activeAppId } });
-      if (resp?.success) context = resp.application;
+      context = (state?.applications || []).find((a) => String(a.id) === String(activeAppId)) || {};
     } else {
       // Use current job info
       const jobResp = await sendToActiveTab({ type: 'GET_JOB_INFO' });
       if (jobResp?.success) context = jobResp.job;
     }
-
-    // Verify application id and prep session token still match before writing state
-    if (activeAppId !== currentApplicationId || prepSessionToken !== prepSessionToken) return;
-
-    // Get user profile for personalized answers
-    const state = await sendMessage({ type: 'GET_STATE' });
-    const profile = state?.profile || {};
-    const resume = state?.resume?.structured || {};
 
     // Verify application id and prep session token still match before writing state
     if (activeAppId !== currentApplicationId || prepSessionToken !== prepSessionToken) return;
