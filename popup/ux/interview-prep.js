@@ -54,8 +54,20 @@ function getActiveApplications(applications = []) {
   return filterApplicationsForQuery(applications, '', { activeOnly: true });
 }
 
-async function fetchApplications() {
+/**
+ * GET_STATE resolves `null` on a timeout or runtime error (see sendMessage in
+ * lib/utils.js) rather than rejecting. Left unchecked, that null silently
+ * becomes an empty applications/profile/resume set, which could let question
+ * generation proceed — and save — with no real context.
+ */
+async function loadInterviewState() {
   const state = await sendMessage({ type: 'GET_STATE' });
+  if (!state) throw new Error('Could not load your profile and pipeline data.');
+  return state;
+}
+
+async function fetchApplications() {
+  const state = await loadInterviewState();
   return state?.applications || [];
 }
 
@@ -247,7 +259,7 @@ async function generateInterviewQuestions() {
 
   try {
     // Get user profile + application context in one round trip.
-    const state = await sendMessage({ type: 'GET_STATE' });
+    const state = await loadInterviewState();
     const profile = state?.profile || {};
     const resume = state?.resume?.structured || {};
 

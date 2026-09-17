@@ -50,6 +50,23 @@ test('readSettingsForm preserves the original timestamp when re-saving an alread
   assert.equal(settings.privacy_consent_at, ORIGINAL_TIMESTAMP, 'saving unrelated profile edits must not touch the recorded consent date');
 });
 
+test('readSettingsForm does not invent a timestamp for prior consent that has none on record', async () => {
+  setupDom();
+  const { readSettingsForm } = await import('../popup/forms/forms.js?case=prior-no-timestamp');
+
+  const checkbox = document.getElementById('privacy-consent');
+  checkbox.checked = true;
+  // Already consented (e.g. a pre-existing user from before privacy_consent_at
+  // existed), but no timestamp was ever recorded for it.
+  checkbox.dataset.originalConsent = 'true';
+  checkbox.dataset.originalConsentAt = '';
+
+  const settings = readSettingsForm();
+
+  assert.equal(settings.privacy_consent, true);
+  assert.equal(settings.privacy_consent_at, null, 'must not fabricate a consent date for a prior accept that never had one');
+});
+
 test('readSettingsForm records no timestamp when consent is not checked', async () => {
   setupDom();
   const { readSettingsForm } = await import('../popup/forms/forms.js?case=unchecked');

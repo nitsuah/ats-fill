@@ -109,6 +109,16 @@ export async function handleSaveSetup() {
     },
     }, { timeout: 120_000 });
   if (!resp?.success) throw new Error(resp?.error || 'Failed to save profile.');
+
+  // Keep the consent baseline in sync with what was just persisted so a
+  // later save isn't mistaken for a first-time accept (and doesn't mint a
+  // fresh timestamp) if the follow-up GET_STATE refresh below ever fails.
+  const consentEl = $('privacy-consent');
+  if (consentEl) {
+    consentEl.dataset.originalConsent = settings.privacy_consent ? 'true' : 'false';
+    consentEl.dataset.originalConsentAt = settings.privacy_consent_at || '';
+  }
+
   return resp;
 }
 

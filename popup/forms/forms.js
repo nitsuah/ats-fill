@@ -53,8 +53,12 @@ export function readSettingsForm() {
   const consentChecked = consentEl?.checked === true;
   const hadPriorConsent = consentEl?.dataset.originalConsent === 'true';
   const priorConsentAt = consentEl?.dataset.originalConsentAt || '';
+  // Only a genuine first-time accept (never consented before) mints a new
+  // timestamp. If they'd already consented but no timestamp was on record
+  // (e.g. a pre-existing consent from before this field existed), preserve
+  // that "no timestamp" state rather than inventing one now.
   const consentAt = consentChecked
-    ? ((hadPriorConsent && priorConsentAt) ? priorConsentAt : new Date().toISOString())
+    ? (hadPriorConsent ? (priorConsentAt || null) : new Date().toISOString())
     : null;
 
   return {

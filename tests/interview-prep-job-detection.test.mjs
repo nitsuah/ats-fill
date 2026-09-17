@@ -92,3 +92,24 @@ test('openInterviewPrepForCurrentJob shows the empty state only when there is tr
   assert.equal(document.getElementById('interview-prep-company').textContent, 'No job detected');
   assert.equal(document.getElementById('interview-prep-generate-btn').disabled, true);
 });
+
+test('a failed GET_STATE (sendMessage resolves null) surfaces an error instead of silently acting as "no jobs"', async () => {
+  setupDom();
+  global.chrome = {
+    tabs: { query: async () => [] },
+    runtime: {
+      lastError: null,
+      // Mirrors sendMessage's real behavior on a runtime error/timeout: it
+      // resolves null rather than rejecting.
+      sendMessage: (_msg, cb) => cb(null),
+    },
+  };
+
+  const { openInterviewPrepForCurrentJob } = await import('../popup/ux/interview-prep.js?case=state-load-failure');
+
+  await assert.rejects(
+    () => openInterviewPrepForCurrentJob(),
+    /Could not load your profile and pipeline data/,
+    'a null GET_STATE response must not be silently treated as an empty pipeline'
+  );
+});
