@@ -30,7 +30,7 @@ export function showScreen(name) {
       setup: '• Profile',
       tracker: '• Pipeline',
       analytics: '• Analytics',
-      ai: '• AI',
+      ai: '• Settings',
       help: '• Help',
       preview: '• Preview',
       'job-search': '• Job Search',
@@ -51,6 +51,42 @@ export function showScreen(name) {
     const btn = document.getElementById(btnId);
     if (btn) btn.classList.toggle('active-tab', screen === name);
   }
+}
+
+// ── Narrow-width nav (hamburger) ────────────────────────────────────────────
+// Below the narrow breakpoint (see popup.css), secondary nav buttons (Analytics,
+// Settings, Profile, Help) move into a dropdown behind a hamburger toggle so
+// the 3 primary buttons (Search, Pipeline, Interview Prep) stay visible. This
+// only toggles a CSS class — every button keeps its existing id/handlers.
+export function initHeaderMenuToggle() {
+  const toggle = document.getElementById('header-menu-toggle');
+  const menu = document.getElementById('header-secondary-nav');
+  if (!toggle || !menu) return;
+
+  const closeMenu = () => {
+    menu.classList.remove('is-open');
+    toggle.setAttribute('aria-expanded', 'false');
+  };
+
+  toggle.addEventListener('click', (event) => {
+    event.stopPropagation();
+    const willOpen = !menu.classList.contains('is-open');
+    menu.classList.toggle('is-open', willOpen);
+    toggle.setAttribute('aria-expanded', String(willOpen));
+  });
+
+  // Selecting any nav item, clicking away, or Escape closes the dropdown.
+  menu.addEventListener('click', (event) => {
+    if (event.target.closest('button')) closeMenu();
+  });
+  document.addEventListener('click', (event) => {
+    if (!menu.classList.contains('is-open')) return;
+    if (event.target.closest('#header-secondary-nav') || event.target.closest('#header-menu-toggle')) return;
+    closeMenu();
+  });
+  document.addEventListener('keydown', (event) => {
+    if (event.key === 'Escape' && menu.classList.contains('is-open')) closeMenu();
+  });
 }
 
 export function scrollToSection(sectionId) {

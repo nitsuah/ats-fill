@@ -14,7 +14,7 @@ import {
   renderResumeAttachment,
   syncDemoChips,
 } from '../forms/forms.js';
-import { renderCustomJobSourcesList } from '../ai/ai.js';
+import { renderCustomJobSourcesList, syncSettingsCardsFromState } from '../ai/ai.js';
 
 // Re-export for consumers
 export { readSettingsForm };
@@ -52,8 +52,16 @@ export function applyStateToSetupForm(state = {}) {
   set('google-client-id', settings.google_client_id || '');
   set('google-client-secret', settings.google_client_secret || '');
   renderCustomJobSourcesList(settings.custom_job_sources || []);
+  syncSettingsCardsFromState(settings, !!state.hasApiKey);
   const privacyConsent = $('privacy-consent');
-  if (privacyConsent) privacyConsent.checked = settings.privacy_consent === true;
+  if (privacyConsent) {
+    privacyConsent.checked = settings.privacy_consent === true;
+    // Remember the consent state/timestamp as loaded from storage so
+    // readSettingsForm() can tell a first-time accept from re-saving an
+    // already-consented profile — see the comment there for why this matters.
+    privacyConsent.dataset.originalConsent = settings.privacy_consent === true ? 'true' : 'false';
+    privacyConsent.dataset.originalConsentAt = settings.privacy_consent_at || '';
+  }
 
   syncConsentGate();
   renderResumeAttachment(state.resumeAttachment || null);
@@ -101,6 +109,16 @@ export async function handleSaveSetup() {
     },
     }, { timeout: 120_000 });
   if (!resp?.success) throw new Error(resp?.error || 'Failed to save profile.');
+
+  // Keep the consent baseline in sync with what was just persisted so a
+  // later save isn't mistaken for a first-time accept (and doesn't mint a
+  // fresh timestamp) if the follow-up GET_STATE refresh below ever fails.
+  const consentEl = $('privacy-consent');
+  if (consentEl) {
+    consentEl.dataset.originalConsent = settings.privacy_consent ? 'true' : 'false';
+    consentEl.dataset.originalConsentAt = settings.privacy_consent_at || '';
+  }
+
   return resp;
 }
 
@@ -161,7 +179,7 @@ export async function initSetupHandlers() {
   $('privacy-consent')?.addEventListener('change', () => {
     syncConsentGate();
     if ($('privacy-consent').checked) {
-      setStatus('setup-status', '✅ Privacy accepted. Profile and AI settings are now unlocked.', 'success');
+      setStatus('setup-status', '✅ Privacy accepted. Profile and Settings are now unlocked.', 'success');
     }
   });
 

@@ -212,6 +212,27 @@ export function toggleFinalDockLane(status) {
   finalDockExpanded[normalized] = !finalDockExpanded[normalized];
 }
 
+// Primary lane (Drafts / Submitted / Later stages) collapse state. Unlike the
+// final-stage dock above, these default to expanded and only start collapsed
+// when a lane is empty at first render — see seedPrimaryLaneDefaults().
+const primaryLaneExpanded = {};
+let primaryLaneSeeded = false;
+
+function seedPrimaryLaneDefaults(applications, lanes) {
+  lanes.forEach((lane) => {
+    primaryLaneExpanded[lane.key] = getTrackerLaneCount(applications, lane) > 0;
+  });
+}
+
+export function togglePrimaryLaneCollapse(key) {
+  if (!(key in primaryLaneExpanded)) return;
+  primaryLaneExpanded[key] = !primaryLaneExpanded[key];
+}
+
+function isPrimaryLaneExpanded(key) {
+  return primaryLaneExpanded[key] !== false;
+}
+
 export async function renderTracker() {
   const previousInline = $('tracker-status-inline');
   const previousInlineText = previousInline?.textContent || '';
@@ -276,6 +297,11 @@ export async function renderTracker() {
   const primaryLanes = lanes.filter((lane) => !lane.finalStage);
   const finalLanes = lanes.filter((lane) => lane.finalStage);
 
+  if (!primaryLaneSeeded) {
+    seedPrimaryLaneDefaults(filteredApps, primaryLanes);
+    primaryLaneSeeded = true;
+  }
+
   tbody.innerHTML = `
     <div class="tracker-list-main">${primaryLanes.map((lane) => renderTrackerLane(filteredApps, lane)).join('')}</div>
     <div id="tracker-status-inline" class="tracker-status-inline tracker-status-inline-docked" role="status" aria-live="polite"></div>
@@ -309,11 +335,14 @@ function applyTrackerSummary(apps = []) {
 
 export function renderTrackerLane(applications, lane) {
   if (Array.isArray(lane.groups)) {
+    const laneOpen = isPrimaryLaneExpanded(lane.key);
     const sections = lane.groups.map((group) => {
       const laneApps = applications.filter((app) => group.statuses.includes(normalizeApplicationStatus(app.status)));
       const statusTone = group.statuses[0] || group.key;
       const bubbles = renderSectionBubbles(laneApps, statusTone);
-      const expanded = renderSectionExpandedCards(laneApps);
+      // The column-level collapse toggle hides expanded card previews (not
+      // the bubble row itself, so drag/drop targets stay visible either way).
+      const expanded = laneOpen ? renderSectionExpandedCards(laneApps) : '';
       return `
         <div class="tracker-lane-group" data-status-target="${escAttr(group.statuses[0])}">
           <div class="tracker-lane-subheader">
@@ -330,10 +359,13 @@ export function renderTrackerLane(applications, lane) {
     const total = getTrackerLaneCount(applications, lane);
 
     return `
-      <section class="tracker-lane tracker-lane-stacked">
+      <section class="tracker-lane tracker-lane-stacked${laneOpen ? '' : ' is-collapsed'}">
         <div class="tracker-lane-header">
           <span class="tracker-lane-title">${lane.label}</span>
-          <span class="tracker-lane-count">${total}</span>
+          <div class="tracker-lane-header-actions">
+            <span class="tracker-lane-count">${total}</span>
+            <button class="btn btn-ghost btn-xs tracker-lane-collapse-toggle" data-lane-collapse-toggle="${escAttr(lane.key)}" type="button">${laneOpen ? 'Collapse' : 'Expand'}</button>
+          </div>
         </div>
         ${sections}
       </section>
@@ -373,17 +405,19 @@ export function renderTrackerLane(applications, lane) {
       </section>
     `;
   }
+  const laneOpen = isPrimaryLaneExpanded(lane.key);
   const statusTone = lane.statuses[0] || lane.key;
   const bubbles = renderSectionBubbles(laneApps, statusTone);
-  const expanded = renderSectionExpandedCards(laneApps);
+  const expanded = laneOpen ? renderSectionExpandedCards(laneApps) : '';
 
   return `
-    <section class="tracker-lane${isFinalStageLane ? ` tracker-lane-final tracker-lane-final-${escAttr(statusTone)}` : ''}" data-status-target="${escAttr(lane.statuses[0])}">
+    <section class="tracker-lane${isFinalStageLane ? ` tracker-lane-final tracker-lane-final-${escAttr(statusTone)}` : ''}${laneOpen ? '' : ' is-collapsed'}" data-status-target="${escAttr(lane.statuses[0])}">
       <div class="tracker-lane-header">
         <span class="tracker-lane-title">${lane.label}</span>
         <div class="tracker-lane-inline-bubbles">${bubbles}</div>
         ${renderSectionToggle(laneApps)}
         <span class="tracker-lane-count">${laneApps.length}</span>
+        <button class="btn btn-ghost btn-xs tracker-lane-collapse-toggle" data-lane-collapse-toggle="${escAttr(lane.key)}" type="button">${laneOpen ? 'Collapse' : 'Expand'}</button>
       </div>
       <div class="tracker-lane-cards" data-status-target="${escAttr(lane.statuses[0])}">${expanded}</div>
     </section>

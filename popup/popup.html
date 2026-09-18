@@ -18,24 +18,33 @@
           <span id="header-screen-label" class="header-screen-label"></span>
         </button>
         <div class="header-actions">
-          <button id="header-job-search-btn" class="icon-btn" title="Job Search">
+          <button id="header-job-search-btn" class="icon-btn nav-primary" title="Job Search">
             🔍 <span class="tracker-btn-label">Search</span>
           </button>
-          <button id="header-tracker-btn" class="icon-btn" title="Open the application workspace">
+          <button id="header-tracker-btn" class="icon-btn nav-primary" title="Open the application workspace">
             📊 <span class="tracker-btn-label">Pipeline</span>
             <span id="header-tracker-count" class="count-pill">0 / 0 active</span>
           </button>
-          <button id="header-analytics-btn" class="icon-btn" type="button" title="Open application analytics">
-            📈 <span class="tracker-btn-label">Analytics</span>
+          <button id="header-interview-prep-btn" class="icon-btn nav-primary" title="Interview prep mode" aria-label="Interview prep mode">
+            🎯 <span class="tracker-btn-label">Interview Prep</span>
           </button>
-          <button id="header-ai-btn" class="icon-btn" title="Open the AI settings panel">
-            🧠 <span class="tracker-btn-label">AI</span>
-          </button>
-          <button id="header-profile-btn" class="icon-btn" title="Open your profile and memory" aria-label="Open profile">
-            👤 <span class="tracker-btn-label">Profile</span>
-          </button>
-          <button id="header-help-btn" class="icon-btn" title="Help, privacy, and reset options" aria-label="Help, privacy, and reset options">?</button>
-          <button id="header-interview-prep-btn" class="icon-btn" title="Interview prep mode" aria-label="Interview prep mode">🎯</button>
+
+          <button id="header-menu-toggle" class="icon-btn header-menu-toggle" type="button" aria-haspopup="true" aria-expanded="false" aria-label="More navigation">☰</button>
+
+          <div id="header-secondary-nav" class="header-secondary-nav">
+            <button id="header-analytics-btn" class="icon-btn nav-secondary" type="button" title="Open application analytics">
+              📈 <span class="tracker-btn-label">Analytics</span>
+            </button>
+            <button id="header-ai-btn" class="icon-btn nav-secondary" title="Open Settings">
+              ⚙️ <span class="tracker-btn-label">Settings</span>
+            </button>
+            <button id="header-profile-btn" class="icon-btn nav-secondary" title="Open your profile and memory" aria-label="Open profile">
+              👤 <span class="tracker-btn-label">Profile</span>
+            </button>
+            <button id="header-help-btn" class="icon-btn nav-secondary" title="Help, privacy, and reset options" aria-label="Help, privacy, and reset options">
+              ❓ <span class="tracker-btn-label">Help</span>
+            </button>
+          </div>
         </div>
       </div>
     </header>
@@ -68,7 +77,7 @@
             <details class="form-group profile-panel profile-section" id="profile-resume-section" open>
               <summary class="collapsible-summary profile-section-summary"><span class="profile-section-title">Resume</span></summary>
               <div class="collapsible-body">
-              <p class="helper-text">Upload or paste a resume here. New resume parsing uses the Gemini key from the AI panel.</p>
+              <p class="helper-text">Upload or paste a resume here. New resume parsing uses the Gemini key from Settings.</p>
               <div class="resume-grid">
                 <div class="resume-input-col">
                   <div class="resume-tabs">
@@ -110,10 +119,12 @@
               </div>
             </details>
 
-            <!-- Lower half: two columns. Left = Core profile + Memory. Right = Sensitive + Preferences. -->
+            <!-- Lower half: a 2-column grid in reading order Core -> Preferences ->
+                 Memory -> Sensitive, so a 2-up layout puts the two commonly-edited
+                 sections on top and Memory + Sensitive adjacent underneath, while a
+                 single narrow column keeps that same 1-2-3-4 order. -->
             <div class="profile-two-col">
-              <div class="profile-col">
-              <details class="form-group profile-panel profile-section" id="core-profile-section" open>
+              <details class="form-group profile-panel profile-section" id="core-profile-section">
                 <summary class="collapsible-summary profile-section-summary"><span class="profile-section-title">Core profile details</span></summary>
                 <div class="collapsible-body">
                 <p class="helper-text">These fields power deterministic autofill even when AI is unavailable.</p>
@@ -185,8 +196,27 @@
                 </div>
               </details>
 
+              <details class="form-group settings-group profile-panel profile-section" id="preferences-section">
+                <summary class="collapsible-summary profile-section-summary"><span class="profile-section-title">Preferences &amp; answer defaults (optional)</span></summary>
+                <div class="collapsible-body">
+                <div class="pref-pay-row">
+                  <label class="field-label"><span>Min salary</span><input type="number" id="salary-min" placeholder="Min" /></label>
+                  <span class="sep">–</span>
+                  <label class="field-label"><span>Max salary</span><input type="number" id="salary-max" placeholder="Max" /></label>
+                  <label class="checkbox-row pref-remote-inline">
+                    <input type="checkbox" id="prefer-remote" checked />
+                    Prefer remote
+                  </label>
+                </div>
+                <p class="helper-text" style="margin-top:10px">Reusable responses for the common prompts that show up across ATSes. We also remember safe manual answers from forms and store them in Memory for later reuse.</p>
+                <textarea id="default-why-company" rows="3" placeholder="Default answer for: Why this company?"></textarea>
+                <textarea id="default-why-role" rows="3" placeholder="Default answer for: Why this role / why are you a fit?" style="margin-top:8px"></textarea>
+                <textarea id="default-additional-info" rows="3" placeholder="Additional information / accommodations note (optional)" style="margin-top:8px"></textarea>
+                </div>
+              </details>
+
               <div class="help-card memory-card-shell profile-panel" id="profile-memory-section">
-                <details class="profile-collapsible memory-collapsible" open>
+                <details class="profile-collapsible memory-collapsible">
                   <summary class="collapsible-summary">
                     <span class="report-title memory-title">Memory</span>
                     <span id="memory-count-badge" class="badge badge-memory">0 saved</span>
@@ -213,10 +243,8 @@
                   </div>
                 </details>
               </div>
-              </div>
 
-              <div class="profile-col">
-              <details class="form-group sensitive-group profile-panel profile-section" id="sensitive-section" open>
+              <details class="form-group sensitive-group profile-panel profile-section" id="sensitive-section">
                 <summary class="collapsible-summary profile-section-summary"><span class="profile-section-title sensitive-section-label">🔒 Sensitive / Demographic — protected data</span></summary>
                 <div class="collapsible-body">
                 <label class="checkbox-row sensitive-check">
@@ -289,26 +317,6 @@
                 <p class="helper-text">Strictly local. These values are never sent to Gemini or any external service. You can clear them at any time.</p>
                 </div>
               </details>
-
-              <details class="form-group settings-group profile-panel profile-section" id="preferences-section" open>
-                <summary class="collapsible-summary profile-section-summary"><span class="profile-section-title">Preferences &amp; answer defaults (optional)</span></summary>
-                <div class="collapsible-body">
-                <div class="pref-pay-row">
-                  <label class="field-label"><span>Min salary</span><input type="number" id="salary-min" placeholder="Min" /></label>
-                  <span class="sep">–</span>
-                  <label class="field-label"><span>Max salary</span><input type="number" id="salary-max" placeholder="Max" /></label>
-                  <label class="checkbox-row pref-remote-inline">
-                    <input type="checkbox" id="prefer-remote" checked />
-                    Prefer remote
-                  </label>
-                </div>
-                <p class="helper-text" style="margin-top:10px">Reusable responses for the common prompts that show up across ATSes. We also remember safe manual answers from forms and store them in Memory for later reuse.</p>
-                <textarea id="default-why-company" rows="3" placeholder="Default answer for: Why this company?"></textarea>
-                <textarea id="default-why-role" rows="3" placeholder="Default answer for: Why this role / why are you a fit?" style="margin-top:8px"></textarea>
-                <textarea id="default-additional-info" rows="3" placeholder="Additional information / accommodations note (optional)" style="margin-top:8px"></textarea>
-                </div>
-              </details>
-              </div>
             </div>
 
             <div class="profile-save-bar">
@@ -368,8 +376,8 @@
               <span class="status-label">Core Profile</span>
               <span id="profile-status" class="badge badge-info">—</span>
             </button>
-            <button type="button" id="api-row" class="status-row status-nav" data-nav-target="api" title="Open the AI panel to update your Gemini key.">
-              <span class="status-label">AI</span>
+            <button type="button" id="api-row" class="status-row status-nav" data-nav-target="api" title="Open Settings to update your Gemini key.">
+              <span class="status-label">Settings</span>
               <span id="api-status" class="badge badge-info">Optional</span>
             </button>
             <button type="button" id="learned-row" class="status-row status-nav" data-nav-target="memory" title="Open Memory in Profile.">
@@ -410,7 +418,6 @@
           <button id="tracker-clear-filters-btn" class="btn btn-ghost btn-sm" type="button">Clear filters</button>
         </div>
         <div class="tracker-toolbar-actions">
-          <button id="tracker-analytics-btn" class="btn btn-ghost btn-sm" type="button" title="See response rates and timing across your applications">📈 Analytics</button>
           <button id="add-application-btn" class="btn btn-secondary btn-sm">＋ Add manually</button>
           <button id="import-csv-btn" class="btn btn-ghost btn-sm" title="Import prior applications from a CSV file">Import CSV</button>
           <button id="export-csv-btn" class="btn btn-ghost btn-sm">Export CSV</button>
@@ -582,15 +589,19 @@
           </div>
         </div>
         <div id="job-search-results" class="job-search-results job-search-grid" aria-live="polite">
-          <p class="empty-msg">No search yet. Enter a query above.</p>
+          <div class="empty-msg job-search-empty-state">
+            <span class="job-search-empty-icon" aria-hidden="true">🔍</span>
+            <p class="job-search-empty-title">Your job search starts here</p>
+            <p class="job-search-empty-hint">Type a role or company above and hit Search — Adzuna, Hackajob, Remotive, LinkedIn, and a dozen other boards are ready to go.</p>
+          </div>
         </div>
       </div>
     </section>
 
-    <!-- AI Screen -->
+    <!-- Settings Screen -->
     <section id="ai-screen" class="screen hidden">
       <div class="tracker-header">
-        <h2 class="section-title">AI settings</h2>
+        <h2 class="section-title">Settings</h2>
       </div>
 
       <div class="help-card profile-panel" id="ai-settings-section">
@@ -598,11 +609,16 @@
           <h3>Optional Gemini help</h3>
           <p>Connect Gemini only when you want resume parsing or answer drafting. Core autofill still works without it.</p>
         </div>
-        <p id="ai-locked-note" class="helper-text">Accept privacy once in Profile before editing AI settings.</p>
+        <p id="ai-locked-note" class="helper-text">Accept privacy once in Profile before editing Settings.</p>
 
         <div id="ai-consent-gated" class="consent-locked">
-          <div class="form-group profile-panel ai-panel-group" id="profile-api-section">
-            <label for="api-key-input">Gemini API Key</label>
+          <details class="ai-panel-group profile-panel profile-section" id="profile-api-section">
+            <summary class="collapsible-summary profile-section-summary">
+              <span class="profile-section-title">Gemini API Key</span>
+              <span class="config-badge hidden" data-config-badge>✅ Configured — click to edit</span>
+            </summary>
+            <div class="collapsible-body">
+            <label for="api-key-input" class="visually-hidden">Gemini API Key</label>
             <input
               type="password"
               id="api-key-input"
@@ -623,11 +639,17 @@
               <option value="gemini-2.5-pro">gemini-2.5-pro (highest quality)</option>
               <option value="gemini-flash-latest">gemini-flash-latest (rolling alias)</option>
             </select>
-          </div>
+            </div>
+          </details>
 
-          <div class="form-group profile-panel ai-panel-group" id="job-sources-section">
-            <label for="adzuna-app-id">Job search sources (optional)</label>
+          <details class="ai-panel-group profile-panel profile-section" id="job-sources-section">
+            <summary class="collapsible-summary profile-section-summary">
+              <span class="profile-section-title">Job search sources (optional)</span>
+              <span class="config-badge hidden" data-config-badge>✅ Configured — click to edit</span>
+            </summary>
+            <div class="collapsible-body">
             <p class="helper-text">Optional keyed sources fold extra listings into Job Search alongside the built-in free ones. Keys are stored locally only.</p>
+            <label for="adzuna-app-id" class="visually-hidden">Adzuna App ID</label>
             <input type="text" id="adzuna-app-id" placeholder="Adzuna App ID" autocomplete="off" />
             <input type="password" id="adzuna-app-key" placeholder="Adzuna App Key" autocomplete="off" style="margin-top:8px" />
             <select id="adzuna-country" style="margin-top:8px" aria-label="Adzuna search country">
@@ -654,16 +676,22 @@
             <p class="helper-text" style="margin-top:14px">Jooble (global aggregator) — indexes millions of listings worldwide.</p>
             <input type="password" id="jooble-api-key" placeholder="Jooble API Key" autocomplete="off" />
             <a class="hint-link" href="https://jooble.org/api/about" target="_blank" rel="noopener">Get a free Jooble API key →</a>
-          </div>
+            </div>
+          </details>
 
-          <div class="form-group profile-panel ai-panel-group" id="linkedin-oauth-section">
-            <label for="linkedin-client-id">Profile import — Sign in with LinkedIn (optional)</label>
+          <details class="ai-panel-group profile-panel profile-section" id="linkedin-oauth-section">
+            <summary class="collapsible-summary profile-section-summary">
+              <span class="profile-section-title">Profile import — Sign in with LinkedIn (optional)</span>
+              <span class="config-badge hidden" data-config-badge>✅ Configured — click to edit</span>
+            </summary>
+            <div class="collapsible-body">
             <p class="helper-text">Create a free LinkedIn app, add the redirect URL below to it, paste your Client ID + Secret, then connect to pre-fill your name &amp; email. BYO app, stored locally only. (LinkedIn's public API doesn't expose job listings, so this is profile-import only.)</p>
             <div class="oauth-redirect-row">
               <span class="oauth-redirect-label">Redirect URL</span>
               <code id="oauth-redirect-uri" class="oauth-redirect-uri">—</code>
               <button type="button" id="copy-redirect-uri-btn" class="btn btn-ghost btn-xs">Copy</button>
             </div>
+            <label for="linkedin-client-id" class="visually-hidden">LinkedIn Client ID</label>
             <input type="text" id="linkedin-client-id" placeholder="LinkedIn Client ID" autocomplete="off" />
             <input type="password" id="linkedin-client-secret" placeholder="LinkedIn Client Secret" autocomplete="off" style="margin-top:8px" />
             <a class="hint-link" href="https://www.linkedin.com/developers/apps/new" target="_blank" rel="noopener">Create a LinkedIn app →</a>
@@ -671,11 +699,18 @@
               <button type="button" id="connect-linkedin-btn" class="btn btn-secondary btn-sm">🔗 Connect LinkedIn</button>
               <span id="linkedin-status" class="status-msg" role="status" aria-live="polite"></span>
             </div>
-          </div>
+            </div>
+          </details>
 
-          <div class="form-group profile-panel ai-panel-group" id="google-oauth-section">
-            <label for="google-client-id">Profile import — Sign in with Google (optional)</label>
+          <details class="ai-panel-group profile-panel profile-section" id="google-oauth-section">
+            <summary class="collapsible-summary profile-section-summary">
+              <span class="profile-section-title">Profile import — Sign in with Google (optional)</span>
+              <span class="config-badge hidden" data-config-badge>✅ Configured — click to edit</span>
+            </summary>
+            <div class="collapsible-body">
             <p class="helper-text">Create a free Google Cloud OAuth client, add the redirect URL above to it, paste your Client ID + Secret, then connect to pre-fill your name &amp; email. BYO app, stored locally only — same pattern as LinkedIn above.</p>
+            <p class="helper-text"><strong>Client type matters:</strong> register a <strong>Web application</strong> client (not Desktop) — Chrome's identity API redirects through an <code>https://…chromiumapp.org/</code> URL, which only a Web application client accepts as an authorized redirect URI. Paste that redirect URL (shown above, in the LinkedIn card) into the client's "Authorized redirect URIs" list.</p>
+            <label for="google-client-id" class="visually-hidden">Google OAuth Client ID</label>
             <input type="text" id="google-client-id" placeholder="Google OAuth Client ID" autocomplete="off" />
             <input type="password" id="google-client-secret" aria-label="Google OAuth Client Secret" placeholder="Google OAuth Client Secret" autocomplete="off" style="margin-top:8px" />
             <a class="hint-link" href="https://console.cloud.google.com/apis/credentials" target="_blank" rel="noopener">Create a Google OAuth client →</a>
@@ -683,22 +718,29 @@
               <button type="button" id="connect-google-btn" class="btn btn-secondary btn-sm">🔗 Connect Google</button>
               <span id="google-status" class="status-msg" role="status" aria-live="polite"></span>
             </div>
-          </div>
+            </div>
+          </details>
 
-          <div class="form-group profile-panel ai-panel-group" id="custom-sources-section">
-            <label for="custom-source-name">Custom job sources (optional)</label>
+          <details class="ai-panel-group profile-panel profile-section" id="custom-sources-section">
+            <summary class="collapsible-summary profile-section-summary">
+              <span class="profile-section-title">Custom job sources (optional)</span>
+              <span class="config-badge hidden" data-config-badge>✅ Configured — click to edit</span>
+            </summary>
+            <div class="collapsible-body">
             <p class="helper-text">Point Job Search at any RSS-based board the built-in list doesn't cover — a state workforce board (e.g. JOBS4TN.gov), an internal careers feed, or any other job RSS URL. Your search terms are appended as a <code>?q=</code> param when the feed doesn't already encode a query. The extension will ask for one-time permission to read that site.</p>
             <ul id="custom-job-sources-list" class="custom-source-list"></ul>
+            <label for="custom-source-name" class="visually-hidden">Custom source name</label>
             <input type="text" id="custom-source-name" placeholder="Source name (e.g. JOBS4TN)" autocomplete="off" />
             <input type="url" id="custom-source-url" aria-label="RSS feed URL" placeholder="RSS feed URL" autocomplete="off" style="margin-top:8px" />
             <div class="linkedin-connect-row">
               <button type="button" id="add-custom-source-btn" class="btn btn-secondary btn-sm">+ Add source</button>
               <span id="custom-source-status" class="status-msg" role="status" aria-live="polite"></span>
             </div>
-          </div>
+            </div>
+          </details>
 
           <div class="profile-save-bar ai-save-bar">
-            <button id="save-ai-settings-btn" class="btn btn-primary btn-full">Save AI settings</button>
+            <button id="save-ai-settings-btn" class="btn btn-primary btn-full">Save settings</button>
             <p id="ai-status" class="status-msg" role="status" aria-live="polite"></p>
           </div>
         </div>
@@ -715,12 +757,13 @@
         <div class="legal-meta">
           <span class="legal-version">Apply Workspace · Terms &amp; Privacy v1.0</span>
           <span class="legal-updated">Last updated May 31, 2026</span>
-          <a class="hint-link legal-canonical-link" href="https://github.com/nitsuah/auto-apply-plugin/blob/main/PRIVACY.md" target="_blank" rel="noopener">Full policy →</a>
+          <a class="hint-link legal-canonical-link" href="https://github.com/nitsuah/auto-apply-plugin/blob/main/docs/PRIVACY.md" target="_blank" rel="noopener">Full policy →</a>
           <span id="consent-signed-date" class="legal-signed">Consent not recorded yet.</span>
         </div>
 
-        <div class="help-section" id="help-eula-section">
-          <h3>Terms of Use (EULA)</h3>
+        <details class="help-section" id="help-eula-section">
+          <summary class="collapsible-summary"><h3>Terms of Use (EULA)</h3></summary>
+          <div class="collapsible-body">
           <p>Apply Workspace ("the extension") is a local-first, review-first assistant that helps you draft and fill job-application forms. By accepting consent you agree to these terms.</p>
           <ul class="legal-list">
             <li><strong>Review before you submit.</strong> The extension only drafts and fills fields. It never submits an application for you — you review every field and click submit yourself.</li>
@@ -730,10 +773,12 @@
             <li><strong>Acceptable use.</strong> Don't use the extension to submit fraudulent applications or to violate the terms of any job board or ATS.</li>
             <li><strong>Open source.</strong> The extension is distributed under its repository license; that license governs the software itself.</li>
           </ul>
-        </div>
+          </div>
+        </details>
 
-        <div class="help-section" id="help-privacy-section">
-          <h3>Privacy Policy</h3>
+        <details class="help-section" id="help-privacy-section">
+          <summary class="collapsible-summary"><h3>Privacy Policy</h3></summary>
+          <div class="collapsible-body">
           <p class="help-lead"><strong>We run no servers and operate no backend.</strong> There is no Apply Workspace account, and your data is never sent to us — we have no way to receive, store, or see it.</p>
           <ul class="legal-list">
             <li><strong>What is stored, and where.</strong> Your profile, resume preview, saved answer defaults ("memory"), application tracker, settings, and any keys/credentials you add are stored only in your browser's local extension storage (<code>chrome.storage.local</code>) on this device/profile. Nothing syncs to the cloud.</li>
@@ -742,11 +787,13 @@
             <li><strong>Third parties.</strong> Only the services above can receive your data, and only for requests you explicitly initiate with your own credentials.</li>
             <li><strong>No tracking.</strong> No analytics, advertising, tracking, or telemetry of any kind.</li>
           </ul>
-        </div>
+          </div>
+        </details>
 
         <div class="help-col-stack">
-          <div class="help-section" id="help-gdpr-section">
-            <h3>GDPR &amp; CCPA / your rights</h3>
+          <details class="help-section" id="help-gdpr-section">
+            <summary class="collapsible-summary"><h3>GDPR &amp; CCPA / your rights</h3></summary>
+            <div class="collapsible-body">
             <p>Because all data lives locally on your device and we never receive it, you remain the sole controller of your information and can exercise every right directly from this panel:</p>
             <ul class="legal-list">
               <li><strong>Access &amp; portability:</strong> Export your tracker to CSV from the Pipeline screen; your profile and memory are visible and editable in the Profile screen.</li>
@@ -754,17 +801,21 @@
               <li><strong>Erasure ("right to be forgotten"):</strong> Use <em>Delete all local data</em> below to wipe everything instantly. No request to us is needed because we hold nothing.</li>
               <li><strong>Withdraw consent:</strong> Re-open privacy settings to review or revoke. Deleting local data clears your recorded consent.</li>
             </ul>
-          </div>
+            </div>
+          </details>
 
-          <div class="help-section" id="help-ats-section">
-            <h3>What is an ATS?</h3>
+          <details class="help-section" id="help-ats-section">
+            <summary class="collapsible-summary"><h3>What is an ATS?</h3></summary>
+            <div class="collapsible-body">
             <p>An applicant tracking system is the hiring software behind many job forms. Apply Workspace uses ATS detection to decide how safely it can fill fields and how much review to keep in the loop.</p>
-          </div>
+            </div>
+          </details>
         </div>
 
         <div class="help-col-stack">
-          <div class="help-section" id="help-data-controls-section">
-            <h3>Data controls — what each action removes</h3>
+          <details class="help-section" id="help-data-controls-section">
+            <summary class="collapsible-summary"><h3>Data controls — what each action removes</h3></summary>
+            <div class="collapsible-body">
             <div class="data-control-explainer">
               <p class="data-control-title">🧹 Clear temp cache</p>
               <p class="helper-text">Removes only short-lived working data and keeps everything you set up. Specifically it deletes: cached page drafts (in-progress form values), the last generated answer set, the last fill report, and the "recently filled" pointer. <strong>Your profile, resume, saved memory, tracker, settings, and Gemini key are kept.</strong></p>
@@ -773,7 +824,8 @@
               <p class="data-control-title">🗑 Delete all local data</p>
               <p class="helper-text">Wipes <strong>everything</strong> this extension stores on your device — profile and resume, saved answer defaults &amp; ignore list, the entire application tracker, all settings <strong>including your Gemini API key and your recorded consent</strong>, plus everything the temp cache covers. This cannot be undone.</p>
             </div>
-          </div>
+            </div>
+          </details>
 
           <div class="action-btns help-actions">
             <button id="clear-cache-btn" class="btn btn-secondary btn-full">🧹 Clear temp cache</button>
@@ -794,6 +846,8 @@
       </div>
 
       <div class="interview-prep-content">
+        <div id="interview-prep-job-bar" class="interview-prep-job-bar hidden" role="group" aria-label="Jobs in your pipeline"></div>
+
         <div class="interview-prep-header">
           <div id="interview-prep-job-info" class="interview-prep-job-info hidden">
             <h3 id="interview-prep-company"></h3>

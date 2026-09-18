@@ -38,8 +38,29 @@ export function applyStartDateValue(value = '') {
 
 /**
  * Read settings form values (API key, privacy, etc)
+ *
+ * Consent timestamp handling: the checkbox alone can't distinguish "signing
+ * consent for the first time" from "already consented, just saving other
+ * profile edits." `applyStateToSetupForm` stamps the checkbox with the
+ * previously-recorded consent state via `data-original-*` attributes when it
+ * hydrates the form; we reuse that original timestamp here whenever consent
+ * was already accepted, and only mint a new one on a genuine first-time
+ * accept. Without this, every unrelated "Save Profile" click would silently
+ * overwrite the user's original consent date.
  */
 export function readSettingsForm() {
+  const consentEl = $('privacy-consent');
+  const consentChecked = consentEl?.checked === true;
+  const hadPriorConsent = consentEl?.dataset.originalConsent === 'true';
+  const priorConsentAt = consentEl?.dataset.originalConsentAt || '';
+  // Only a genuine first-time accept (never consented before) mints a new
+  // timestamp. If they'd already consented but no timestamp was on record
+  // (e.g. a pre-existing consent from before this field existed), preserve
+  // that "no timestamp" state rather than inventing one now.
+  const consentAt = consentChecked
+    ? (hadPriorConsent ? (priorConsentAt || null) : new Date().toISOString())
+    : null;
+
   return {
     gemini_api_key: $('api-key-input')?.value.trim() || '',
     gemini_model: $('gemini-model')?.value || 'auto',
@@ -54,8 +75,8 @@ export function readSettingsForm() {
     usajobs_api_key: $('usajobs-api-key')?.value.trim() || '',
     linkedin_client_id: $('linkedin-client-id')?.value.trim() || '',
     linkedin_client_secret: $('linkedin-client-secret')?.value.trim() || '',
-    privacy_consent: $('privacy-consent')?.checked,
-    privacy_consent_at: $('privacy-consent')?.checked ? new Date().toISOString() : null,
+    privacy_consent: consentChecked,
+    privacy_consent_at: consentAt,
   };
 }
 
