@@ -8,7 +8,7 @@
 | Build Time    | 3.44s |
 | Bundle Size   | 619.78KB |
 | Test Files    | 13 (9 unit + 4 Playwright e2e) |
-| Test Cases    | 120 (106 unit + 14 Playwright e2e) |
+| Test Cases    | 125 (111 unit + 14 Playwright e2e) |
 | Other coverage | 83.48% lines / 65.99% branches / 82.11% functions |
 
 ## Health
