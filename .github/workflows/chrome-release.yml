@@ -28,30 +28,44 @@ jobs:
         with:
           ref: ${{ github.event_name == 'workflow_dispatch' && inputs.tag || github.ref }}
 
+      - name: Resolve release tag
+        id: release
+        env:
+          EVENT_TAG: ${{ github.event_name == 'workflow_dispatch' && inputs.tag || github.ref_name }}
+        run: |
+          echo "tag=$EVENT_TAG" >> "$GITHUB_OUTPUT"
+          echo "version=${EVENT_TAG#v}" >> "$GITHUB_OUTPUT"
+
       - name: Validate release tag
-        run: node scripts/validate-release-version.mjs "${{ github.event_name == 'workflow_dispatch' && inputs.tag || github.ref_name }}"
+        run: node scripts/validate-release-version.mjs "${{ steps.release.outputs.tag }}"
 
       - name: Validate manifest
         run: node scripts/validate-manifest.mjs
 
       - name: Build and package
-        run: node scripts/package-extension.mjs "auto-apply-plugin-${{ github.event_name == 'workflow_dispatch' && inputs.tag || github.ref_name }}.zip"
+        run: node scripts/package-extension.mjs "auto-apply-plugin-${{ steps.release.outputs.tag }}.zip"
 
       - name: Verify package contents
+        env:
+          RELEASE_VERSION: ${{ steps.release.outputs.version }}
+          PACKAGE: auto-apply-plugin-${{ steps.release.outputs.tag }}.zip
         run: |
-          unzip -t "auto-apply-plugin-${{ github.event_name == 'workflow_dispatch' && inputs.tag || github.ref_name }}.zip"
-          unzip -p "auto-apply-plugin-${{ github.event_name == 'workflow_dispatch' && inputs.tag || github.ref_name }}.zip" manifest.json > /tmp/manifest.json
-          node -e 'const m=require("/tmp/manifest.json"); if (m.version !== process.env.RELEASE_VERSION) process.exit(1)'             RELEASE_VERSION="${{ github.event_name == 'workflow_dispatch' && inputs.tag || github.ref_name }}".replace(/^v/, "")
+          unzip -t "$PACKAGE"
+          unzip -p "$PACKAGE" manifest.json > /tmp/manifest.json
+          node -e 'const fs=require("fs"); const m=JSON.parse(fs.readFileSync("/tmp/manifest.json")); if(m.version!==process.env.RELEASE_VERSION){throw new Error("Packaged manifest version mismatch")}'
 
       - name: SHA-256
-        run: sha256sum "auto-apply-plugin-${{ github.event_name == 'workflow_dispatch' && inputs.tag || github.ref_name }}.zip" > SHA256SUMS.txt
+        env:
+          PACKAGE: auto-apply-plugin-${{ steps.release.outputs.tag }}.zip
+        run: sha256sum "$PACKAGE" > SHA256SUMS.txt
 
       - name: GitHub Release
         env:
           GH_TOKEN: ${{ github.token }}
+          TAG: ${{ steps.release.outputs.tag }}
+          PACKAGE: auto-apply-plugin-${{ steps.release.outputs.tag }}.zip
         run: |
-          TAG="${{ github.event_name == 'workflow_dispatch' && inputs.tag || github.ref_name }}"
-          gh release create "$TAG"             "auto-apply-plugin-$TAG.zip"             SHA256SUMS.txt             --title "$TAG"             --generate-notes
+          gh release create "$TAG" "$PACKAGE" SHA256SUMS.txt --title "$TAG" --generate-notes
 
   publish:
     name: Publish to Chrome Web Store
@@ -67,8 +81,15 @@ jobs:
         with:
           ref: ${{ github.event_name == 'workflow_dispatch' && inputs.tag || github.ref }}
 
-      - name: Rebuild release package
-        run: node scripts/package-extension.mjs "auto-apply-plugin-${{ github.event_name == 'workflow_dispatch' && inputs.tag || github.ref_name }}.zip"
+      - name: Resolve release tag
+        id: release
+        env:
+          EVENT_TAG: ${{ github.event_name == 'workflow_dispatch' && inputs.tag || github.ref_name }}
+        run: |
+          echo "tag=$EVENT_TAG" >> "$GITHUB_OUTPUT"
+
+      - name: Build release package
+        run: node scripts/package-extension.mjs "auto-apply-plugin-${{ steps.release.outputs.tag }}.zip"
 
       - name: Publish
         env:
@@ -77,4 +98,5 @@ jobs:
           CWS_REFRESH_TOKEN: ${{ secrets.CWS_REFRESH_TOKEN }}
           CWS_PUBLISHER_ID: ${{ secrets.CWS_PUBLISHER_ID }}
           CWS_EXTENSION_ID: ${{ secrets.CWS_EXTENSION_ID }}
-        run: node scripts/publish-chrome-web-store.mjs "auto-apply-plugin-${{ github.event_name == 'workflow_dispatch' && inputs.tag || github.ref_name }}.zip"
+          PACKAGE: auto-apply-plugin-${{ steps.release.outputs.tag }}.zip
+        run: node scripts/publish-chrome-web-store.mjs "$PACKAGE"
