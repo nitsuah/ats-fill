@@ -1,18 +1,18 @@
 # Chrome Web Store release setup
 
-Apply Workspace uses the Chrome Web Store API v2 for subsequent releases. The first Store listing remains a manual setup step; after that, a protected GitHub Actions environment can publish tagged releases.
+Apply Workspace uses the Chrome Web Store API v2 with a Google Cloud service account for subsequent releases. The first Store listing remains a manual setup step; after that, a protected GitHub Actions environment can publish tagged releases.
 
 ## One-time Google setup
 
 1. Create/select a Google Cloud project.
 2. Enable the **Chrome Web Store API**.
-3. Configure an OAuth consent screen.
-4. Create an OAuth client suitable for the Chrome Web Store API flow.
-5. Authorize the scope:
-   `https://www.googleapis.com/auth/chromewebstore`
-6. Obtain a refresh token for the Google account that owns the Chrome Web Store item.
-7. Copy the publisher ID from the Chrome Web Store Developer Dashboard.
-8. Record the extension ID after the first Store item exists.
+3. Create a Google Cloud service account.
+4. In the Chrome Web Store Developer Dashboard, add the service account email under the publisher's **Account** section.
+5. Create a JSON key for the service account in Google Cloud.
+6. Copy the publisher ID from the Chrome Web Store Developer Dashboard.
+7. Record the extension ID after the first Store item exists.
+
+The Chrome Web Store API supports service accounts specifically for server-to-server and CI/CD workflows, so no interactive OAuth flow is required for GitHub Actions.
 
 Google requires 2-step verification for developers publishing/updating extensions.
 
@@ -37,13 +37,11 @@ Add these secrets to the `production` environment:
 
 | Secret | Value |
 | --- | --- |
-| `CWS_CLIENT_ID` | Google OAuth client ID |
-| `CWS_CLIENT_SECRET` | Google OAuth client secret |
-| `CWS_REFRESH_TOKEN` | Long-lived OAuth refresh token |
+| `CWS_SERVICE_ACCOUNT_JSON` | Complete Google Cloud service-account JSON key |
 | `CWS_PUBLISHER_ID` | Chrome Web Store publisher ID |
 | `CWS_EXTENSION_ID` | Published extension ID |
 
-Do not put any of these values in the repository, workflow YAML, release notes, or GitHub Actions logs.
+Do not put the service-account JSON, private key, or any other secret in the repository, workflow YAML, release notes, or GitHub Actions logs.
 
 ## Release flow
 
@@ -55,7 +53,7 @@ Do not put any of these values in the repository, workflow YAML, release notes, 
 6. It verifies the ZIP and records a SHA-256 checksum.
 7. A GitHub Release is created with the ZIP and checksum.
 8. The `production` environment approval gate runs.
-9. The workflow uploads the ZIP using Chrome Web Store API v2.
+9. The workflow authenticates the service account and uploads the ZIP using Chrome Web Store API v2.
 10. If the upload is asynchronous, the workflow polls `fetchStatus` for up to two minutes.
 11. The workflow calls `publish`, submitting the release for Chrome Web Store review.
 
