@@ -18,15 +18,8 @@ if ((manifest.permissions || []).includes("tabs")) {
   throw new Error('The "tabs" permission is broader than necessary; use host permissions or activeTab for tab URL access.');
 }
 
-const expectedWebAccessibleMatches = new Set(manifest.content_scripts?.flatMap((script) => script.matches || []) || []);
-const webAccessibleMatches = manifest.web_accessible_resources?.flatMap((resource) => resource.matches || []) || [];
-if (webAccessibleMatches.includes("<all_urls>")) {
-  throw new Error("web_accessible_resources must not expose resources to <all_urls>.");
-}
-for (const match of webAccessibleMatches) {
-  if (!expectedWebAccessibleMatches.has(match)) {
-    throw new Error(`web_accessible_resources match is broader than content script access: ${match}`);
-  }
+if (manifest.web_accessible_resources?.length) {
+  throw new Error("web_accessible_resources should remain empty; extension-only resources are loaded through the service worker.");
 }
 
 const extensionCsp = manifest.content_security_policy?.extension_pages;
