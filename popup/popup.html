@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Apply Workspace</title>
+  <title>ats-fill</title>
   <link rel="stylesheet" href="popup.css" />
 </head>
 <body>
@@ -14,7 +14,7 @@
       <div class="header-top">
         <button id="global-back-btn" class="icon-btn global-back-btn hidden" type="button" title="Back to Home" aria-label="Back to home">← Back</button>
         <button id="header-home-btn" class="logo-btn" type="button" title="Return to the workspace home">
-          <span class="logo">🤖 Apply Workspace</span>
+          <span class="logo">🤖 ats-fill</span>
           <span id="header-screen-label" class="header-screen-label"></span>
         </button>
         <div class="header-actions">
@@ -49,8 +49,8 @@
       </div>
     </header>
 
-    <main id="screen-content" aria-label="Apply Workspace">
-    <h1 class="visually-hidden">Apply Workspace</h1>
+    <main id="screen-content" aria-label="ats-fill">
+    <h1 class="visually-hidden">ats-fill</h1>
 
     <!-- Setup Screen (shown when not configured) -->
     <section id="setup-screen" class="screen hidden">
@@ -755,7 +755,7 @@
 
       <div class="help-card help-grid" id="help-legal-section">
         <div class="legal-meta">
-          <span class="legal-version">Apply Workspace · Terms &amp; Privacy v1.0</span>
+          <span class="legal-version">ats-fill · Terms &amp; Privacy v1.0</span>
           <span class="legal-updated">Last updated May 31, 2026</span>
           <a class="hint-link legal-canonical-link" href="https://github.com/nitsuah/auto-apply-plugin/blob/main/docs/PRIVACY.md" target="_blank" rel="noopener">Full policy →</a>
           <span id="consent-signed-date" class="legal-signed">Consent not recorded yet.</span>
@@ -764,7 +764,7 @@
         <details class="help-section" id="help-eula-section">
           <summary class="collapsible-summary"><h3>Terms of Use (EULA)</h3></summary>
           <div class="collapsible-body">
-          <p>Apply Workspace ("the extension") is a local-first, review-first assistant that helps you draft and fill job-application forms. By accepting consent you agree to these terms.</p>
+          <p>ats-fill ("the extension") is a local-first, review-first assistant that helps you draft and fill job-application forms. By accepting consent you agree to these terms.</p>
           <ul class="legal-list">
             <li><strong>Review before you submit.</strong> The extension only drafts and fills fields. It never submits an application for you — you review every field and click submit yourself.</li>
             <li><strong>You are responsible for accuracy.</strong> Auto-filled and AI-drafted answers are suggestions. You are solely responsible for the truthfulness and content of anything you submit to an employer.</li>
@@ -779,7 +779,7 @@
         <details class="help-section" id="help-privacy-section">
           <summary class="collapsible-summary"><h3>Privacy Policy</h3></summary>
           <div class="collapsible-body">
-          <p class="help-lead"><strong>We run no servers and operate no backend.</strong> There is no Apply Workspace account, and your data is never sent to us — we have no way to receive, store, or see it.</p>
+          <p class="help-lead"><strong>We run no servers and operate no backend.</strong> There is no ats-fill account, and your data is never sent to us — we have no way to receive, store, or see it.</p>
           <ul class="legal-list">
             <li><strong>What is stored, and where.</strong> Your profile, resume preview, saved answer defaults ("memory"), application tracker, settings, and any keys/credentials you add are stored only in your browser's local extension storage (<code>chrome.storage.local</code>) on this device/profile. Nothing syncs to the cloud.</li>
             <li><strong>What leaves your device.</strong> Data leaves only when you trigger an optional network action: AI help (resume parsing, answer drafting, JD summarize/clean-up) sends the relevant text <em>directly from your browser</em> to Google's Gemini API using your own key; Job Search sends your search query to whichever sources you have enabled (keyless boards, your keyed sources, or any custom RSS source you've added); LinkedIn/Google profile import sends an OAuth handshake to that provider using your own app credentials. Without a Gemini key, autofill is fully on-device and sends nothing.</li>
@@ -807,7 +807,7 @@
           <details class="help-section" id="help-ats-section">
             <summary class="collapsible-summary"><h3>What is an ATS?</h3></summary>
             <div class="collapsible-body">
-            <p>An applicant tracking system is the hiring software behind many job forms. Apply Workspace uses ATS detection to decide how safely it can fill fields and how much review to keep in the loop.</p>
+            <p>An applicant tracking system is the hiring software behind many job forms. ats-fill uses ATS detection to decide how safely it can fill fields and how much review to keep in the loop.</p>
             </div>
           </details>
         </div>
