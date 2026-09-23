@@ -19,6 +19,7 @@ if (!packagePath || !fs.existsSync(packagePath)) {
 const publisher = process.env.CWS_PUBLISHER_ID;
 const extension = process.env.CWS_EXTENSION_ID;
 const base = `https://chromewebstore.googleapis.com/v2/publishers/${publisher}/items/${extension}`;
+const uploadUrl = `https://chromewebstore.googleapis.com/upload/v2/publishers/${publisher}/items/${extension}:upload`;
 const tokenUri = "https://oauth2.googleapis.com/token";
 
 async function jsonOrText(response) {
@@ -54,24 +55,30 @@ async function request(url, options = {}) {
 const token = await getAccessToken();
 const headers = { Authorization: `Bearer ${token}` };
 
-const upload = await request(`${base}:upload`, {
+const upload = await request(uploadUrl, {
   method: "POST",
   headers: { ...headers, "Content-Type": "application/zip" },
   body: fs.readFileSync(packagePath),
 });
 console.log(`Upload response: ${JSON.stringify(upload)}`);
 
+// The upload response reports its state as `uploadState`; fetchStatus reports
+// the same information as `lastAsyncUploadState`. Track one `state` value
+// across both so polling actually observes progress instead of always
+// re-reading the (absent) `uploadState` field from fetchStatus responses.
+let state = upload.uploadState;
 let status = upload;
-for (let attempt = 1; status.uploadState === "UPLOAD_IN_PROGRESS" && attempt <= 12; attempt += 1) {
+for (let attempt = 1; state === "IN_PROGRESS" && attempt <= 12; attempt += 1) {
   await new Promise((resolve) => setTimeout(resolve, 10_000));
   status = await request(`${base}:fetchStatus`, { headers });
+  state = status.lastAsyncUploadState;
   console.log(`Upload status attempt ${attempt}: ${JSON.stringify(status)}`);
 }
 
-if (status.uploadState === "UPLOAD_IN_PROGRESS") {
+if (state === "IN_PROGRESS") {
   throw new Error("Chrome Web Store upload is still in progress after 2 minutes.");
 }
-if (status.uploadState && status.uploadState !== "UPLOAD_SUCCESS") {
+if (state && state !== "SUCCEEDED") {
   const detail = status.itemError ?? status.itemErrors ?? status.error ?? status;
   throw new Error(`Chrome Web Store upload did not succeed: ${JSON.stringify(detail)}`);
 }
