@@ -4,7 +4,7 @@ This file provides custom instructions to GitHub Copilot when working in this re
 
 ## Project Context
 
-**Project Name:** auto-apply-plugin (product name: "ats-fill")
+**Project Name:** ats-fill
 **Description:** A local-first Chrome MV3 extension that stores a candidate's profile locally, reads job descriptions, drafts tailored answers with the user's own Gemini API key, and fills application forms — always leaving submission to the user.
 **Tech Stack:** Vanilla JavaScript (ES modules), Chrome MV3 APIs, Gemini 2.5 REST API. No build step, no framework, no bundler for the extension itself.
 **Testing:** Node's built-in test runner (`node --test`) for unit tests, Playwright for e2e/a11y. All checks run via Docker — see `Dockerfile` / `config/docker-compose.yml`.
