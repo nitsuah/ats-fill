@@ -2,28 +2,28 @@
 
 services:
   test:
-    image: auto-apply-plugin-test
+    image: ats-fill-test
     build:
       context: ..
       target: test
     command: npm test
 
   lint:
-    image: auto-apply-plugin-lint
+    image: ats-fill-lint
     build:
       context: ..
       target: test
     command: npm run lint
 
   coverage:
-    image: auto-apply-plugin-coverage
+    image: ats-fill-coverage
     build:
       context: ..
       target: test
     command: npm run test:coverage
 
   e2e:
-    image: auto-apply-plugin-e2e
+    image: ats-fill-e2e
     build:
       context: ..
       target: e2e

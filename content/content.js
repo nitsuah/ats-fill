@@ -222,9 +222,8 @@ async function handleFocusField(target = {}) {
 
 async function loadFieldMap() {
   try {
-    const url = chrome.runtime.getURL('data/field-map.json');
-    const res = await fetch(url);
-    return await res.json();
+    const response = await chrome.runtime.sendMessage({ type: 'GET_FIELD_MAP' });
+    return response?.success === false ? {} : (response || {});
   } catch {
     return {};
   }

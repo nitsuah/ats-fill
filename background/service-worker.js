@@ -35,7 +35,21 @@ import { handleSaveSettingsOnly, handleSaveSetup, getState } from './modules/han
 
 // ── Message router ────────────────────────────────────────────────────────────
 
-chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
+chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
+  // Only accept messages originating from this extension. Content scripts,
+  // popup pages, and the service worker itself all carry this extension ID;
+  // rejecting other senders prevents another extension from invoking the
+  // privileged message router directly.
+  if (sender?.id !== chrome.runtime.id) {
+    sendResponse({ success: false, error: 'Unauthorized message sender.' });
+    return false;
+  }
+
+  if (!msg || typeof msg !== 'object' || typeof msg.type !== 'string') {
+    sendResponse({ success: false, error: 'Invalid message.' });
+    return false;
+  }
+
   handleMessage(msg).then(sendResponse).catch((err) => {
     sendResponse({ success: false, error: err.message });
   });
@@ -100,6 +114,8 @@ async function handleMessage(msg) {
       return handleClearTempData();
     case 'RESET_ALL_DATA':
       return handleResetAllData();
+    case 'GET_FIELD_MAP':
+      return handleGetFieldMap();
     case 'ATS_DETECTED':
       return { success: true }; // acknowledged — no action needed
     case 'GET_INTERVIEW_PREP':
@@ -113,6 +129,14 @@ async function handleMessage(msg) {
     default:
       throw new Error('Unknown message type: ' + msg.type);
   }
+}
+
+
+async function handleGetFieldMap() {
+  const url = chrome.runtime.getURL('data/field-map.json');
+  const response = await fetch(url);
+  if (!response.ok) throw new Error(`Failed to load field map: ${response.status}`);
+  return response.json();
 }
 
 // ── Handlers ──────────────────────────────────────────────────────────────────

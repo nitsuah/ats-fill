@@ -8,8 +8,7 @@
     "activeTab",
     "scripting",
     "identity",
-    "cookies",
-    "tabs"
+    "cookies"
   ],
   "host_permissions": [
     "https://generativelanguage.googleapis.com/*",
@@ -82,15 +81,14 @@
         "https://*/jobs/*",
         "https://*/job/*"
       ],
-      "js": ["content/content.js"],
+      "js": [
+        "content/content.js"
+      ],
       "run_at": "document_idle",
       "all_frames": true
     }
   ],
-  "web_accessible_resources": [
-    {
-      "resources": ["data/field-map.json"],
-      "matches": ["<all_urls>"]
-    }
-  ]
+  "content_security_policy": {
+    "extension_pages": "script-src 'self'; object-src 'self';"
+  }
 }
