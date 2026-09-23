@@ -114,6 +114,8 @@ async function handleMessage(msg) {
       return handleClearTempData();
     case 'RESET_ALL_DATA':
       return handleResetAllData();
+    case 'GET_FIELD_MAP':
+      return handleGetFieldMap();
     case 'ATS_DETECTED':
       return { success: true }; // acknowledged — no action needed
     case 'GET_INTERVIEW_PREP':
@@ -127,6 +129,14 @@ async function handleMessage(msg) {
     default:
       throw new Error('Unknown message type: ' + msg.type);
   }
+}
+
+
+async function handleGetFieldMap() {
+  const url = chrome.runtime.getURL('data/field-map.json');
+  const response = await fetch(url);
+  if (!response.ok) throw new Error(`Failed to load field map: ${response.status}`);
+  return response.json();
 }
 
 // ── Handlers ──────────────────────────────────────────────────────────────────
