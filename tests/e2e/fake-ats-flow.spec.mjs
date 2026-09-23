@@ -37,15 +37,6 @@ test('fictional ATS flow fills the real page without submission', async () => {
   await expect(atsPage.locator('#application-form')).toBeVisible();
   await expect(atsPage.locator('h1')).toHaveText('Senior Systems Engineer');
 
-  // Confirm the real content script recognizes the synthetic page as Greenhouse
-  // based on the same selectors used by production extraction logic.
-  await expect.poll(async () => {
-    return atsPage.evaluate(() => window.__atsFillLoaded === true);
-  }).toBe(true).catch(() => {
-    // The page does not expose extension internals; detection is asserted via
-    // the successful fill path below.
-  });
-
   const popup = await context.newPage();
   await popup.goto(`chrome-extension://${extensionId}/popup/popup.html?standalone=1`);
 
