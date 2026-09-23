@@ -3,7 +3,7 @@ import path from "node:path";
 import { execFileSync } from "node:child_process";
 
 const version = JSON.parse(fs.readFileSync("manifest.json", "utf8")).version;
-const output = path.resolve(process.argv[2] ?? `auto-apply-plugin-v${version}.zip`);
+const output = path.resolve(process.argv[2] ?? `ats-fill-v${version}.zip`);
 
 if (fs.existsSync("dist")) fs.rmSync("dist", { recursive: true, force: true });
 execFileSync("npm", ["run", "build"], { stdio: "inherit" });
