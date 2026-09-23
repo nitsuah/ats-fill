@@ -43,5 +43,19 @@ jobs:
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git tag -a "$TAG" -m "Release $TAG"
           git push origin "$TAG"
+
+          echo "Waiting for GitHub to expose $TAG on the remote..."
+          for attempt in {1..10}; do
+            if git ls-remote --exit-code --tags origin "refs/tags/$TAG" >/dev/null 2>&1; then
+              echo "Confirmed remote tag $TAG."
+              break
+            fi
+            if [ "$attempt" -eq 10 ]; then
+              echo "::error::Remote tag $TAG was not visible after 10 attempts."
+              exit 1
+            fi
+            sleep 3
+          done
+
           gh workflow run chrome-release.yml --ref "$TAG" --field "tag=$TAG"
-          echo "Created and pushed $TAG from main."
+          echo "Created, verified, and dispatched release for $TAG from main."
