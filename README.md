@@ -99,7 +99,8 @@ ats-fill/
 
 ## Screenshots
 
-> Maintenance note: after any significant popup, tracker, or profile UI update, regenerate these images so the README stays current.
+> The gallery is generated from deterministic fictional Playwright fixture data; never use personal resume, API-key, or application data in committed screenshots.
+> The UI screenshot workflow refreshes these images and the version/date metadata automatically after UI changes.
 > Last refreshed: 2026-09-17 (nav/hamburger overhaul, collapsible Settings + Pipeline columns, Help collapsed-by-default, Interview Prep job-readiness bar)
 
 ### Main dashboard
