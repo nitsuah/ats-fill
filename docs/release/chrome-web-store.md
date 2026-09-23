@@ -48,7 +48,7 @@ Do not put OAuth credentials, refresh tokens, or any other secret in the reposit
 
 1. Update `manifest.json` to the next semantic version.
 2. Merge the change to `main`.
-3. Create and push a matching tag, e.g. `v1.1.0`.
+3. From GitHub Actions, run **Create Chrome Web Store Release Tag**. It reads `manifest.json`, validates the version, and creates/pushes the matching `vX.Y.Z` tag. The tag then triggers the release workflow.
 4. The workflow checks that the tag and manifest version match.
 5. It builds the extension and produces a ZIP containing the contents of `dist/`.
 6. It verifies the ZIP and records a SHA-256 checksum.
