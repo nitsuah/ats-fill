@@ -657,7 +657,7 @@ test('searchJobs fetches and normalizes results from a custom RSS source', async
   </channel></rss>`;
   const fetchImpl = async (url) => {
     if (String(url).includes('jobs4tn.gov')) {
-      return { ok: true, text: async () => rssXml };
+      return { ok: true, headers: { get: () => null }, text: async () => rssXml };
     }
     return { ok: true, json: async () => ({ jobs: [], data: [] }) };
   };
