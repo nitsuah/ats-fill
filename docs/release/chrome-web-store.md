@@ -1,6 +1,6 @@
 # Chrome Web Store release setup
 
-Apply Workspace uses the Chrome Web Store API v2 with the documented OAuth 2.0 credential flow for subsequent releases. The first Store listing remains a manual setup step; after that, a protected GitHub Actions environment can publish tagged releases.
+ats-fill uses the Chrome Web Store API v2 with the documented OAuth 2.0 credential flow for subsequent releases. The first Store listing remains a manual setup step; after that, a protected GitHub Actions environment can publish tagged releases.
 
 ## One-time Google setup
 
