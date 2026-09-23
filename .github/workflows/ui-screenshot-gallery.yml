@@ -1,0 +1,71 @@
+name: Refresh UI Screenshots
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'popup/**'
+      - 'background/**'
+      - 'content/**'
+      - 'lib/**'
+      - 'manifest.json'
+      - 'tests/e2e/screenshots.spec.mjs'
+      - 'tests/e2e/helpers/demo-state.mjs'
+      - 'scripts/update-screenshot-metadata.mjs'
+  workflow_dispatch:
+
+concurrency:
+  group: ui-assets-main
+  cancel-in-progress: true
+
+permissions:
+  contents: write
+
+jobs:
+  refresh:
+    name: Capture and publish UI gallery
+    if: ${{ github.actor != 'github-actions[bot]' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+        with:
+          ref: main
+
+      - name: Build screenshot image
+        run: docker build --target e2e -t ats-fill:e2e .
+
+      - name: Capture product screenshots
+        run: |
+          mkdir -p screenshots
+          docker run --rm \
+            -v "${{ github.workspace }}/screenshots:/app/screenshots" \
+            ats-fill:e2e \
+            npx playwright test --config config/playwright.config.mjs tests/e2e/screenshots.spec.mjs
+
+      - name: Refresh README UI metadata
+        run: node scripts/update-screenshot-metadata.mjs
+
+      - name: Upload gallery artifact
+        uses: actions/upload-artifact@v7
+        with:
+          name: ats-fill-ui-gallery-${{ github.run_id }}
+          path: screenshots/
+          retention-days: 30
+
+      - name: Commit refreshed gallery
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+          if git diff --quiet -- screenshots README.md; then
+            echo "UI gallery is already current."
+            exit 0
+          fi
+
+          git add screenshots/ README.md
+          git commit -m "docs: refresh UI screenshots"
+          git push origin HEAD:main
