@@ -412,6 +412,15 @@ export function initJobSearchHandlers(showScreen) {
     }
     const id = chip.dataset.sourceId;
     if (!id) return;
+
+    if (id === 'linkedin') {
+      const granted = await chrome.permissions.contains({ permissions: ['cookies'] });
+      if (!granted) {
+        const requested = await chrome.permissions.request({ permissions: ['cookies'] });
+        if (!requested) return;
+      }
+    }
+
     if (selectedSourceIds.has(id)) selectedSourceIds.delete(id); else selectedSourceIds.add(id);
     chip.classList.toggle('is-active', selectedSourceIds.has(id));
     chip.setAttribute('aria-pressed', String(selectedSourceIds.has(id)));
