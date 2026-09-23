@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "ats-fill",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "description": "Local-first ATS form-filling assistant. Save your profile once, review answers, and fill forms with your own Gemini key.",
   "permissions": [
     "storage",
