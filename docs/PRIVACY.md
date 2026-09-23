@@ -1,8 +1,8 @@
-# Apply Workspace — Terms, Privacy & Security
+# ats-fill — Terms, Privacy & Security
 
-**Document version:** 1.1
-**Last updated:** September 2, 2026
-**Applies to:** the Apply Workspace browser extension ("the extension") in this repository.
+**Document version:** 1.2
+**Last updated:** September 23, 2026
+**Applies to:** the ats-fill browser extension ("the extension") in this repository.
 
 This is the canonical, public statement of the extension's Terms of Use (EULA),
 Privacy Policy, Security posture, and your data rights. The same content is
@@ -14,7 +14,7 @@ authoritative for the corresponding release.
 ## Summary (TL;DR)
 
 - **Local-first.** Your data lives in your browser's local extension storage on
-  your device. There is no Apply Workspace account, server, or backend.
+  your device. There is no ats-fill account, server, or backend.
 - **We never receive your data.** We have no way to see, collect, store, or sell
   it — there is nothing to send to us.
 - **Review-first.** The extension drafts and fills fields. It never submits an
@@ -55,7 +55,7 @@ By accepting consent in the extension, you agree to the following:
 ## Privacy Policy
 
 ### We run no servers
-There is no Apply Workspace account and no backend. Your data is never
+There is no ats-fill account and no backend. Your data is never
 transmitted to us, and we have no infrastructure capable of receiving it.
 
 ### What is stored, and where
