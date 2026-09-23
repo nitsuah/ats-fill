@@ -8,8 +8,7 @@
     "activeTab",
     "scripting",
     "identity",
-    "cookies",
-    "tabs"
+    "cookies"
   ],
   "host_permissions": [
     "https://generativelanguage.googleapis.com/*",
@@ -90,7 +89,25 @@
   "web_accessible_resources": [
     {
       "resources": ["data/field-map.json"],
-      "matches": ["<all_urls>"]
+      "matches": [
+        "https://*.greenhouse.io/*",
+        "https://*.ashbyhq.com/*",
+        "https://*.lever.co/*",
+        "https://www.linkedin.com/jobs/*",
+        "https://*.workday.com/*",
+        "https://*.icims.com/*",
+        "https://*.jobvite.com/*",
+        "https://*.circle.com/*",
+        "https://*.phenompeople.com/*",
+        "https://*/careers",
+        "https://*/careers/*",
+        "https://*/jobs",
+        "https://*/jobs/*",
+        "https://*/job/*"
+      ]
     }
-  ]
+  ],
+  "content_security_policy": {
+    "extension_pages": "script-src 'self'; object-src 'self';"
+  }
 }
