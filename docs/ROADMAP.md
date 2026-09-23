@@ -1,5 +1,5 @@
 ---
-updated: 2026-09-02
+updated: 2026-09-23
 ---
 
 # Roadmap
@@ -18,7 +18,7 @@ updated: 2026-09-02
 
 - [x] Expand job search to additional sources — on-ATS-page parsing depth, tracker-side indexing, and OAuth job source once a partner API is available.
 
-## 2026 Q4 (In Progress)
+## 2026 Q4 ✅
 
 - [x] Begin to implement job search results by scraping and searching multiple job pages, starting with LinkedIn and Indeed, etc. and then expanding to a more general multi-site search and alerting capability.
 - [x] Explore optional identity-provider imports (Google, ID.me, etc.) for bootstrapping profile data without breaking local-first/privacy guarantees. But also for email/etc. auto-fill in the tracker and potential future job-board integrations.
