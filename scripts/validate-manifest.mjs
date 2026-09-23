@@ -8,7 +8,7 @@ if (!/^\d+\.\d+\.\d+$/.test(manifest.version)) {
   throw new Error(`manifest version must be MAJOR.MINOR.PATCH; got "${manifest.version}"`);
 }
 
-const requiredPermissionSet = new Set(["storage", "activeTab", "scripting", "identity", "cookies"]);
+const requiredPermissionSet = new Set(["storage", "activeTab", "scripting", "identity"]);
 for (const permission of manifest.permissions || []) {
   if (!requiredPermissionSet.has(permission)) {
     throw new Error(`Unexpected required permission: ${permission}`);
@@ -16,6 +16,9 @@ for (const permission of manifest.permissions || []) {
 }
 if ((manifest.permissions || []).includes("tabs")) {
   throw new Error('The "tabs" permission is broader than necessary; use host permissions or activeTab for tab URL access.');
+}
+if (!(manifest.optional_permissions || []).includes("cookies")) {
+  throw new Error('The "cookies" permission must remain optional and be requested only when LinkedIn session search is enabled.');
 }
 
 if (manifest.web_accessible_resources?.length) {
