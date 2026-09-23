@@ -4,6 +4,7 @@ on:
   workflow_dispatch:
 
 permissions:
+  actions: write
   contents: write
 
 jobs:
@@ -36,9 +37,11 @@ jobs:
       - name: Create and push release tag
         env:
           TAG: v${{ steps.version.outputs.version }}
+          GH_TOKEN: ${{ github.token }}
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git tag -a "$TAG" -m "Release $TAG"
           git push origin "$TAG"
+          gh workflow run chrome-release.yml --ref "$TAG" --field "tag=$TAG"
           echo "Created and pushed $TAG from main."
