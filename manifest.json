@@ -81,30 +81,11 @@
         "https://*/jobs/*",
         "https://*/job/*"
       ],
-      "js": ["content/content.js"],
+      "js": [
+        "content/content.js"
+      ],
       "run_at": "document_idle",
       "all_frames": true
-    }
-  ],
-  "web_accessible_resources": [
-    {
-      "resources": ["data/field-map.json"],
-      "matches": [
-        "https://*.greenhouse.io/*",
-        "https://*.ashbyhq.com/*",
-        "https://*.lever.co/*",
-        "https://www.linkedin.com/jobs/*",
-        "https://*.workday.com/*",
-        "https://*.icims.com/*",
-        "https://*.jobvite.com/*",
-        "https://*.circle.com/*",
-        "https://*.phenompeople.com/*",
-        "https://*/careers",
-        "https://*/careers/*",
-        "https://*/jobs",
-        "https://*/jobs/*",
-        "https://*/job/*"
-      ]
     }
   ],
   "content_security_policy": {
