@@ -1,4 +1,4 @@
-# 🤖 Apply Workspace — Local-First AI Job Application Chrome Extension
+# ats-fill — Local-First AI Job Application Chrome Extension
 
 > Save your profile once. Land on any job page. Review tailored answers. Fill faster.
 > No Docker. No server. No subscription. Review before submitting.
@@ -32,7 +32,7 @@ A Chrome extension that:
 1. Clone this repo (or download as ZIP)
 2. Open `chrome://extensions` → enable **Developer mode**
 3. Click **Load unpacked** → select the repo folder
-4. Click the 🤖 icon → paste your [free Gemini API key](https://aistudio.google.com/app/apikey) and leave the model on **Auto**
+4. Click the extension icon → paste your [free Gemini API key](https://aistudio.google.com/app/apikey) and leave the model on **Auto**
 5. Upload your resume (PDF, DOCX, or paste text)
 6. Navigate to a job page → click the icon → **Fill Form**
 
@@ -41,7 +41,7 @@ A Chrome extension that:
 ## Project Structure
 
 ```
-apply-workspace/
+ats-fill/
 ├── manifest.json          # Chrome MV3 manifest
 ├── popup/                 # Extension popup UI
 │   ├── popup.html
@@ -104,31 +104,31 @@ apply-workspace/
 
 ### Main dashboard
 
-![Apply Workspace main dashboard](screenshots/main-dashboard.png)
+![ats-fill main dashboard](screenshots/main-dashboard.png)
 
 ### Tracker workspace (Pipeline)
 
-![Apply Workspace tracker workspace](screenshots/tracker-workspace.png)
+![ats-fill tracker workspace](screenshots/tracker-workspace.png)
 
 ### Profile + Memory
 
-![Apply Workspace profile and memory](screenshots/profile-memory.png)
+![ats-fill profile and memory](screenshots/profile-memory.png)
 
 ### Job Search
 
-![Apply Workspace job search panel](screenshots/job-search.png)
+![ats-fill job search panel](screenshots/job-search.png)
 
 ### Settings
 
-![Apply Workspace settings panel](screenshots/ai-settings.png)
+![ats-fill settings panel](screenshots/ai-settings.png)
 
 ### Help & Privacy
 
-![Apply Workspace help and privacy panel](screenshots/help-privacy.png)
+![ats-fill help and privacy panel](screenshots/help-privacy.png)
 
 ### Interview Prep
 
-![Apply Workspace interview prep](screenshots/interview-prep.png)
+![ats-fill interview prep](screenshots/interview-prep.png)
 
 ---
 
