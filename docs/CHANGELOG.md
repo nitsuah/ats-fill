@@ -18,6 +18,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - CSV import support for tracker history with common header aliases.
 - ATS receiver auto-recovery path that retries content-script injection when no receiver is active.
 - Memory controls in Profile for edit, ignore, restore, and remove workflows.
+- Header nav reorder (Search → Pipeline → Interview Prep → Settings → Profile →
+  Help/Privacy) with a hamburger menu collapsing to the 3 primary buttons below a
+  700px breakpoint; Settings cards collapse into a "✅ Configured" summary once
+  saved; Pipeline stage columns are independently collapsible and default-collapsed
+  when empty; Help & Privacy sections collapsed by default (2026-09-17).
+- Interview prep job-readiness bubble bar (`#interview-prep-job-bar`) to switch
+  which tracked job is being prepped for.
 
 ### Changed
 
@@ -35,3 +42,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Job detail parsing and filtering behaviors for tracker/search reliability.
 - Runtime wiring regressions in popup/tracker modules through lint/runtime-guard test coverage.
 - Documentation drift in contribution/security/process guides and validation notes.
+- Consent-timestamp bug: any unrelated "Save Profile" click was silently
+  overwriting `privacy_consent_at` with the current time; the original consent
+  date is now preserved unless this is a genuine first-time accept (2026-09-17).
+- Interview prep was effectively non-functional for already-tracked jobs: no
+  handler existed for the `GET_APPLICATION` message it sent, and it showed "No
+  job detected" even with active pipeline jobs when the current tab had no
+  detectable posting. Now reads from the existing `GET_STATE` payload and falls
+  back to the most recently updated active pipeline job (2026-09-17).
+- Header nav toggle CSS specificity bug that kept the hamburger's `display`
+  from responding to the 700px breakpoint media query (2026-09-17).
+- Clarified that Google OAuth requires registering a **Web application** client
+  type (not Desktop) to match `launchWebAuthFlow`'s `chromiumapp.org` redirect;
+  documented in the Settings → Google OAuth card and `lib/oauth.js`.
