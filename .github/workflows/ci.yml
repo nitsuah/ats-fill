@@ -13,8 +13,7 @@ concurrency:
   cancel-in-progress: true
 
 permissions:
-  contents: write
-  pull-requests: write
+  contents: read
 
 jobs:
   # ── Fast gate: lint + unit tests (under 2 min, blocks PRs quickly) ──────────
@@ -95,8 +94,8 @@ jobs:
   screenshot-gallery:
     name: UI Screenshot Gallery
     runs-on: ubuntu-latest
-    needs: [fast, coverage, e2e]
-    timeout-minutes: 30
+    needs: fast
+    timeout-minutes: 20
 
     steps:
       - uses: actions/checkout@v7
@@ -121,71 +120,6 @@ jobs:
           path: screenshots/
           if-no-files-found: warn
           retention-days: 14
-
-
-      - name: Determine whether gallery publication is needed
-        id: publish_guard
-        env:
-          EVENT_NAME: ${{ github.event_name }}
-          REF: ${{ github.ref }}
-          COMMIT_MESSAGE: ${{ github.event.head_commit.message }}
-        run: |
-          if [ "$EVENT_NAME" != "push" ] || [ "$REF" != "refs/heads/main" ]; then
-            echo "Gallery publication only runs for main push events."
-            echo "publish=false" >> "$GITHUB_OUTPUT"
-            exit 0
-          fi
-
-          if [ "$COMMIT_MESSAGE" = "docs: refresh UI screenshots" ]; then
-            echo "Screenshot gallery commit detected; skipping publication to prevent a loop."
-            echo "publish=false" >> "$GITHUB_OUTPUT"
-            exit 0
-          fi
-
-          echo "publish=true" >> "$GITHUB_OUTPUT"
-
-      - name: Verify main still points to captured commit
-        if: ${{ steps.publish_guard.outputs.publish == 'true' }}
-        run: |
-          git fetch origin main
-          current_main="$(git rev-parse origin/main)"
-
-          if [ "$current_main" != "$GITHUB_SHA" ]; then
-            echo "Main moved from $GITHUB_SHA to $current_main; skipping this gallery publication."
-            exit 0
-          fi
-
-      - name: Refresh README UI metadata
-        if: ${{ steps.publish_guard.outputs.publish == 'true' }}
-        run: node scripts/update-screenshot-metadata.mjs
-
-      - name: Publish gallery branch and PR
-        if: ${{ steps.publish_guard.outputs.publish == 'true' }}
-        env:
-          GH_TOKEN: ${{ github.token }}
-          GH_REPO: ${{ github.repository }}
-        run: |
-          if git diff --quiet -- screenshots README.md; then
-            echo "UI gallery is already current."
-            exit 0
-          fi
-
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-
-          expected_sha="$(git rev-parse HEAD)"
-          branch="automation/ui-screenshot-gallery-${expected_sha:0:12}"
-
-          git switch -c "$branch"
-          git add screenshots/ README.md
-          git commit -m "docs: refresh UI screenshots"
-          git push --set-upstream origin "$branch"
-
-          gh pr create             --repo "$GH_REPO"             --base main             --head "$branch"             --title "docs: refresh UI screenshots"             --body "Automated UI screenshot gallery refresh generated from main commit '$expected_sha'.
-
-This PR is published by the existing CI workflow after the blocking CI gates and screenshot validation pass. The gallery was captured with the deterministic Playwright fixture."
-
-          echo "Screenshot gallery PR created for $branch."
 
   # ── Security audit: non-blocking, surfaces known vulns as a warning ──────────
   security:
