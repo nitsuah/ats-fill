@@ -34,10 +34,23 @@ git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
 expected_sha="$(git rev-parse HEAD)"
 branch="automation/ui-screenshot-gallery-${expected_sha:0:12}"
 
-git switch -c "$branch"
-git add screenshots/ README.md
-git commit -m "docs: refresh UI screenshots"
-git push --set-upstream origin "$branch"
+# A rerun can encounter an automation branch that was already pushed by the
+# previous attempt. Reuse it instead of failing on a non-fast-forward push.
+if git ls-remote --exit-code --heads origin "$branch" >/dev/null 2>&1; then
+  echo "Automation branch $branch already exists remotely."
+  if [ "$(gh pr list --repo "$GH_REPO" --head "$branch" --state open --json number --jq 'length')" -gt 0 ]; then
+    echo "An open screenshot gallery PR already exists for $branch; nothing to publish."
+    exit 0
+  fi
+
+  git fetch origin "$branch"
+  git switch -C "$branch" "origin/$branch"
+else
+  git switch -c "$branch"
+  git add screenshots/ README.md
+  git commit -m "docs: refresh UI screenshots"
+  git push --set-upstream origin "$branch"
+fi
 
 gh pr create \
   --repo "$GH_REPO" \
