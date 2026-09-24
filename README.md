@@ -299,7 +299,7 @@ MIT â€” built because filling out the same form 47 times is beneath EVERYONE. ðŸ
 
 The repository uses GitHub Actions to run the blocking test, lint, coverage, security, and Playwright checks. The same CI pipeline also generates the deterministic screenshot gallery and validates the resulting assets before publishing a documentation PR when the UI snapshot changes.
 
-Screenshot publication is deliberately **rerun-safe**: an existing automation branch or open gallery PR is reused rather than creating duplicate work. Gallery screenshots are generated from fictional fixture data and never contain personal resume, API-key, or application data.
+Screenshot publication is deliberately **rerun-safe** and uses a **single rolling PR**. Every refresh rebuilds the fixed `automation/ui-screenshot-gallery` branch from `main` and updates its open PR instead of opening a new one. Commits that merge a gallery refresh are skipped, so publication can't loop. When `main` already matches the captured gallery, any open refresh PR is closed. Gallery screenshots are generated from fictional fixture data and never contain personal resume, API-key, or application data.
 
 ## Community Standards
 
