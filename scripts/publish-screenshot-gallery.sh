@@ -34,10 +34,44 @@ git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
 expected_sha="$(git rev-parse HEAD)"
 branch="automation/ui-screenshot-gallery-${expected_sha:0:12}"
 
-git switch -c "$branch"
-git add screenshots/ README.md
-git commit -m "docs: refresh UI screenshots"
-git push --set-upstream origin "$branch"
+# A rerun can encounter an automation branch that was already pushed by the
+# previous attempt. Reuse it instead of failing on a non-fast-forward push.
+if git ls-remote --exit-code --heads origin "$branch" >/dev/null 2>&1; then
+  echo "Automation branch $branch already exists remotely."
+  if [ "$(gh pr list --repo "$GH_REPO" --head "$branch" --state open --json number --jq 'length')" -gt 0 ]; then
+    echo "An open screenshot gallery PR already exists for $branch; nothing to publish."
+    exit 0
+  fi
+
+  # Preserve the newly generated gallery while switching to the existing
+  # automation branch. That branch may already contain an older gallery commit.
+  gallery_patch="$(mktemp)"
+  trap 'rm -f "$gallery_patch"' EXIT
+  git diff --binary -- screenshots/ README.md > "$gallery_patch"
+  git restore --source=HEAD --staged --worktree -- screenshots/ README.md
+
+  git fetch origin "$branch"
+  git switch -C "$branch" "origin/$branch"
+
+  if git diff --quiet -- screenshots/ README.md; then
+    echo "Existing automation branch already contains the current gallery."
+  else
+    git apply "$gallery_patch"
+    git add screenshots/ README.md
+
+    if git diff --cached --quiet; then
+      echo "Existing automation branch already contains the current gallery."
+    else
+      git commit -m "docs: refresh UI screenshots"
+      git push --set-upstream origin "$branch"
+    fi
+  fi
+else
+  git switch -c "$branch"
+  git add screenshots/ README.md
+  git commit -m "docs: refresh UI screenshots"
+  git push --set-upstream origin "$branch"
+fi
 
 gh pr create \
   --repo "$GH_REPO" \
