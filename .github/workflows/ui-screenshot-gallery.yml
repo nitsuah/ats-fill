@@ -1,23 +1,11 @@
 name: Refresh UI Screenshots
 
 on:
-  push:
-    branches:
-      - main
-    paths:
-      - 'popup/**'
-      - 'background/**'
-      - 'content/**'
-      - 'lib/**'
-      - 'manifest.json'
-      - 'tests/e2e/**'
-      - 'config/playwright.config.mjs'
-      - 'Dockerfile'
-      - 'package.json'
-      - 'package-lock.json'
-      - 'scripts/update-screenshot-metadata.mjs'
-      - 'scripts/validate-screenshot-gallery.mjs'
-      - '.github/workflows/ui-screenshot-gallery.yml'
+  workflow_run:
+    workflows:
+      - CI
+    types:
+      - completed
   workflow_dispatch:
 
 concurrency:
@@ -30,7 +18,12 @@ permissions:
 jobs:
   refresh:
     name: Capture and publish UI gallery
-    if: ${{ github.actor != 'github-actions[bot]' }}
+    if: >-
+      ${{ github.event_name == 'workflow_dispatch' ||
+          (github.event.workflow_run.event == 'push' &&
+           github.event.workflow_run.head_branch == 'main' &&
+           github.event.workflow_run.conclusion == 'success' &&
+           github.event.workflow_run.head_commit.message != 'docs: refresh UI screenshots') }}
     runs-on: ubuntu-latest
     timeout-minutes: 30
 
