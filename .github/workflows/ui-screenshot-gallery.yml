@@ -1,23 +1,11 @@
 name: Refresh UI Screenshots
 
 on:
-  push:
-    branches:
-      - main
-    paths:
-      - 'popup/**'
-      - 'background/**'
-      - 'content/**'
-      - 'lib/**'
-      - 'manifest.json'
-      - 'tests/e2e/**'
-      - 'config/playwright.config.mjs'
-      - 'Dockerfile'
-      - 'package.json'
-      - 'package-lock.json'
-      - 'scripts/update-screenshot-metadata.mjs'
-      - 'scripts/validate-screenshot-gallery.mjs'
-      - '.github/workflows/ui-screenshot-gallery.yml'
+  workflow_run:
+    workflows:
+      - CI
+    types:
+      - completed
   workflow_dispatch:
 
 concurrency:
@@ -30,29 +18,61 @@ permissions:
 jobs:
   refresh:
     name: Capture and publish UI gallery
-    if: ${{ github.actor != 'github-actions[bot]' }}
+    if: >-
+      ${{ github.event_name == 'workflow_dispatch' ||
+          (github.event.workflow_run.event == 'push' &&
+           github.event.workflow_run.head_branch == 'main' &&
+           github.event.workflow_run.conclusion == 'success' &&
+           github.event.workflow_run.head_commit.message != 'docs: refresh UI screenshots') }}
     runs-on: ubuntu-latest
     timeout-minutes: 30
 
     steps:
-      - name: Checkout
+      - name: Checkout CI commit
+        if: ${{ github.event_name == 'workflow_run' }}
+        uses: actions/checkout@v7
+        with:
+          ref: ${{ github.event.workflow_run.head_sha }}
+
+      - name: Checkout main for manual run
+        if: ${{ github.event_name == 'workflow_dispatch' }}
         uses: actions/checkout@v7
         with:
           ref: main
 
+      - name: Verify main has not moved
+        id: main_state
+        if: ${{ github.event_name == 'workflow_run' }}
+        run: |
+          git fetch origin main
+          current_main="$(git rev-parse origin/main)"
+          expected_main="${{ github.event.workflow_run.head_sha }}"
+
+          if [ "$current_main" != "$expected_main" ]; then
+            echo "publish=false" >> "$GITHUB_OUTPUT"
+            echo "Main moved from $expected_main to $current_main; skipping this gallery refresh."
+            exit 0
+          fi
+
+          echo "publish=true" >> "$GITHUB_OUTPUT"
+
       - name: Build screenshot image
+        if: ${{ github.event_name == 'workflow_dispatch' || steps.main_state.outputs.publish == 'true' }}
         run: docker build --target e2e -t ats-fill:e2e .
 
       - name: Capture product screenshots
+        if: ${{ github.event_name == 'workflow_dispatch' || steps.main_state.outputs.publish == 'true' }}
         run: |
           rm -rf screenshots
           mkdir -p screenshots
           docker run --rm             -v "${{ github.workspace }}/screenshots:/app/screenshots"             ats-fill:e2e             sh -c "xvfb-run --server-args='-screen 0 1280x720x24' npx playwright test --config config/playwright.config.mjs tests/e2e/screenshots.spec.mjs"
 
       - name: Validate screenshot gallery
+        if: ${{ github.event_name == 'workflow_dispatch' || steps.main_state.outputs.publish == 'true' }}
         run: node scripts/validate-screenshot-gallery.mjs
 
       - name: Refresh README UI metadata
+        if: ${{ github.event_name == 'workflow_dispatch' || steps.main_state.outputs.publish == 'true' }}
         run: node scripts/update-screenshot-metadata.mjs
 
       - name: Upload gallery artifact
@@ -65,6 +85,7 @@ jobs:
           retention-days: 30
 
       - name: Commit refreshed gallery
+        if: ${{ github.event_name == 'workflow_dispatch' || steps.main_state.outputs.publish == 'true' }}
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
