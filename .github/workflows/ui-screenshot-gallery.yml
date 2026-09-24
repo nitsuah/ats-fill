@@ -1,11 +1,9 @@
 name: Refresh UI Screenshots
 
 on:
-  workflow_run:
-    workflows:
-      - CI
-    types:
-      - completed
+  push:
+    branches:
+      - main
   workflow_dispatch:
 
 concurrency:
@@ -21,19 +19,18 @@ jobs:
     name: Capture and publish UI gallery
     if: >-
       ${{ github.event_name == 'workflow_dispatch' ||
-          (github.event.workflow_run.event == 'push' &&
-           github.event.workflow_run.head_branch == 'main' &&
-           github.event.workflow_run.conclusion == 'success' &&
-           github.event.workflow_run.head_commit.message != 'docs: refresh UI screenshots') }}
+          (github.event_name == 'push' &&
+           github.ref == 'refs/heads/main' &&
+           github.event.head_commit.message != 'docs: refresh UI screenshots') }}
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 60
 
     steps:
-      - name: Checkout CI commit
-        if: ${{ github.event_name == 'workflow_run' }}
+      - name: Checkout pushed commit
+        if: ${{ github.event_name == 'push' }}
         uses: actions/checkout@v7
         with:
-          ref: ${{ github.event.workflow_run.head_sha }}
+          ref: ${{ github.sha }}
 
       - name: Checkout main for manual run
         if: ${{ github.event_name == 'workflow_dispatch' }}
@@ -41,39 +38,70 @@ jobs:
         with:
           ref: main
 
-      - name: Verify main has not moved
-        id: main_state
-        if: ${{ github.event_name == 'workflow_run' }}
+      - name: Wait for matching CI
+        if: ${{ github.event_name == 'push' }}
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          for attempt in $(seq 1 180); do
+            ci_run="$(gh run list \
+              --repo "$GITHUB_REPOSITORY" \
+              --workflow CI \
+              --event push \
+              --branch main \
+              --commit "$GITHUB_SHA" \
+              --json databaseId,status,conclusion \
+              --limit 10 | jq '.[0] // empty')"
+
+            if [ -n "$ci_run" ]; then
+              status="$(jq -r '.status' <<<"$ci_run")"
+              conclusion="$(jq -r '.conclusion // empty' <<<"$ci_run")"
+              echo "CI status: $status${conclusion:+, conclusion: $conclusion}"
+
+              if [ "$status" = "completed" ]; then
+                if [ "$conclusion" = "success" ]; then
+                  exit 0
+                fi
+                echo "CI did not succeed; skipping screenshot refresh."
+                exit 1
+              fi
+            else
+              echo "Waiting for matching main push CI run to appear..."
+            fi
+
+            sleep 10
+          done
+
+          echo "Timed out waiting for CI."
+          exit 1
+
+      - name: Verify main still points to captured commit
+        if: ${{ github.event_name == 'push' }}
         run: |
           git fetch origin main
           current_main="$(git rev-parse origin/main)"
-          expected_main="${{ github.event.workflow_run.head_sha }}"
 
-          if [ "$current_main" != "$expected_main" ]; then
-            echo "publish=false" >> "$GITHUB_OUTPUT"
-            echo "Main moved from $expected_main to $current_main; skipping this gallery refresh."
-            exit 0
+          if [ "$current_main" != "$GITHUB_SHA" ]; then
+            echo "Main moved from $GITHUB_SHA to $current_main; skipping this gallery refresh."
+            exit 1
           fi
 
-          echo "publish=true" >> "$GITHUB_OUTPUT"
-
       - name: Build screenshot image
-        if: ${{ github.event_name == 'workflow_dispatch' || steps.main_state.outputs.publish == 'true' }}
         run: docker build --target e2e -t ats-fill:e2e .
 
       - name: Capture product screenshots
-        if: ${{ github.event_name == 'workflow_dispatch' || steps.main_state.outputs.publish == 'true' }}
         run: |
           rm -rf screenshots
           mkdir -p screenshots
-          docker run --rm             -v "${{ github.workspace }}/screenshots:/app/screenshots"             ats-fill:e2e             sh -c "xvfb-run --server-args='-screen 0 1280x720x24' npx playwright test --config config/playwright.config.mjs tests/e2e/screenshots.spec.mjs"
+          docker run --rm \
+            -v "${{ github.workspace }}/screenshots:/app/screenshots" \
+            ats-fill:e2e \
+            sh -c "xvfb-run --server-args='-screen 0 1280x720x24' npx playwright test --config config/playwright.config.mjs tests/e2e/screenshots.spec.mjs"
 
       - name: Validate screenshot gallery
-        if: ${{ github.event_name == 'workflow_dispatch' || steps.main_state.outputs.publish == 'true' }}
         run: node scripts/validate-screenshot-gallery.mjs
 
       - name: Refresh README UI metadata
-        if: ${{ github.event_name == 'workflow_dispatch' || steps.main_state.outputs.publish == 'true' }}
         run: node scripts/update-screenshot-metadata.mjs
 
       - name: Upload gallery artifact
@@ -86,7 +114,6 @@ jobs:
           retention-days: 30
 
       - name: Publish gallery branch and PR
-        if: ${{ github.event_name == 'workflow_dispatch' || steps.main_state.outputs.publish == 'true' }}
         env:
           GH_TOKEN: ${{ github.token }}
           GH_REPO: ${{ github.repository }}
@@ -99,11 +126,7 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
 
-          expected_sha="${{ github.event.workflow_run.head_sha }}"
-          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
-            expected_sha="$(git rev-parse HEAD)"
-          fi
-
+          expected_sha="$(git rev-parse HEAD)"
           branch="automation/ui-screenshot-gallery-${expected_sha:0:12}"
 
           git switch -c "$branch"
@@ -111,7 +134,12 @@ jobs:
           git commit -m "docs: refresh UI screenshots"
           git push --set-upstream origin "$branch"
 
-          gh pr create             --repo "$GH_REPO"             --base main             --head "$branch"             --title "docs: refresh UI screenshots"             --body "Automated UI screenshot gallery refresh generated from main commit \`$expected_sha\`.
+          gh pr create \
+            --repo "$GH_REPO" \
+            --base main \
+            --head "$branch" \
+            --title "docs: refresh UI screenshots" \
+            --body "Automated UI screenshot gallery refresh generated from main commit '$expected_sha'.
 
 This PR is intentionally published through the repository PR workflow rather than pushing directly to main. The gallery was captured with the deterministic Playwright fixture and passed the screenshot gallery validator before publication."
 
