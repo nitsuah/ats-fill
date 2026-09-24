@@ -7,10 +7,12 @@ if [ "${GITHUB_EVENT_NAME:-}" != "push" ] || [ "${GITHUB_REF:-}" != "refs/heads/
 fi
 
 commit_message="${GITHUB_EVENT_HEAD_COMMIT_MESSAGE:-}"
-if [ "$commit_message" = "docs: refresh UI screenshots" ]; then
-  echo "Screenshot gallery commit detected; skipping publication to prevent a loop."
-  exit 0
-fi
+case "$commit_message" in
+  "docs: refresh UI screenshots"*)
+    echo "Screenshot gallery commit detected; skipping publication to prevent a loop."
+    exit 0
+    ;;
+esac
 
 git fetch origin main
 current_main="$(git rev-parse origin/main)"
