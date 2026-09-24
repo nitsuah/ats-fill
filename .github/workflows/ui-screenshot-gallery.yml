@@ -1,9 +1,11 @@
 name: Refresh UI Screenshots
 
 on:
-  push:
-    branches:
-      - main
+  workflow_run:
+    workflows:
+      - CI
+    types:
+      - completed
   workflow_dispatch:
 
 concurrency:
@@ -21,11 +23,11 @@ jobs:
     timeout-minutes: 60
 
     steps:
-      - name: Checkout pushed commit
-        if: ${{ github.event_name == 'push' }}
+      - name: Checkout CI commit
+        if: ${{ github.event_name == 'workflow_run' }}
         uses: actions/checkout@v7
         with:
-          ref: ${{ github.sha }}
+          ref: ${{ github.event.workflow_run.head_sha }}
 
       - name: Checkout main for manual run
         if: ${{ github.event_name == 'workflow_dispatch' }}
@@ -36,21 +38,24 @@ jobs:
       - name: Determine whether refresh is needed
         id: refresh_guard
         env:
-          HEAD_COMMIT_MESSAGE: ${{ github.event.head_commit.message }}
           EVENT_NAME: ${{ github.event_name }}
-          REF: ${{ github.ref }}
+          WORKFLOW_EVENT: ${{ github.event.workflow_run.event }}
+          WORKFLOW_BRANCH: ${{ github.event.workflow_run.head_branch }}
+          WORKFLOW_CONCLUSION: ${{ github.event.workflow_run.conclusion }}
+          WORKFLOW_MESSAGE: ${{ github.event.workflow_run.head_commit.message }}
         run: |
           if [ "$EVENT_NAME" = "workflow_dispatch" ]; then
             echo "refresh=true" >> "$GITHUB_OUTPUT"
             exit 0
           fi
 
-          if [ "$REF" != "refs/heads/main" ]; then
+          if [ "$WORKFLOW_EVENT" != "push" ] || [ "$WORKFLOW_BRANCH" != "main" ] || [ "$WORKFLOW_CONCLUSION" != "success" ]; then
+            echo "CI workflow run is not a successful main push; skipping screenshot refresh."
             echo "refresh=false" >> "$GITHUB_OUTPUT"
             exit 0
           fi
 
-          if [ "$HEAD_COMMIT_MESSAGE" = "docs: refresh UI screenshots" ]; then
+          if [ "$WORKFLOW_MESSAGE" = "docs: refresh UI screenshots" ]; then
             echo "Screenshot gallery commit detected; skipping refresh."
             echo "refresh=false" >> "$GITHUB_OUTPUT"
             exit 0
@@ -58,44 +63,14 @@ jobs:
 
           echo "refresh=true" >> "$GITHUB_OUTPUT"
 
-      - name: Wait for matching CI
-        if: ${{ steps.refresh_guard.outputs.refresh == 'true' && github.event_name == 'push' }}
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: |
-          for attempt in $(seq 1 180); do
-            ci_run="$(gh run list               --repo "$GITHUB_REPOSITORY"               --workflow CI               --event push               --branch main               --commit "$GITHUB_SHA"               --json databaseId,status,conclusion               --limit 10 | jq '.[0] // empty')"
-
-            if [ -n "$ci_run" ]; then
-              status="$(jq -r '.status' <<<"$ci_run")"
-              conclusion="$(jq -r '.conclusion // empty' <<<"$ci_run")"
-              echo "CI status: $status${conclusion:+, conclusion: $conclusion}"
-
-              if [ "$status" = "completed" ]; then
-                if [ "$conclusion" = "success" ]; then
-                  exit 0
-                fi
-                echo "CI did not succeed; skipping screenshot refresh."
-                exit 1
-              fi
-            else
-              echo "Waiting for matching main push CI run to appear..."
-            fi
-
-            sleep 10
-          done
-
-          echo "Timed out waiting for CI."
-          exit 1
-
       - name: Verify main still points to captured commit
-        if: ${{ steps.refresh_guard.outputs.refresh == 'true' && github.event_name == 'push' }}
+        if: ${{ steps.refresh_guard.outputs.refresh == 'true' && github.event_name == 'workflow_run' }}
         run: |
           git fetch origin main
           current_main="$(git rev-parse origin/main)"
 
-          if [ "$current_main" != "$GITHUB_SHA" ]; then
-            echo "Main moved from $GITHUB_SHA to $current_main; skipping this gallery refresh."
+          if [ "$current_main" != "${{ github.event.workflow_run.head_sha }}" ]; then
+            echo "Main moved from ${{ github.event.workflow_run.head_sha }} to $current_main; skipping this gallery refresh."
             exit 1
           fi
 
