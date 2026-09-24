@@ -44,6 +44,7 @@ jobs:
 
       - name: Capture product screenshots
         run: |
+          rm -rf screenshots
           mkdir -p screenshots
           docker run --rm             -v "${{ github.workspace }}/screenshots:/app/screenshots"             ats-fill:e2e             sh -c "xvfb-run --server-args='-screen 0 1280x720x24' npx playwright test --config config/playwright.config.mjs tests/e2e/screenshots.spec.mjs"
 
