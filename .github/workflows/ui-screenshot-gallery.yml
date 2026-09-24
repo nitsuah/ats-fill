@@ -10,8 +10,11 @@ on:
       - 'content/**'
       - 'lib/**'
       - 'manifest.json'
-      - 'tests/e2e/screenshots.spec.mjs'
-      - 'tests/e2e/helpers/demo-state.mjs'
+      - 'tests/e2e/**'
+      - 'config/playwright.config.mjs'
+      - 'Dockerfile'
+      - 'package.json'
+      - 'package-lock.json'
       - 'scripts/update-screenshot-metadata.mjs'
       - 'scripts/validate-screenshot-gallery.mjs'
   workflow_dispatch:
