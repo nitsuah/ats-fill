@@ -72,6 +72,21 @@ test('fictional ATS flow fills the real page without submission', async () => {
 
   await popup.locator('#preview-btn').click();
   await expect(popup.locator('#preview-screen')).toBeVisible({ timeout: 10000 });
+  await expect(popup.locator('#preview-content')).toContainText('Jordan Morgan');
+
+  let navigations = 0;
+  const originalUrl = atsPage.url();
+  await atsPage.evaluate(() => {
+    window.__atsFillSubmitEvents = 0;
+    document.addEventListener('submit', () => {
+      window.__atsFillSubmitEvents += 1;
+    }, true);
+  });
+  const onFrameNavigated = frame => {
+    if (frame === atsPage.mainFrame()) navigations += 1;
+  };
+  atsPage.on('framenavigated', onFrameNavigated);
+
   await popup.locator('#inject-from-preview-btn').click();
 
   await expect(atsPage.locator('#first-name')).toHaveValue('Jordan');
@@ -85,9 +100,15 @@ test('fictional ATS flow fills the real page without submission', async () => {
   await expect(atsPage.locator('#salary-min')).toHaveValue('165000');
   await expect(atsPage.locator('#why-role')).toHaveValue(/cloud reliability/);
 
-  // Product behavior is deliberately fill-and-review only: nothing in this
-  // fixture exposes a submit action, and the test never attempts submission.
+  const submitEvents = await atsPage.evaluate(() => window.__atsFillSubmitEvents);
+  expect(submitEvents).toBe(0);
+  expect(navigations).toBe(0);
+  expect(atsPage.url()).toBe(originalUrl);
+
+  // Product behavior is deliberately fill-and-review only. The fixture also
+  // omits a submit control, but submission is independently observed above.
   await expect(atsPage.locator('form button[type="submit"]')).toHaveCount(0);
+  atsPage.off('framenavigated', onFrameNavigated);
 
   await popup.close();
   await atsPage.close();
