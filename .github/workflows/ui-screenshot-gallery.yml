@@ -17,6 +17,7 @@ on:
       - 'package-lock.json'
       - 'scripts/update-screenshot-metadata.mjs'
       - 'scripts/validate-screenshot-gallery.mjs'
+      - '.github/workflows/ui-screenshot-gallery.yml'
   workflow_dispatch:
 
 concurrency:
