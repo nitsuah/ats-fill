@@ -43,8 +43,29 @@ if git ls-remote --exit-code --heads origin "$branch" >/dev/null 2>&1; then
     exit 0
   fi
 
+  # Preserve the newly generated gallery while switching to the existing
+  # automation branch. That branch may already contain an older gallery commit.
+  gallery_patch="$(mktemp)"
+  trap 'rm -f "$gallery_patch"' EXIT
+  git diff --binary -- screenshots/ README.md > "$gallery_patch"
+  git restore --source=HEAD --staged --worktree -- screenshots/ README.md
+
   git fetch origin "$branch"
   git switch -C "$branch" "origin/$branch"
+
+  if git diff --quiet -- screenshots/ README.md; then
+    echo "Existing automation branch already contains the current gallery."
+  else
+    git apply "$gallery_patch"
+    git add screenshots/ README.md
+
+    if git diff --cached --quiet; then
+      echo "Existing automation branch already contains the current gallery."
+    else
+      git commit -m "docs: refresh UI screenshots"
+      git push --set-upstream origin "$branch"
+    fi
+  fi
 else
   git switch -c "$branch"
   git add screenshots/ README.md
