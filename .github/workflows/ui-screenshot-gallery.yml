@@ -13,6 +13,7 @@ on:
       - 'tests/e2e/screenshots.spec.mjs'
       - 'tests/e2e/helpers/demo-state.mjs'
       - 'scripts/update-screenshot-metadata.mjs'
+      - 'scripts/validate-screenshot-gallery.mjs'
   workflow_dispatch:
 
 concurrency:
@@ -41,19 +42,21 @@ jobs:
       - name: Capture product screenshots
         run: |
           mkdir -p screenshots
-          docker run --rm \
-            -v "${{ github.workspace }}/screenshots:/app/screenshots" \
-            ats-fill:e2e \
-            npx playwright test --config config/playwright.config.mjs tests/e2e/screenshots.spec.mjs
+          docker run --rm             -v "${{ github.workspace }}/screenshots:/app/screenshots"             ats-fill:e2e             sh -c "xvfb-run --server-args='-screen 0 1280x720x24' npx playwright test --config config/playwright.config.mjs tests/e2e/screenshots.spec.mjs"
+
+      - name: Validate screenshot gallery
+        run: node scripts/validate-screenshot-gallery.mjs
 
       - name: Refresh README UI metadata
         run: node scripts/update-screenshot-metadata.mjs
 
       - name: Upload gallery artifact
+        if: always()
         uses: actions/upload-artifact@v7
         with:
           name: ats-fill-ui-gallery-${{ github.run_id }}
           path: screenshots/
+          if-no-files-found: warn
           retention-days: 30
 
       - name: Commit refreshed gallery
