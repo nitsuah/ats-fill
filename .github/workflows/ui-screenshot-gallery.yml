@@ -14,6 +14,7 @@ concurrency:
 
 permissions:
   contents: write
+  pull-requests: write
 
 jobs:
   refresh:
@@ -84,17 +85,34 @@ jobs:
           if-no-files-found: warn
           retention-days: 30
 
-      - name: Commit refreshed gallery
+      - name: Publish gallery branch and PR
         if: ${{ github.event_name == 'workflow_dispatch' || steps.main_state.outputs.publish == 'true' }}
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
         run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-
           if git diff --quiet -- screenshots README.md; then
             echo "UI gallery is already current."
             exit 0
           fi
 
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+          expected_sha="${{ github.event.workflow_run.head_sha }}"
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            expected_sha="$(git rev-parse HEAD)"
+          fi
+
+          branch="automation/ui-screenshot-gallery-${expected_sha:0:12}"
+
+          git switch -c "$branch"
           git add screenshots/ README.md
           git commit -m "docs: refresh UI screenshots"
-          git push origin HEAD:main
+          git push --set-upstream origin "$branch"
+
+          gh pr create             --repo "$GH_REPO"             --base main             --head "$branch"             --title "docs: refresh UI screenshots"             --body "Automated UI screenshot gallery refresh generated from main commit \`$expected_sha\`.
+
+This PR is intentionally published through the repository PR workflow rather than pushing directly to main. The gallery was captured with the deterministic Playwright fixture and passed the screenshot gallery validator before publication."
+
+          echo "Screenshot gallery PR created for $branch."
