@@ -50,7 +50,7 @@ By accepting consent in the extension, you agree to the following:
 5. **Acceptable use.** Do not use the extension to submit fraudulent or
    misleading applications, or to violate the terms of any job board or ATS.
 6. **Open source.** The extension is distributed under the license in this
-   repository ([`LICENSE`](LICENSE)); that license governs the software itself.
+   repository ([`LICENSE`](../LICENSE)); that license governs the software itself.
 
 ---
 
@@ -118,7 +118,7 @@ any kind.
   browser's own permission prompt) scoped to just that source's domain,
   instead of requesting broad access to all sites up front.
 - **No remote code:** the extension does not load or execute remote code.
-- **Reporting:** see [`SECURITY.md`](SECURITY.md) for how to report a
+- **Reporting:** see [`SECURITY.md`](https://github.com/nitsuah/.github/blob/main/SECURITY.md) for how to report a
   vulnerability.
 
 ---
@@ -164,4 +164,4 @@ constitutes acceptance of the revised terms.
 ## Contact
 
 This is an open-source, local-first project. Questions and reports go through the
-repository's issue tracker / the process described in [`SECURITY.md`](SECURITY.md).
+repository's issue tracker / the process described in [`SECURITY.md`](https://github.com/nitsuah/.github/blob/main/SECURITY.md).
