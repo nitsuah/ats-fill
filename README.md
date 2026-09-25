@@ -1,5 +1,7 @@
 # ats-fill — Local-First AI Job Application Chrome Extension
 
+> 🧭 **auto-apply-plugin** · [Features](./docs/FEATURES.md) · [Roadmap](./docs/ROADMAP.md) · [Tasks](./docs/TASKS.md) · [Changelog](./docs/CHANGELOG.md) · [Metrics](./docs/METRICS.md) <!-- nav -->
+>
 > Save your profile once. Land on any job page. Review tailored answers. Fill faster.
 > No Docker. No server. No subscription. Review before submitting.
 
@@ -291,6 +293,26 @@ pip install pre-commit && pre-commit install && pre-commit install --hook-type p
 ```
 
 ---
+
+<!-- docs-index:start -->
+
+## Docs Index
+
+Every doc at the repo root and under `docs/` (the files mirrored into the Obsidian vault), so none of them is orphaned.
+
+- [Changelog](./docs/CHANGELOG.md) — `docs/CHANGELOG.md`
+- [Features](./docs/FEATURES.md) — `docs/FEATURES.md`
+- [Metrics](./docs/METRICS.md) — `docs/METRICS.md`
+- [ats-fill — Terms, Privacy & Security](./docs/PRIVACY.md) — `docs/PRIVACY.md`
+- [Roadmap](./docs/ROADMAP.md) — `docs/ROADMAP.md`
+- [Tasks](./docs/TASKS.md) — `docs/TASKS.md`
+
+**`docs/release/`**
+
+- [Chrome Web Store release setup](./docs/release/chrome-web-store.md) — `docs/release/chrome-web-store.md`
+- [Release process](./docs/release/release-process.md) — `docs/release/release-process.md`
+
+<!-- docs-index:end -->
 
 ## License
 

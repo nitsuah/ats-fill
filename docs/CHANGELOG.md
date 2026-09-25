@@ -1,5 +1,7 @@
 # Changelog
 
+> 🧭 [auto-apply-plugin](../README.md) · [Features](./FEATURES.md) · [Roadmap](./ROADMAP.md) · [Tasks](./TASKS.md) · **Changelog** · [Metrics](./METRICS.md) <!-- nav -->
+
 All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
@@ -9,6 +11,44 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- Chrome Web Store listing assets and `.env` placeholders (#96).
+- Deterministic fictional ATS product-flow fixture for E2E/screenshot runs (#80).
+
+### Changed
+
+- UI screenshot gallery is now generated in CI from fictional Playwright fixture
+  data and published through a single rolling PR, with the README version/date
+  metadata refreshed automatically (#77–#79, #82–#95, #97).
+
+### Fixed
+
+- Chrome release workflow is dispatched automatically after a version tag (#73).
+
+### Security
+
+- Hardened the Chrome Web Store permission surface (#74), made LinkedIn cookie
+  access optional (#75), and tightened custom-RSS network boundaries (#76).
+
+## [1.0.2] - 2026-09-23
+
+### Changed
+
+- Extension version bumped to 1.0.2 (#72).
+
+### Fixed
+
+- Semantic manifest version validation and release-tag verification before
+  dispatching the release workflow (#70, #71).
+
+## [1.0.1] - 2026-09-23
+
+First tagged Chrome Web Store release. Everything below shipped across the 2026
+roadmap (Q2–Q4) and was previously listed under Unreleased.
+
+### Added
+
+- Renamed the extension to **ats-fill** (GitHub repo `nitsuah/ats-fill`, #69).
+- Chrome Web Store release automation (#67).
 - Custom user-configured RSS job sources (state workforce boards, internal careers feeds, etc.), merged into the existing job-source registry with per-origin permission requests (2026-09-02).
 - Google OAuth profile import, generalizing the existing LinkedIn BYO-OAuth flow to a second provider (2026-09-02).
 - Application analytics panel — response rate by source, salary-band effectiveness, and time-to-first-response distribution, computed entirely from local tracker data (PR #57).
@@ -55,3 +95,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Clarified that Google OAuth requires registering a **Web application** client
   type (not Desktop) to match `launchWebAuthFlow`'s `chromiumapp.org` redirect;
   documented in the Settings → Google OAuth card and `lib/oauth.js`.
+
+[Unreleased]: https://github.com/nitsuah/ats-fill/compare/v1.0.2...HEAD
+[1.0.2]: https://github.com/nitsuah/ats-fill/compare/v1.0.1...v1.0.2
+[1.0.1]: https://github.com/nitsuah/ats-fill/releases/tag/v1.0.1

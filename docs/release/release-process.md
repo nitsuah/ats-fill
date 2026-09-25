@@ -1,5 +1,7 @@
 # Release process
 
+> 🧭 [auto-apply-plugin](../../README.md) · [Features](../FEATURES.md) · [Roadmap](../ROADMAP.md) · [Tasks](../TASKS.md) · [Changelog](../CHANGELOG.md) · [Metrics](../METRICS.md) <!-- nav -->
+
 ## Normal development
 
 Pull requests and pushes continue to use the existing CI workflow for lint, unit tests, coverage, E2E, and the security audit.

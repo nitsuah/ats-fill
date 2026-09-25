@@ -1,5 +1,7 @@
 # ats-fill — Terms, Privacy & Security
 
+> 🧭 [auto-apply-plugin](../README.md) · [Features](./FEATURES.md) · [Roadmap](./ROADMAP.md) · [Tasks](./TASKS.md) · [Changelog](./CHANGELOG.md) · [Metrics](./METRICS.md) <!-- nav -->
+
 **Document version:** 1.2
 **Last updated:** September 23, 2026
 **Applies to:** the ats-fill browser extension ("the extension") in this repository.
@@ -48,7 +50,7 @@ By accepting consent in the extension, you agree to the following:
 5. **Acceptable use.** Do not use the extension to submit fraudulent or
    misleading applications, or to violate the terms of any job board or ATS.
 6. **Open source.** The extension is distributed under the license in this
-   repository ([`LICENSE`](LICENSE)); that license governs the software itself.
+   repository ([`LICENSE`](../LICENSE)); that license governs the software itself.
 
 ---
 
@@ -116,7 +118,7 @@ any kind.
   browser's own permission prompt) scoped to just that source's domain,
   instead of requesting broad access to all sites up front.
 - **No remote code:** the extension does not load or execute remote code.
-- **Reporting:** see [`SECURITY.md`](SECURITY.md) for how to report a
+- **Reporting:** see [`SECURITY.md`](https://github.com/nitsuah/.github/blob/main/SECURITY.md) for how to report a
   vulnerability.
 
 ---
@@ -162,4 +164,4 @@ constitutes acceptance of the revised terms.
 ## Contact
 
 This is an open-source, local-first project. Questions and reports go through the
-repository's issue tracker / the process described in [`SECURITY.md`](SECURITY.md).
+repository's issue tracker / the process described in [`SECURITY.md`](https://github.com/nitsuah/.github/blob/main/SECURITY.md).
