@@ -1,5 +1,7 @@
 # ats-fill — Terms, Privacy & Security
 
+> 🧭 [auto-apply-plugin](../README.md) · [Features](./FEATURES.md) · [Roadmap](./ROADMAP.md) · [Tasks](./TASKS.md) · [Changelog](./CHANGELOG.md) · [Metrics](./METRICS.md) <!-- nav -->
+
 **Document version:** 1.2
 **Last updated:** September 23, 2026
 **Applies to:** the ats-fill browser extension ("the extension") in this repository.
