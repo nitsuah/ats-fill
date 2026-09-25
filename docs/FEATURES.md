@@ -93,7 +93,7 @@ Turns saved applications into a reviewable job workspace rather than a flat list
 
 ### ♿ Accessibility Enhancements
 
-- **axe Accessibility Audit**: `@axe-core/playwright` checks over popup navigation, labels, contrast, and keyboard flow
+- **axe Accessibility Audit**: `@axe-core/playwright` checks over popup navigation, labels, and contrast
 - **WCAG AA Contrast Audit**: Automated checks for color contrast compliance to WCAG AA standards.
 - **Improved Keyboard Navigation**: Enhanced focus management and keyboard shortcuts for better accessibility.
 - **Accessible Form Elements**: Programmatic labels and aria attributes for form fields to improve screen reader compatibility.
