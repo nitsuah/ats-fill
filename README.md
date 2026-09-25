@@ -103,7 +103,7 @@ ats-fill/
 
 > The gallery is generated from deterministic fictional Playwright fixture data; never use personal resume, API-key, or application data in committed screenshots.
 > The UI screenshot workflow refreshes these images and the version/date metadata automatically after UI changes.
-> Last refreshed: 2026-09-24 · UI snapshot: v1.0.2 (nav/hamburger overhaul, collapsible Settings + Pipeline columns, Help collapsed-by-default, Interview Prep job-readiness bar)
+> Last refreshed: 2026-09-25 · UI snapshot: v1.0.2 (nav/hamburger overhaul, collapsible Settings + Pipeline columns, Help collapsed-by-default, Interview Prep job-readiness bar)
 
 ### Main dashboard
 
