@@ -295,6 +295,7 @@ pip install pre-commit && pre-commit install && pre-commit install --hook-type p
 ---
 
 <!-- docs-index:start -->
+
 ## Docs Index
 
 Every tracked doc in this repo, so nothing is orphaned (also used by the Obsidian vault mirror).
@@ -310,6 +311,7 @@ Every tracked doc in this repo, so nothing is orphaned (also used by the Obsidia
 
 - [Chrome Web Store release setup](./docs/release/chrome-web-store.md) — `docs/release/chrome-web-store.md`
 - [Release process](./docs/release/release-process.md) — `docs/release/release-process.md`
+
 <!-- docs-index:end -->
 
 ## License
