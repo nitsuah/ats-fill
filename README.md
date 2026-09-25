@@ -1,7 +1,7 @@
 # ats-fill — Local-First AI Job Application Chrome Extension
 
 > 🧭 **auto-apply-plugin** · [Features](./docs/FEATURES.md) · [Roadmap](./docs/ROADMAP.md) · [Tasks](./docs/TASKS.md) · [Changelog](./docs/CHANGELOG.md) · [Metrics](./docs/METRICS.md) <!-- nav -->
-
+>
 > Save your profile once. Land on any job page. Review tailored answers. Fill faster.
 > No Docker. No server. No subscription. Review before submitting.
 
