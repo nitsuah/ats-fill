@@ -305,6 +305,11 @@ Every tracked doc in this repo, so nothing is orphaned (also used by the Obsidia
 - [ats-fill — Terms, Privacy & Security](./docs/PRIVACY.md) — `docs/PRIVACY.md`
 - [Roadmap](./docs/ROADMAP.md) — `docs/ROADMAP.md`
 - [Tasks](./docs/TASKS.md) — `docs/TASKS.md`
+
+**`docs/release/`**
+
+- [Chrome Web Store release setup](./docs/release/chrome-web-store.md) — `docs/release/chrome-web-store.md`
+- [Release process](./docs/release/release-process.md) — `docs/release/release-process.md`
 <!-- docs-index:end -->
 
 ## License
