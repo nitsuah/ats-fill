@@ -99,6 +99,14 @@ test('unknown message types resolve to an error, not a throw', async () => {
   assert.match(result.error, /Unknown message type/);
 });
 
+test('message types that collide with Object.prototype members are treated as unknown, not dispatched', async () => {
+  for (const type of ['constructor', 'hasOwnProperty', 'toString', '__proto__']) {
+    const result = await send({ type });
+    assert.equal(result.success, false, `expected ${type} to be rejected`);
+    assert.match(result.error, /Unknown message type/);
+  }
+});
+
 test('ATS_DETECTED is acknowledged with no side effects', async () => {
   const result = await send({ type: 'ATS_DETECTED' });
   assert.deepEqual(result, { success: true });
@@ -193,8 +201,7 @@ test('GENERATE_ANSWERS fills deterministic answers without AI when no API key is
   assert.equal(persisted.email, 'ada@example.com');
 });
 
-test('GENERATE_ANSWERS: a custom question matching the work-authorization pattern ' +
-  'hits the pre-existing undefined `wantsBinaryAnswer` reference (known bug, preserved as-is)', async () => {
+test('GENERATE_ANSWERS: a yes/no-phrased custom question gets a Yes/No answer', async () => {
   resetStorage({
     resume: { structured: { name: 'Ada Lovelace' } },
     settings: {},
@@ -203,8 +210,27 @@ test('GENERATE_ANSWERS: a custom question matching the work-authorization patter
     type: 'GENERATE_ANSWERS',
     payload: { customQuestions: ['Are you legally authorized to work in the US?'] },
   });
-  assert.equal(result.success, false);
-  assert.match(result.error, /wantsBinaryAnswer is not defined/);
+  assert.equal(result.success, true);
+  assert.equal(
+    result.answers.custom_answers['Are you legally authorized to work in the US?'],
+    'Yes'
+  );
+});
+
+test('GENERATE_ANSWERS: a descriptive custom question gets the profile value, not Yes/No', async () => {
+  resetStorage({
+    resume: { structured: { name: 'Ada Lovelace' } },
+    settings: { work_authorization: 'US Citizen' },
+  });
+  const result = await send({
+    type: 'GENERATE_ANSWERS',
+    payload: { customQuestions: ['What is your work authorization status?'] },
+  });
+  assert.equal(result.success, true);
+  assert.equal(
+    result.answers.custom_answers['What is your work authorization status?'],
+    'US Citizen'
+  );
 });
 
 test('GET_LAST_ANSWERS returns null defaults, then the persisted answers', async () => {
@@ -313,6 +339,21 @@ test('REORDER_APPLICATIONS updates sort order for the given entries', async () =
   assert.equal(result.updated, 2);
 });
 
+test('REORDER_APPLICATIONS clears the last fill report when the tracked application reaches a terminal status', async () => {
+  resetStorage({
+    applications: [{ id: 'a1', status: 'applied', sort_order: 0 }],
+    lastTrackedApplicationId: 'a1',
+    lastFillReport: { filled: 1 },
+  });
+  const result = await send({
+    type: 'REORDER_APPLICATIONS',
+    payload: { updates: [{ id: 'a1', status: 'rejected', sort_order: 0 }] },
+  });
+  assert.equal(result.success, true);
+  assert.equal((await storageLocal.get('lastFillReport')).lastFillReport, null);
+  assert.equal((await storageLocal.get('lastTrackedApplicationId')).lastTrackedApplicationId, null);
+});
+
 test('MARK_LAST_SUBMITTED errors when there is no recent autofill session', async () => {
   const result = await send({ type: 'MARK_LAST_SUBMITTED' });
   assert.equal(result.success, false);
@@ -332,6 +373,17 @@ test('SAVE_LEARNED_DEFAULTS then GET_LEARNED_DEFAULTS round-trips an entry', asy
   const getResult = await send({ type: 'GET_LEARNED_DEFAULTS' });
   assert.equal(getResult.success, true);
   assert.deepEqual(getResult.items, [{ question: 'What is your favorite color?', answer: 'Blue' }]);
+});
+
+test('SAVE_LEARNED_DEFAULTS reports only the count that survives the 75-entry retention cap', async () => {
+  const entries = {};
+  for (let i = 0; i < 80; i++) {
+    entries[`Custom onboarding question number ${i}?`] = `Answer number ${i}`;
+  }
+  const result = await send({ type: 'SAVE_LEARNED_DEFAULTS', payload: { entries } });
+  assert.equal(result.success, true);
+  assert.equal(result.saved, 75);
+  assert.equal(Object.keys((await storageLocal.get('learnedDefaults')).learnedDefaults).length, 75);
 });
 
 test('UPDATE_LEARNED_DEFAULT rejects a value that is not eligible for storage', async () => {

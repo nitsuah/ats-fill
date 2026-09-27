@@ -22,6 +22,8 @@ function findStoredLearnedEntry(map = {}, question = '') {
   return { question: exact[0], answer: String(exact[1] || '').trim() };
 }
 
+/** @param {{ entries: Record<string, string> }} payload Question→answer pairs to remember.
+ * @returns {Promise<{success: true, saved: number}>} `saved` counts entries that survive trimming to the cap. */
 export async function handleSaveLearnedDefaults({ entries } = {}) {
   const incomingEntries = entries && typeof entries === 'object' ? entries : {};
   const data = await chrome.storage.local.get(['learnedDefaults', 'ignoredLearnedDefaults']);
@@ -30,7 +32,7 @@ export async function handleSaveLearnedDefaults({ entries } = {}) {
     ...(data.learnedDefaults || {}),
   }, ignoredLearnedDefaults);
 
-  let saved = 0;
+  const acceptedQuestions = [];
   for (const [label, value] of Object.entries(incomingEntries)) {
     const question = String(label || '').trim();
     const answer = String(value || '').trim();
@@ -39,7 +41,7 @@ export async function handleSaveLearnedDefaults({ entries } = {}) {
 
     delete learnedDefaults[question];
     learnedDefaults[question] = answer;
-    saved++;
+    acceptedQuestions.push(question);
   }
 
   const trimmedLearnedDefaults = trimLearnedDefaultsMap(sanitizeLearnedDefaultsMap(learnedDefaults, ignoredLearnedDefaults));
@@ -47,6 +49,9 @@ export async function handleSaveLearnedDefaults({ entries } = {}) {
     learnedDefaults: trimmedLearnedDefaults,
     ignoredLearnedDefaults: trimIgnoredLearnedDefaultsMap(ignoredLearnedDefaults),
   });
+  // Count only entries that actually survived trimming to the retention cap,
+  // not just the ones accepted before trimming.
+  const saved = acceptedQuestions.filter((q) => Object.hasOwn(trimmedLearnedDefaults, q)).length;
   return { success: true, saved };
 }
 

@@ -115,8 +115,9 @@ export function setupMessageRouter() {
  * @throws {Error} If the message type is unknown.
  */
 export async function handleMessage(msg) {
-  const handler = MESSAGE_HANDLERS[msg?.type];
-  if (!handler) {
+  const type = msg?.type;
+  const handler = Object.hasOwn(MESSAGE_HANDLERS, type) ? MESSAGE_HANDLERS[type] : undefined;
+  if (typeof handler !== 'function') {
     throw new Error('Unknown message type: ' + msg?.type);
   }
   return handler(msg.payload);

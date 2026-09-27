@@ -128,6 +128,15 @@ function buildDeterministicAnswers({ resume, settings, customQuestions = [], lea
   };
 }
 
+// Whether a custom question is phrased to expect a strict yes/no answer
+// (e.g. "Are you legally authorized to work in the US?") rather than a
+// descriptive one (e.g. "What is your work authorization status?").
+function wantsBinaryAnswer(lowerQuestion = '') {
+  return /^\s*(are|is|do|does|did|will|would|can|could|have|has)\b/.test(lowerQuestion)
+    || /\byes\s*\/\s*no\b/.test(lowerQuestion)
+    || /\(\s*yes\s*(or|\/)\s*no\s*\)/.test(lowerQuestion);
+}
+
 function buildDefaultCustomAnswers(customQuestions = [], baseAnswers = {}, learnedDefaults = {}) {
   const customAnswers = {};
 

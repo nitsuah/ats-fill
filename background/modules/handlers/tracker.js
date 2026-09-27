@@ -13,6 +13,8 @@ import {
   updateApplicationStatus,
 } from '../../../lib/tracker.js';
 
+/** @param {object} app Application fields (company, title, url, status, fill_report, ...).
+ * @returns {Promise<{success: true, entry: object}>} */
 export async function handleLogApplication(app) {
   const entry = await addApplication(app);
   await chrome.storage.local.set({
@@ -72,6 +74,9 @@ export async function handleReorderApplications({ updates } = {}) {
     return { success: true, updated: 0 };
   }
 
+  const trackedData = await chrome.storage.local.get('lastTrackedApplicationId');
+  let lastTrackedApplicationId = trackedData.lastTrackedApplicationId;
+
   const updatedEntries = [];
   for (const item of items) {
     if (!item?.id) continue;
@@ -81,6 +86,15 @@ export async function handleReorderApplications({ updates } = {}) {
     });
     if (entry) {
       updatedEntries.push(entry);
+      // Mirror handleUpdateApplication's cleanup: once the tracked entry
+      // reaches a terminal status, its stale fill report should stop showing.
+      if (lastTrackedApplicationId === entry.id && isTerminalApplicationStatus(entry.status)) {
+        await chrome.storage.local.set({
+          lastFillReport: null,
+          lastTrackedApplicationId: null,
+        });
+        lastTrackedApplicationId = null;
+      }
     }
   }
 

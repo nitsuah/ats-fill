@@ -9,6 +9,8 @@ async function getGeminiApiKey() {
   return settings.gemini_api_key || null;
 }
 
+/** @param {{ applicationId: string }} payload
+ * @returns {Promise<{success: true, data: {questions: object[]}}>} Saved prep, or an empty questions list. */
 export async function handleGetInterviewPrep(payload) {
   const { applicationId } = payload || {};
   if (!applicationId) throw new Error('applicationId required');
@@ -17,6 +19,8 @@ export async function handleGetInterviewPrep(payload) {
   return { success: true, data: data[`interview_prep_${applicationId}`] || { questions: [] } };
 }
 
+/** @param {{ applicationId: string, questions: object[] }} payload
+ * @returns {Promise<{success: true}>} */
 export async function handleSaveInterviewPrep(payload) {
   const { applicationId, questions } = payload || {};
   if (!applicationId) throw new Error('applicationId required');
@@ -28,6 +32,8 @@ export async function handleSaveInterviewPrep(payload) {
   return { success: true };
 }
 
+/** @param {{ job: object, profile?: object, resume?: object }} payload
+ * @returns {Promise<{success: true, questions: object[]}>} AI-generated interview questions. */
 export async function handleGenerateInterviewQuestions(payload) {
   const { job, profile, resume } = payload || {};
   if (!job) throw new Error('job context required');
@@ -42,6 +48,8 @@ export async function handleGenerateInterviewQuestions(payload) {
   return { success: true, questions };
 }
 
+/** @param {{ question: string, type?: string, profile?: object, resume?: object, job?: object }} payload
+ * @returns {Promise<{success: true, suggestion: string}>} AI-drafted answer to the given question. */
 export async function handleGenerateInterviewAnswer(payload) {
   const { question, type, profile, resume, job } = payload || {};
   if (!question) throw new Error('question required');
@@ -159,11 +167,20 @@ function buildJobSummary(job) {
 
 // ── Interview Response Parsing ────────────────────────────────────────────────
 
+// A valid parsed response is an array of objects, each with a non-empty
+// `question` string (the `type`/`hint` fields are best-effort and not
+// required for the result to be usable).
+function isValidQuestionsArray(value) {
+  return Array.isArray(value) && value.length > 0 && value.every(
+    (item) => item && typeof item === 'object' && typeof item.question === 'string' && item.question.trim()
+  );
+}
+
 function parseInterviewQuestionsResponse(response) {
   // 1. Try raw JSON
   try {
     const parsed = JSON.parse(response);
-    if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+    if (isValidQuestionsArray(parsed)) return parsed;
   } catch {}
 
   // 2. Try fenced JSON
@@ -171,7 +188,7 @@ function parseInterviewQuestionsResponse(response) {
     const fencedMatch = response.match(/```json\s*([\s\S]*?)\s*```/);
     if (fencedMatch) {
       const parsed = JSON.parse(fencedMatch[1]);
-      if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+      if (isValidQuestionsArray(parsed)) return parsed;
     }
   } catch {}
 
@@ -180,13 +197,13 @@ function parseInterviewQuestionsResponse(response) {
     const bracketMatch = response.match(/\[[\s\S]*\]/);
     if (bracketMatch) {
       const parsed = JSON.parse(bracketMatch[0]);
-      if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+      if (isValidQuestionsArray(parsed)) return parsed;
     }
   } catch {}
 
   // 4. Last resort: fallback or throw
   const fallback = parseQuestionsFallback(response);
-  if (Array.isArray(fallback) && fallback.length > 0) return fallback;
+  if (isValidQuestionsArray(fallback)) return fallback;
 
   throw new Error('Could not parse interview questions from AI response.');
 }
