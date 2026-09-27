@@ -27,14 +27,14 @@ export function showScreen(name) {
   const label = $('header-screen-label');
   if (label) {
     const labels = {
-      setup: '• Profile',
-      tracker: '• Pipeline',
-      analytics: '• Analytics',
-      ai: '• Settings',
-      help: '• Help',
-      preview: '• Preview',
-      'job-search': '• Job Search',
-      'interview-prep': '• Interview Prep',
+      setup: 'Profile',
+      tracker: 'Pipeline',
+      analytics: 'Analytics',
+      ai: 'Settings',
+      help: 'Help',
+      preview: 'Preview',
+      'job-search': 'Job Search',
+      'interview-prep': 'Interview Prep',
       main: '',
     };
     label.textContent = labels[name] || '';

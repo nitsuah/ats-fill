@@ -249,7 +249,7 @@ async function generateInterviewQuestions() {
   const generateBtn = $('interview-prep-generate-btn');
   if (generateBtn) {
     generateBtn.disabled = true;
-    generateBtn.textContent = '⏳ Generating...';
+    generateBtn.textContent = 'Generating…';
   }
   setStatus('interview-prep-status', '⏳ Generating interview questions...');
 
@@ -307,7 +307,7 @@ async function generateInterviewQuestions() {
     if (activeAppId !== currentApplicationId || prepSessionToken !== prepSessionToken) return;
     if (generateBtn) {
       generateBtn.disabled = false;
-      generateBtn.textContent = '✨ Generate Questions';
+      generateBtn.textContent = 'Generate questions';
     }
   }
 }
@@ -338,8 +338,8 @@ function renderQuestions() {
         rows="4"
       >${escapeHtml(q.answer || '')}</textarea>
       <div class="interview-prep-question-actions">
-        <button class="btn btn-sm interview-prep-suggest-btn" data-index="${index}">✨ Suggest Answer</button>
-        <button class="btn btn-sm btn-danger interview-prep-delete-btn" data-index="${index}">🗑 Delete</button>
+        <button class="btn btn-sm interview-prep-suggest-btn" data-index="${index}">Suggest answer</button>
+        <button class="btn btn-sm btn-ghost btn-danger interview-prep-delete-btn" data-index="${index}">Delete</button>
       </div>
       ${q.suggestion ? `<div class="interview-prep-suggestion">${escapeHtml(q.suggestion)}</div>` : ''}
     </div>
@@ -373,7 +373,7 @@ async function handleSuggestAnswer(event) {
 
   const btn = event.target;
   btn.disabled = true;
-  btn.textContent = '⏳ Suggesting...';
+  btn.textContent = 'Suggesting…';
 
   // Capture active application id at the start
   const activeAppId = currentApplicationId;
@@ -414,7 +414,7 @@ async function handleSuggestAnswer(event) {
   } finally {
     if (activeAppId !== currentApplicationId) return;
     btn.disabled = false;
-    btn.textContent = '✨ Suggest Answer';
+    btn.textContent = 'Suggest answer';
   }
 }
 

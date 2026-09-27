@@ -257,10 +257,10 @@ function updateSourceChipCounts(sourceResults = []) {
 // ── Results ──────────────────────────────────────────────────────────────────
 
 /** Shared markup for the distinctive empty/no-results state. */
-function emptyStateHtml(icon, title, hint) {
+function emptyStateHtml(iconId, title, hint) {
   return `
     <div class="empty-msg job-search-empty-state">
-      <span class="job-search-empty-icon" aria-hidden="true">${esc(icon)}</span>
+      <span class="job-search-empty-icon" aria-hidden="true"><svg class="ico"><use href="#${escAttr(iconId)}"/></svg></span>
       <p class="job-search-empty-title">${esc(title)}</p>
       <p class="job-search-empty-hint">${esc(hint)}</p>
     </div>
@@ -282,8 +282,8 @@ export function renderJobSearchResults(results, sources = []) {
 
   if (!results || results.length === 0) {
     resultsDiv.innerHTML = payIsActive() && lastRawResults.length
-      ? emptyStateHtml('🎚️', 'No jobs match the current pay filter', 'Widen the pay range in Filters, or turn off "Hide jobs without posted salary".')
-      : emptyStateHtml('🔍', 'No jobs found for this search', 'Try a broader query, add more sources in Filters, or check Settings for boards that need a free API key.');
+      ? emptyStateHtml('i-settings', 'No jobs match the current pay filter', 'Widen the pay range in Filters, or turn off "Hide jobs without posted salary".')
+      : emptyStateHtml('i-search', 'No jobs found for this search', 'Try a broader query, add more sources in Filters, or check Settings for boards that need a free API key.');
     return;
   }
 
@@ -309,11 +309,11 @@ export function renderJobSearchResults(results, sources = []) {
       <button type="button" class="job-saved-link${saved ? '' : ' hidden'}" data-job-id="${escAttr(j.id)}" title="Saved — open in Pipeline" aria-label="Saved — open in Pipeline">✓ Saved</button>
       <div class="job-result-headline">
         <div class="job-title">${esc(j.title || 'Untitled role')}</div>
-        <div class="job-meta">${esc(j.company || 'Unknown company')} • ${esc(j.location || 'Location n/a')}</div>
+        <div class="job-meta"><span class="job-company">${esc(j.company || 'Unknown company')}</span><span class="job-location">${esc(j.location || 'Location n/a')}</span></div>
       </div>
       <div class="job-badges">${badges}</div>
       ${descBlock}
-      <button type="button" class="job-save-btn${saved ? ' hidden' : ''}" data-job-id="${escAttr(j.id)}">💾 Save job</button>
+      <button type="button" class="job-save-btn${saved ? ' hidden' : ''}" data-job-id="${escAttr(j.id)}">Save job</button>
     </div>`;
   }).join('');
 }
@@ -341,7 +341,7 @@ async function saveJobToTracker(jobId, button) {
     card?.querySelector('.job-saved-link')?.classList.remove('hidden');
   } catch (err) {
     button.disabled = false;
-    button.textContent = '💾 Save job';
+    button.textContent = 'Save job';
     console.warn('[apply-bot] Failed to save job to tracker.', err);
   }
 }

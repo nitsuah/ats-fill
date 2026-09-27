@@ -315,10 +315,10 @@ export async function initMainHandlers() {
         },
       });
       if (!saveResp?.success) throw new Error(saveResp?.error || 'Could not save to tracker.');
-      btn.textContent = '✅ Saved!';
+      btn.textContent = 'Saved to pipeline';
       btn.classList.add('btn-success');
       setTimeout(() => {
-        btn.textContent = '💾 Save Job to Tracker';
+        btn.textContent = 'Save job to pipeline';
         btn.classList.remove('btn-success');
       }, 2000);
       const label = [job.company, job.title].filter(Boolean).join(' — ') || 'This job';

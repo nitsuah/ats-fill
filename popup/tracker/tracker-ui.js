@@ -275,23 +275,23 @@ export async function renderTracker() {
   const lanes = [
     {
       key: 'early',
-      label: '🟡 Drafts',
+      label: 'Drafts',
       groups: [
-        { key: 'drafted', label: '🟡 Drafted', statuses: ['drafted', 'filled'] },
-        { key: 'pending', label: '⏳ Pending', statuses: ['pending'] },
+        { key: 'drafted', label: 'Drafted', statuses: ['drafted', 'filled'] },
+        { key: 'pending', label: 'Pending', statuses: ['pending'] },
       ],
     },
-    { key: 'submitted', label: '✅ Submitted', statuses: ['submitted'] },
+    { key: 'submitted', label: 'Submitted', statuses: ['submitted'] },
     {
       key: 'later',
-      label: '📅 Later stages',
+      label: 'Later stages',
       groups: [
-        { key: 'interview', label: '📅 Interview', statuses: ['interview'] },
-        { key: 'offer', label: '🎉 Offer', statuses: ['offer'] },
+        { key: 'interview', label: 'Interview', statuses: ['interview'] },
+        { key: 'offer', label: 'Offer', statuses: ['offer'] },
       ],
     },
-    { key: 'rejected', label: '❌ Rejected', statuses: ['rejected'], finalStage: true },
-    { key: 'retired', label: '⬜ Retired', statuses: ['retired'], finalStage: true },
+    { key: 'rejected', label: 'Rejected', statuses: ['rejected'], finalStage: true },
+    { key: 'retired', label: 'Retired', statuses: ['retired'], finalStage: true },
   ];
 
   const primaryLanes = lanes.filter((lane) => !lane.finalStage);
@@ -577,8 +577,8 @@ export function renderTrackerCard(app) {
           </div>
 
           <div class="jd-ai-toolbar">
-            <button class="btn btn-ghost btn-xs jd-ai-btn tracker-jd-ai-btn" type="button" data-mode="summary" title="Summarize this description into key points">✨ Summarize</button>
-            <button class="btn btn-ghost btn-xs jd-ai-btn tracker-jd-ai-btn" type="button" data-mode="cleanup" title="Strip boilerplate / noise from this description">🧹 Clean up</button>
+            <button class="btn btn-ghost btn-xs jd-ai-btn tracker-jd-ai-btn" type="button" data-mode="summary" title="Summarize this description into key points">Summarize</button>
+            <button class="btn btn-ghost btn-xs jd-ai-btn tracker-jd-ai-btn" type="button" data-mode="cleanup" title="Strip boilerplate / noise from this description">Clean up</button>
             <span class="jd-ai-status helper-text tracker-jd-ai-status"></span>
           </div>
           <textarea class="tracker-field-description" data-field="description" rows="4" placeholder="Stored job description / notes">${esc(app.description || app.jd_snippet || '')}</textarea>
@@ -586,7 +586,7 @@ export function renderTrackerCard(app) {
         <div class="tracker-card-actions">
           <span class="tracker-save-state">Auto-save on blur</span>
           <div class="tracker-card-action-buttons">
-            <button class="btn btn-ghost btn-sm tracker-interview-prep-btn" data-id="${escAttr(app.id)}" title="Open interview prep for this application">🎯 Interview Prep</button>
+            <button class="btn btn-ghost btn-sm tracker-interview-prep-btn" data-id="${escAttr(app.id)}" title="Open interview prep for this application">Interview prep</button>
             <button class="btn btn-ghost btn-sm tracker-delete-btn" data-id="${escAttr(app.id)}">Delete</button>
             <button class="btn btn-secondary btn-sm tracker-save-btn" data-id="${escAttr(app.id)}">Save</button>
           </div>
@@ -680,12 +680,15 @@ function getStarCount(scorecard) {
 // draw a small recognizable flag (red field, white stripes, blue canton).
 const US_FLAG_SVG = '<svg class="flag-svg" viewBox="0 0 19 10" width="15" height="10" aria-hidden="true"><rect width="19" height="10" fill="#b22234"/><rect y="1.43" width="19" height="0.77" fill="#fff"/><rect y="2.97" width="19" height="0.77" fill="#fff"/><rect y="4.5" width="19" height="0.77" fill="#fff"/><rect y="6.04" width="19" height="0.77" fill="#fff"/><rect y="7.57" width="19" height="0.77" fill="#fff"/><rect width="8" height="5.38" fill="#3c3b6e"/></svg>';
 
+const PIN_SVG = '<svg class="meta-glyph" viewBox="0 0 24 24" width="13" height="13" aria-hidden="true"><path d="M12 21s-6.5-5.6-6.5-11a6.5 6.5 0 0 1 13 0c0 5.4-6.5 11-6.5 11z"/><circle cx="12" cy="10" r="2.3"/></svg>';
+const GLOBE_SVG = '<svg class="meta-glyph" viewBox="0 0 24 24" width="13" height="13" aria-hidden="true"><circle cx="12" cy="12" r="8.5"/><path d="M3.5 12h17M12 3.5c2.4 2.4 3.5 5.3 3.5 8.5s-1.1 6.1-3.5 8.5c-2.4-2.4-3.5-5.3-3.5-8.5s1.1-6.1 3.5-8.5z"/></svg>';
+
 function getLocationIndicator(location = '') {
   const loc = String(location || '').trim();
-  if (!loc || loc === 'Unknown') return { icon: '📍', label: 'Location not set' };
+  if (!loc || loc === 'Unknown') return { icon: PIN_SVG, label: 'Location not set' };
   if (loc === 'United States' || USA_STATES.includes(loc)) return { icon: US_FLAG_SVG, label: loc };
-  if (/remote|anywhere|worldwide/i.test(loc)) return { icon: '🌐', label: loc };
-  return { icon: '📍', label: loc };
+  if (/remote|anywhere|worldwide/i.test(loc)) return { icon: GLOBE_SVG, label: loc };
+  return { icon: PIN_SVG, label: loc };
 }
 
 function getEmploymentIndicator(type = '') {
@@ -730,8 +733,8 @@ function renderCardSummaryDetailsInner(app = {}) {
     <div class="tracker-summary-detailrow">
       <span class="tracker-summary-salary${salaryText ? '' : ' hidden'}">${esc(salaryText || '')}</span>
       <span class="meta-emoji meta-flag" title="${escAttr(loc.label)}" aria-label="${escAttr('Location: ' + loc.label)}">${loc.icon}</span>
-      <span class="meta-emoji" title="${escAttr(emp.label)}" aria-label="${escAttr('Type: ' + emp.label)}">${emp.emoji}</span>
-      <span class="meta-emoji" title="${escAttr(rem.label)}" aria-label="${escAttr(rem.label)}">${rem.emoji}</span>
+      <span class="meta-tag" title="${escAttr(rem.label)}">${app.remote ? 'Remote' : 'Onsite'}</span>
+      ${emp.label === 'Full-time' ? '' : `<span class="meta-tag" title="${escAttr('Type: ' + emp.label)}">${esc(emp.label)}</span>`}
       <span class="tracker-summary-sentiment tracker-sentiment-interactive" data-sentiment-cycle="1" data-verdict="${escAttr(verdictValue)}" title="${escAttr('Sentiment: ' + verdictLabel + ' (click to change)')}" aria-label="${escAttr('Sentiment: ' + verdictLabel)}">${verdictEmoji}</span>
       ${stars}
     </div>
