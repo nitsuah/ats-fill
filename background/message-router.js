@@ -1,6 +1,7 @@
 /**
  * background/message-router.js - Message routing for service worker
- * Extracted from service-worker.js (orig: lines 31-108)
+ * Dispatches chrome.runtime.onMessage traffic to the handler modules in
+ * ./modules/handlers/. Extracted from service-worker.js.
  */
 
 import {
@@ -15,6 +16,7 @@ import {
   handleGetJobSources,
   handleGetOauthInfo,
   handleLinkedInConnect,
+  handleGoogleConnect,
   handleSummarizeJd,
   handleLogApplication,
   handleParseApplicationDraft,
@@ -31,11 +33,12 @@ import {
   handleDeleteIgnoredLearnedDefault,
   handleClearTempData,
   handleResetAllData,
+  handleGetFieldMap,
   handleGetInterviewPrep,
   handleSaveInterviewPrep,
   handleGenerateInterviewQuestions,
   handleGenerateInterviewAnswer,
-} from './handlers/index.js';
+} from './modules/handlers/index.js';
 
 /**
  * Map of message type to handler function.
@@ -53,6 +56,7 @@ const MESSAGE_HANDLERS = {
   GET_JOB_SOURCES: handleGetJobSources,
   GET_OAUTH_INFO: handleGetOauthInfo,
   LINKEDIN_CONNECT: handleLinkedInConnect,
+  GOOGLE_CONNECT: handleGoogleConnect,
   SUMMARIZE_JD: handleSummarizeJd,
   LOG_APPLICATION: handleLogApplication,
   PARSE_APPLICATION_DRAFT: handleParseApplicationDraft,
@@ -69,6 +73,7 @@ const MESSAGE_HANDLERS = {
   DELETE_IGNORED_LEARNED_DEFAULT: handleDeleteIgnoredLearnedDefault,
   CLEAR_TEMP_DATA: handleClearTempData,
   RESET_ALL_DATA: handleResetAllData,
+  GET_FIELD_MAP: handleGetFieldMap,
   ATS_DETECTED: () => ({ success: true }),
   GET_INTERVIEW_PREP: handleGetInterviewPrep,
   SAVE_INTERVIEW_PREP: handleSaveInterviewPrep,
@@ -81,7 +86,21 @@ const MESSAGE_HANDLERS = {
  * Registers a listener for chrome.runtime.onMessage.
  */
 export function setupMessageRouter() {
-  chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
+  chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
+    // Only accept messages originating from this extension. Content scripts,
+    // popup pages, and the service worker itself all carry this extension ID;
+    // rejecting other senders prevents another extension from invoking the
+    // privileged message router directly.
+    if (sender?.id !== chrome.runtime.id) {
+      sendResponse({ success: false, error: 'Unauthorized message sender.' });
+      return false;
+    }
+
+    if (!msg || typeof msg !== 'object' || typeof msg.type !== 'string') {
+      sendResponse({ success: false, error: 'Invalid message.' });
+      return false;
+    }
+
     handleMessage(msg).then(sendResponse).catch((err) => {
       sendResponse({ success: false, error: err.message });
     });
@@ -96,8 +115,9 @@ export function setupMessageRouter() {
  * @throws {Error} If the message type is unknown.
  */
 export async function handleMessage(msg) {
-  const handler = MESSAGE_HANDLERS[msg?.type];
-  if (!handler) {
+  const type = msg?.type;
+  const handler = Object.hasOwn(MESSAGE_HANDLERS, type) ? MESSAGE_HANDLERS[type] : undefined;
+  if (typeof handler !== 'function') {
     throw new Error('Unknown message type: ' + msg?.type);
   }
   return handler(msg.payload);
