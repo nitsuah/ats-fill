@@ -19,6 +19,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - UI screenshot gallery is now generated in CI from fictional Playwright fixture
   data and published through a single rolling PR, with the README version/date
   metadata refreshed automatically (#77–#79, #82–#95, #97).
+- `background/service-worker.js` is now a thin entry point; its message-type
+  handlers were moved into `background/modules/handlers/*.js` (routing already
+  lived in `background/message-router.js`), with characterization tests added
+  in `tests/background-router.test.mjs`.
 
 ### Fixed
 
