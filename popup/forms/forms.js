@@ -207,7 +207,7 @@ export async function handleResumeFileDrop(file) {
 
 export function removeResumeAttachment() {
   const dropLabel = $('file-drop-label');
-  if (dropLabel) dropLabel.textContent = '📄 Drop PDF / DOCX / TXT here or click to browse';
+  if (dropLabel) dropLabel.textContent = 'Drop a PDF, DOCX, or TXT — or click to browse';
 }
 
 export function downloadResumeAttachment(attachment = {}) {
