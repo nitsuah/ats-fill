@@ -50,7 +50,7 @@ jobs:
           docker run --rm             -v ${{ github.workspace }}/coverage:/app/coverage             ats-fill:test npm run test:coverage
 
       - name: Upload coverage report
-        uses: actions/upload-artifact@v7
+        uses: actions/upload-artifact@v7.0.1
         if: always()
         with:
           name: coverage-report
@@ -75,7 +75,7 @@ jobs:
           docker run --rm             -v ${{ github.workspace }}/playwright-report:/app/playwright-report             -v ${{ github.workspace }}/test-results:/app/test-results             ats-fill:e2e sh -c "ls -la /app/dist && xvfb-run --server-args='-screen 0 1280x720x24' npm run test:e2e"
 
       - name: Upload Playwright report
-        uses: actions/upload-artifact@v7
+        uses: actions/upload-artifact@v7.0.1
         if: always()
         with:
           name: playwright-report
@@ -83,7 +83,7 @@ jobs:
           retention-days: 14
 
       - name: Upload failure screenshots
-        uses: actions/upload-artifact@v7
+        uses: actions/upload-artifact@v7.0.1
         if: failure()
         with:
           name: playwright-screenshots
@@ -116,7 +116,7 @@ jobs:
         run: node scripts/validate-screenshot-gallery.mjs
 
       - name: Upload screenshot gallery
-        uses: actions/upload-artifact@v7
+        uses: actions/upload-artifact@v7.0.1
         if: always()
         with:
           name: ats-fill-ui-gallery-${{ github.run_id }}
