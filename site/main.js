@@ -13,13 +13,9 @@
         play.dataset.state = paused ? 'paused' : 'playing';
         play.setAttribute('aria-label', paused ? 'Play video' : 'Pause video');
     };
-    const syncMute = () => {
+    // Stable name ("Sound"); aria-pressed alone carries whether sound is on.
+    const syncMute = () =>
         mute.setAttribute('aria-pressed', String(!vid.muted));
-        mute.setAttribute(
-            'aria-label',
-            vid.muted ? 'Unmute video' : 'Mute video',
-        );
-    };
     // play() rejects when the browser blocks playback; keep the controls
     // truthful instead of leaving an unhandled rejection.
     const tryPlay = () =>
