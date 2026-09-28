@@ -7,6 +7,8 @@
 
 [![CI](https://github.com/nitsuah/ats-fill/actions/workflows/ci.yml/badge.svg)](https://github.com/nitsuah/ats-fill/actions/workflows/ci.yml)
 
+**🌐 [nitsuah.github.io/ats-fill](https://nitsuah.github.io/ats-fill/)** — landing page with the 21-second demo video.
+
 ---
 
 ## The Problem
