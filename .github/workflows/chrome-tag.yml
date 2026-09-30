@@ -74,6 +74,6 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           TAG: v${{ steps.version.outputs.version }}
         run: |
-          gh workflow run chrome-release.yml             --ref "$TAG"             --field "tag=$TAG"
+          gh workflow run chrome-release.yml             --ref main             --field "tag=$TAG"
 
           echo "Dispatched Chrome Web Store release for $TAG."
