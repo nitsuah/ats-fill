@@ -74,7 +74,12 @@ jobs:
           TAG: ${{ steps.release.outputs.tag }}
           PACKAGE: ats-fill-${{ steps.release.outputs.tag }}.zip
         run: |
-          gh release create "$TAG" "$PACKAGE" SHA256SUMS.txt --title "$TAG" --generate-notes
+          if gh release view "$TAG" >/dev/null 2>&1; then
+            echo "Release $TAG already exists; updating its verified assets."
+            gh release upload "$TAG" "$PACKAGE" SHA256SUMS.txt --clobber
+          else
+            gh release create "$TAG" "$PACKAGE" SHA256SUMS.txt --title "$TAG" --generate-notes
+          fi
 
   publish:
     name: Publish to Chrome Web Store
