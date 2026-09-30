@@ -8,7 +8,7 @@ on:
   workflow_dispatch:
 
 concurrency:
-  group: ci-\${{ github.workflow }}-\${{ github.ref }}
+  group: ci-${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
 permissions:
@@ -36,7 +36,7 @@ jobs:
       - name: Build test image
         run: docker build --target test -t ats-fill:test .
       - name: Generate coverage
-        run: docker run --rm -v \${{ github.workspace }}/coverage:/app/coverage ats-fill:test npm run test:coverage
+        run: docker run --rm -v ${{ github.workspace }}/coverage:/app/coverage ats-fill:test npm run test:coverage
       - name: Upload coverage report
         uses: actions/upload-artifact@v7.0.1
         if: always()
@@ -57,8 +57,8 @@ jobs:
       - name: Run Playwright
         run: |
           docker run --rm \
-            -v \${{ github.workspace }}/playwright-report:/app/playwright-report \
-            -v \${{ github.workspace }}/test-results:/app/test-results \
+            -v ${{ github.workspace }}/playwright-report:/app/playwright-report \
+            -v ${{ github.workspace }}/test-results:/app/test-results \
             ats-fill:e2e sh -c "ls -la /app/dist && xvfb-run --server-args='-screen 0 1280x720x24' npm run test:e2e"
       - name: Upload Playwright report
         uses: actions/upload-artifact@v7.0.1
@@ -92,7 +92,7 @@ jobs:
           rm -rf screenshots
           mkdir -p screenshots
           docker run --rm \
-            -v \${{ github.workspace }}/screenshots:/app/screenshots \
+            -v ${{ github.workspace }}/screenshots:/app/screenshots \
             ats-fill:e2e \
             sh -c "xvfb-run --server-args='-screen 0 1280x720x24' npx playwright test --config config/playwright.config.mjs tests/e2e/screenshots.spec.mjs"
       - name: Validate screenshot gallery
@@ -101,15 +101,15 @@ jobs:
         uses: actions/upload-artifact@v7.0.1
         if: always()
         with:
-          name: ats-fill-ui-gallery-\${{ github.run_id }}
+          name: ats-fill-ui-gallery-${{ github.run_id }}
           path: screenshots/
           if-no-files-found: warn
           retention-days: 14
       - name: Publish screenshot gallery PR
         env:
-          GH_TOKEN: \${{ github.token }}
-          GH_REPO: \${{ github.repository }}
-          GITHUB_EVENT_HEAD_COMMIT_MESSAGE: \${{ github.event.head_commit.message }}
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          GITHUB_EVENT_HEAD_COMMIT_MESSAGE: ${{ github.event.head_commit.message }}
         run: bash scripts/publish-screenshot-gallery.sh
 
   chrome-web-store-assets:
@@ -126,7 +126,7 @@ jobs:
           rm -rf store-assets
           mkdir -p store-assets
           docker run --rm \
-            -v \${{ github.workspace }}/store-assets:/app/store-assets \
+            -v ${{ github.workspace }}/store-assets:/app/store-assets \
             ats-fill:e2e \
             sh -c "xvfb-run --server-args='-screen 0 1400x900x24' npx playwright test --config config/playwright.config.mjs tests/e2e/store-assets.spec.mjs"
       - name: Validate Chrome Web Store assets
