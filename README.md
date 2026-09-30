@@ -229,6 +229,10 @@ Company,Role Title,Status,Date,Employment Type,Remote,Location,Pay Min,Pay Max,S
 
 ---
 
+## Claude Skill
+
+The repository includes a Claude-ready [ats-fill job-search skill](./skills/ats-fill-job-search/SKILL.md) covering job discovery, JD analysis, applications, networking, interview preparation, tracking, and practical career resources. It is designed to pair the product workflow with evidence-based job-search guidance while keeping final decisions and submission with the candidate.
+
 ## Tech Stack
 
 - **Chrome MV3** extension
