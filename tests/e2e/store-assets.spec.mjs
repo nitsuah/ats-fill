@@ -116,8 +116,6 @@ async function installFixtures() {
 }
 
 test.beforeAll(async () => {
-  await fs.rm(OUT_DIR, { recursive: true, force: true });
-  await fs.mkdir(OUT_DIR, { recursive: true });
   ({ context, extensionId } = await launchExtensionContext(EXTENSION_PATH, 'playwright-store-assets'));
   await installFixtures();
 });
