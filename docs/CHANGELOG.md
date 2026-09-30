@@ -16,6 +16,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- Agent instructions (`.github/copilot-instructions.md` and `CLAUDE.md`) now require closing tracked work in the same PR: update `docs/TASKS.md`, `docs/ROADMAP.md` and this changelog before the last push, and confirm `git diff origin/main...HEAD --stat` includes them before merge; added `.github/pull_request_template.md` with a "Closes TASKS item(s)" checklist.
 - UI screenshot gallery is now generated in CI from fictional Playwright fixture
   data and published through a single rolling PR, with the README version/date
   metadata refreshed automatically (#77–#79, #82–#95, #97).
