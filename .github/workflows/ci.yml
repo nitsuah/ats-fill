@@ -2,12 +2,11 @@ name: CI
 
 on:
   push:
-    branches: ['**'] # every branch — feature branches (pmo-q3*, dev/*, fixes) all run CI
+    branches: ['**']
   pull_request:
     branches: [main]
   workflow_dispatch:
 
-# Cancel any in-flight run for the same ref so force-pushes don't waste minutes.
 concurrency:
   group: ci-${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
@@ -16,39 +15,28 @@ permissions:
   contents: read
 
 jobs:
-  # ── Fast gate: lint + unit tests (under 2 min, blocks PRs quickly) ──────────
   fast:
     name: Lint & Unit Tests
     runs-on: ubuntu-latest
-
     steps:
       - uses: actions/checkout@v7
-
       - name: Build test image
         run: docker build --target test -t ats-fill:test .
-
       - name: Lint
         run: docker run --rm ats-fill:test npm run lint
-
       - name: Unit tests
         run: docker run --rm ats-fill:test npm test
 
-  # ── Coverage: runs after fast gate, uploads report ──────────────────────────
   coverage:
     name: Coverage
     runs-on: ubuntu-latest
     needs: fast
-
     steps:
       - uses: actions/checkout@v7
-
       - name: Build test image
         run: docker build --target test -t ats-fill:test .
-
       - name: Generate coverage
-        run: |
-          docker run --rm             -v ${{ github.workspace }}/coverage:/app/coverage             ats-fill:test npm run test:coverage
-
+        run: docker run --rm -v ${{ github.workspace }}/coverage:/app/coverage ats-fill:test npm run test:coverage
       - name: Upload coverage report
         uses: actions/upload-artifact@v7.0.1
         if: always()
@@ -57,23 +45,21 @@ jobs:
           path: coverage/
           retention-days: 14
 
-  # ── E2E: Playwright in Docker, runs after fast gate ─────────────────────────
   e2e:
     name: Playwright E2E
     runs-on: ubuntu-latest
     needs: fast
     timeout-minutes: 20
-
     steps:
       - uses: actions/checkout@v7
-
       - name: Build e2e image
         run: docker build --target e2e -t ats-fill:e2e .
-
       - name: Run Playwright
         run: |
-          docker run --rm             -v ${{ github.workspace }}/playwright-report:/app/playwright-report             -v ${{ github.workspace }}/test-results:/app/test-results             ats-fill:e2e sh -c "ls -la /app/dist && xvfb-run --server-args='-screen 0 1280x720x24' npm run test:e2e"
-
+          docker run --rm \
+            -v ${{ github.workspace }}/playwright-report:/app/playwright-report \
+            -v ${{ github.workspace }}/test-results:/app/test-results \
+            ats-fill:e2e sh -c "ls -la /app/dist && xvfb-run --server-args='-screen 0 1280x720x24' npm run test:e2e"
       - name: Upload Playwright report
         uses: actions/upload-artifact@v7.0.1
         if: always()
@@ -81,7 +67,6 @@ jobs:
           name: playwright-report
           path: playwright-report/
           retention-days: 14
-
       - name: Upload failure screenshots
         uses: actions/upload-artifact@v7.0.1
         if: failure()
@@ -90,7 +75,6 @@ jobs:
           path: test-results/
           retention-days: 7
 
-  # ── Screenshot gallery: must pass before a UI change can merge ──────────────
   screenshot-gallery:
     name: UI Screenshot Gallery
     runs-on: ubuntu-latest
@@ -99,22 +83,20 @@ jobs:
     permissions:
       contents: write
       pull-requests: write
-
     steps:
       - uses: actions/checkout@v7
-
       - name: Build e2e image
         run: docker build --target e2e -t ats-fill:e2e .
-
       - name: Capture product screenshots
         run: |
           rm -rf screenshots
           mkdir -p screenshots
-          docker run --rm             -v ${{ github.workspace }}/screenshots:/app/screenshots             ats-fill:e2e             sh -c "xvfb-run --server-args='-screen 0 1280x720x24' npx playwright test --config config/playwright.config.mjs tests/e2e/screenshots.spec.mjs"
-
+          docker run --rm \
+            -v ${{ github.workspace }}/screenshots:/app/screenshots \
+            ats-fill:e2e \
+            sh -c "xvfb-run --server-args='-screen 0 1280x720x24' npx playwright test --config config/playwright.config.mjs tests/e2e/screenshots.spec.mjs"
       - name: Validate screenshot gallery
         run: node scripts/validate-screenshot-gallery.mjs
-
       - name: Upload screenshot gallery
         uses: actions/upload-artifact@v7.0.1
         if: always()
@@ -123,7 +105,6 @@ jobs:
           path: screenshots/
           if-no-files-found: warn
           retention-days: 14
-
       - name: Publish screenshot gallery PR
         env:
           GH_TOKEN: ${{ github.token }}
@@ -131,18 +112,42 @@ jobs:
           GITHUB_EVENT_HEAD_COMMIT_MESSAGE: ${{ github.event.head_commit.message }}
         run: bash scripts/publish-screenshot-gallery.sh
 
-  # ── Security audit: non-blocking, surfaces known vulns as a warning ──────────
+  chrome-web-store-assets:
+    name: Chrome Web Store Assets
+    runs-on: ubuntu-latest
+    needs: [fast, e2e]
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v7
+      - name: Build e2e image
+        run: docker build --target e2e -t ats-fill:e2e .
+      - name: Generate store screenshots and promo tiles
+        run: |
+          rm -rf store-assets
+          mkdir -p store-assets
+          docker run --rm \
+            -v ${{ github.workspace }}/store-assets:/app/store-assets \
+            ats-fill:e2e \
+            sh -c "xvfb-run --server-args='-screen 0 1400x900x24' npx playwright test --config config/playwright.config.mjs tests/e2e/store-assets.spec.mjs"
+      - name: Validate Chrome Web Store assets
+        run: node scripts/validate-store-assets.mjs store-assets
+      - name: Upload Chrome Web Store assets
+        uses: actions/upload-artifact@v7.0.1
+        if: always()
+        with:
+          name: chrome-web-store-assets
+          path: store-assets/
+          if-no-files-found: error
+          retention-days: 30
+
   security:
     name: Security Audit
     runs-on: ubuntu-latest
     needs: fast
-
     steps:
       - uses: actions/checkout@v7
-
       - name: Build test image
         run: docker build --target test -t ats-fill:test .
-
       - name: npm audit (moderate+)
         run: docker run --rm ats-fill:test npm audit --audit-level moderate
         continue-on-error: true
