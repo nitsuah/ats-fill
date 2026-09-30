@@ -58,14 +58,14 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           TAG: v${{ steps.version.outputs.version }}
         run: |
-          RUN_ID="$(gh run list             --workflow chrome-release.yml             --branch "$TAG"             --limit 1             --json databaseId             --jq '.[0].databaseId // empty')"
+          RUN_ID="$(gh run list             --workflow chrome-release.yml             --branch "$TAG"             --limit 1             --json databaseId,conclusion             --jq 'map(select(.conclusion == "success" or .conclusion == "in_progress" or .conclusion == "queued")) | .[0].databaseId // empty')"
 
           if [ -n "$RUN_ID" ]; then
             echo "exists=true" >> "$GITHUB_OUTPUT"
-            echo "Chrome Web Store release workflow already has run $RUN_ID for $TAG."
+            echo "Chrome Web Store release workflow already has a successful/active run $RUN_ID for $TAG."
           else
             echo "exists=false" >> "$GITHUB_OUTPUT"
-            echo "No Chrome Web Store release workflow run exists yet for $TAG."
+            echo "No successful or active Chrome Web Store release workflow run exists for $TAG; it will be dispatched."
           fi
 
       - name: Dispatch Chrome Web Store release
