@@ -6,7 +6,7 @@ updated: 2026-10-01
 
 > 🧭 [ats-fill](../README.md) · [Features](./FEATURES.md) · **Roadmap** · [Tasks](./TASKS.md) · [Changelog](./CHANGELOG.md) · [Metrics](./METRICS.md) <!-- nav -->
 >
-> 2027 planning reset (2026-09-24): all 2026 quarters (Q1–Q4) were fully shipped and have been removed from this file — see [FEATURES](./FEATURES.md) and [CHANGELOG](./CHANGELOG.md) (tagged v1.0.1/v1.0.2). As of 2026-10-01 the public Chrome Web Store listing still shows 1.0.0, because store publishing fails with an expired OAuth token. See TASKS P1.
+> 2027 planning reset (2026-09-24): all 2026 quarters (Q1–Q4) were implemented and tagged, and have been removed from this file — see [FEATURES](./FEATURES.md) and [CHANGELOG](./CHANGELOG.md) (tagged v1.0.1/v1.0.2). As of 2026-10-01 the public Chrome Web Store listing still shows 1.0.0, because store publishing fails with an expired OAuth token. See TASKS P1.
 
 ## 2027 Q1 (Planned)
 
