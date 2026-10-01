@@ -249,7 +249,7 @@ Company,Role Title,Status,Date,Employment Type,Remote,Location,Pay Min,Pay Max,S
 npx skills add nitsuah/ats-fill --skill ats-fill-job-search -g
 ```
 
-Or copy `skills/ats-fill-job-search/` into `~/.claude/skills/` (Claude Code) or a project's `.claude/skills/`. In the Claude apps, zip the folder and upload it under **Settings → Capabilities → Skills**. Then ask things like *"Is this role a fit for me?"*, *"Prep me for tomorrow's system design interview"* or *"Help me negotiate this offer."*
+Or copy `skills/ats-fill-job-search/` into `~/.claude/skills/` (Claude Code) or a project's `.claude/skills/`. In the Claude apps, zip the folder, go to **Customize → Skills → + → Create skill → Upload a skill**, upload the ZIP, then toggle the skill on (skills need **Code execution and file creation** enabled). Then ask things like *"Is this role a fit for me?"*, *"Prep me for tomorrow's system design interview"* or *"Help me negotiate this offer."*
 
 ## Feature tour video
 

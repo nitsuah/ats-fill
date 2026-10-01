@@ -41,7 +41,7 @@ Prefer primary and government sources. Links were checked on 2026-09-30; if one 
 
 - [CareerOneStop: Job interviews](https://www.careeronestop.org/JobSearch/Interview/job-interviews.aspx) and [Get ready to interview](https://www.careeronestop.org/JobSearch/Interview/get-ready.aspx)
 - [MIT CAPD: The STAR method](https://capd.mit.edu/resources/the-star-method-for-behavioral-interviews/)
-- [Google re:Work: Structured interviewing](https://rework.withgoogle.com/guides/hiring-use-structured-interviewing/): how many employers score interviews
+- [Google re:Work: Structured interviewing](https://rework.withgoogle.com/intl/en/guides/a-guide-to-structured-interviewing-for-better-hiring-practices): how many employers score interviews
 - [Tech Interview Handbook](https://www.techinterviewhandbook.org/): coding and behavioral prep for engineers
 - [Coding Interview University](https://github.com/jwasham/coding-interview-university)
 - [System Design Primer](https://github.com/donnemartin/system-design-primer)

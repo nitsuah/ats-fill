@@ -83,7 +83,7 @@ Practice resources: [Tech Interview Handbook](https://www.techinterviewhandbook.
 - Arrive (or join) 5–10 minutes early. Bring copies of the resume and the prep sheet.
 - Take brief notes on what each interviewer cared about; they shape the thank-you.
 
-Many companies use structured interviews with scored competencies ([Google re:Work: structured interviewing](https://rework.withgoogle.com/guides/hiring-use-structured-interviewing/)); concrete, complete stories score higher than general claims.
+Many companies use structured interviews with scored competencies ([Google re:Work: structured interviewing](https://rework.withgoogle.com/intl/en/guides/a-guide-to-structured-interviewing-for-better-hiring-practices)); concrete, complete stories score higher than general claims.
 
 **Questions they shouldn't ask.** In the US, questions about age, religion, national origin, pregnancy, disability, marital or family status are generally off-limits; see [EEOC: prohibited practices](https://www.eeoc.gov/prohibited-employment-policiespractices). The candidate can redirect ("I'm fully able to meet the role's schedule requirements") or decline.
 

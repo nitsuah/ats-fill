@@ -18,7 +18,8 @@ export const INTRO = {
   kicker: 'Feature tour',
   title: 'The same 20 questions on 47 different forms.',
   body: 'ats-fill is a free, local-first Chrome extension that fills job applications from a profile you save once, then tracks every application. Here is everything it does.',
-  hold: 8,
+  // YouTube chapters must each run at least 10s, and "Intro" is chapter one.
+  hold: 10.5,
 };
 
 export const OUTRO = {

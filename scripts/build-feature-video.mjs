@@ -175,9 +175,15 @@ const tourFile = path.join(OUT, 'ats-fill-feature-tour.mp4');
 const { starts, total } = join(sequence.map((s) => s.clip), tourFile);
 console.log(`tour   ${path.relative(OUT, tourFile)}  ${stamp(total)}`);
 
-const chapters = sequence
-  .map((s, i) => (s.chapter ? `${stamp(i === 0 ? 0 : starts[i] + CROSSFADE)} ${s.chapter}` : null))
+const chapterStarts = sequence
+  .map((s, i) => (s.chapter ? { title: s.chapter, at: Math.floor(i === 0 ? 0 : starts[i] + CROSSFADE) } : null))
   .filter(Boolean);
+// YouTube ignores the whole chapter list if any chapter is shorter than 10s.
+chapterStarts.forEach((c, i) => {
+  const end = i + 1 < chapterStarts.length ? chapterStarts[i + 1].at : total;
+  if (end - c.at < 10) throw new Error(`Chapter "${c.title}" is ${end - c.at}s; YouTube needs at least 10s per chapter.`);
+});
+const chapters = chapterStarts.map((c) => `${stamp(c.at)} ${c.title}`);
 
 ffmpeg(['-i', path.join(FRAMES, 'intro.png'), '-vf', 'scale=1280:720:flags=lanczos', '-q:v', '3', path.join(OUT, 'thumbnail.jpg')]);
 
