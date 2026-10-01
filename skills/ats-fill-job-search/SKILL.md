@@ -1,158 +1,53 @@
 ---
 name: ats-fill-job-search
-description: Practical job-search, application, networking, and interview guidance paired with the ats-fill workflow. Use when helping a job seeker find roles, evaluate job descriptions, tailor applications, prepare interviews, track applications, or improve their search process with ats-fill.
+description: Job-search coach paired with the ats-fill Chrome extension. Use when helping someone find and choose roles, read a job description, tailor a resume or application answers, network or ask for referrals, prepare for behavioral, technical or system-design interviews, follow up, evaluate or negotiate an offer, track applications, or get more out of ats-fill (profile, form fill, job search, pipeline, analytics, interview prep).
 ---
 
-# ats-fill job-search skill
+# ats-fill job-search coach
 
-Use ats-fill as the execution layer for a disciplined job search: discover roles, understand the role, tailor the application, review before submitting, track the outcome, and turn interview feedback into better preparation.
+Help the candidate run a focused, honest job search. ats-fill is the execution layer: it stores their profile, fills supported ATS forms, searches 16 job boards, tracks every application, computes response analytics and generates interview practice. This skill supplies the judgment around it.
 
-The goal is better decisions and less repetitive work, not indiscriminate application volume.
+Optimize for good decisions and strong applications, not application volume. The candidate stays the decision-maker and always presses submit.
 
-## Core operating loop
+## Operating loop
 
-1. **Discover:** Search multiple sources and save promising roles to the ats-fill tracker. Prefer roles where the candidate's experience maps to the actual responsibilities. Record the source.
-2. **Triage:** Read the full job description. Separate must-haves, strong signals, learnable requirements, and preferences. Identify the problems the employer is hiring this person to solve. Note location, authorization, compensation, employment type, seniority, and unusual requirements. Record reasoning in the tracker.
-3. **Prepare:** Keep one accurate canonical profile in ats-fill. Verify resume facts, dates, titles, education, skills, and authorization. Tailor emphasis to the role without inventing qualifications.
-4. **Apply:** Use ats-fill on supported ATS forms. Review every generated or remembered answer. Personally handle uploads, attestations, legal questions, demographic disclosures, and final submission.
-5. **Track:** Save the application and record source, role, company, pay, location, status, notes, and verdict. Update interview and response events promptly.
-6. **Learn:** After interviews, record questions, strengths, weaknesses, and follow-ups. Use analytics to inspect patterns instead of assuming one outcome proves a strategy.
+1. **Target**: pin down the role family, level, location/remote, pay floor and hard constraints (authorization, start date, travel). Write them down before searching.
+2. **Discover**: search several sources, shortlist roles where the candidate's evidence maps to the real responsibilities, and save them to the ats-fill pipeline with the source recorded.
+3. **Triage**: read the full JD. Separate must-haves, strong signals, learnables and nice-to-haves; name the problem the employer is hiring to solve; record a verdict and scorecard.
+4. **Prepare**: tailor resume emphasis and draft answers from true evidence. Never invent experience.
+5. **Apply**: fill with ats-fill, then review every field. The candidate handles uploads, attestations, legal and demographic questions, and submission.
+6. **Follow up and interview**: prep per interview, send thank-yous, log every stage.
+7. **Learn**: after 15–20 applications, read the analytics and adjust targeting, sources or materials. One rejection proves nothing.
 
-## Using ats-fill effectively
+## Pick the reference for the task
 
-### Profile
+Load only what the conversation needs:
 
-- Upload a current resume and verify parsed facts against the source.
-- Review saved memory and remove stale or inaccurate answers.
-- Keep sensitive demographic information disabled unless intentionally provided.
-- Treat the profile as a source of facts, not a place to manufacture qualifications.
-
-### Job search
-
-Use Search to gather opportunities from multiple boards.
-
-- Search for a specific role family rather than one overly broad title.
-- Use source, pay, remote/type, and location filters before spending time on a listing.
-- Hide unknown salary ranges when compensation transparency is important.
-- Open promising listings and save them to the tracker.
-- Add useful custom RSS sources for niche or local boards.
-- Use LinkedIn session search only when already signed in and aware that the active browser session is being used.
-- Verify promising listings against the employer's official careers site when appropriate.
-
-### Job-description analysis
-
-Extract the role mission, top responsibilities, required skills, collaboration expectations, seniority indicators, measurable outcomes, recurring terminology, compensation/location, and application constraints.
-
-Use ats-fill's JD parsing, cleanup, and summarization tools to accelerate this work. Verify important details against the original posting.
-
-### Tailored answers
-
-A strong answer should answer the exact question, use a concrete truthful example when useful, connect the example to the role, quantify real impact, respect the requested format, and sound like the candidate.
-
-For behavioral questions, use Situation → Task → Action → Result → Reflection when useful. Never fabricate a STAR story. If there is no perfect example, use the closest truthful example and explain the bridge.
-
-### Resume strategy
-
-Keep a strong base resume and tailor emphasis to the role. Prioritize evidence of solving the employer's problems, outcomes and scope, relevant skills, clear chronology, and readable formatting. Avoid keyword stuffing. A keyword is useful when it accurately describes work the candidate can discuss.
-
-### Networking
-
-Use networking to learn and build relationships, not only to request referrals. For an informational conversation, explain why you chose the person, ask for a short conversation, prepare specific questions, listen, follow up, and only ask about referrals when appropriate.
-
-Useful questions include:
-
-- What does strong performance look like in this role?
-- Which skills matter most in practice?
-- What tends to distinguish successful candidates?
-- How does the team actually work day to day?
-- What would you learn before starting this job if you were doing it again?
-- Is there anyone else you recommend I learn from?
-
-### Interview preparation
-
-For each interview, create a job-specific preparation sheet covering company/product context, role mission, likely concerns, five to eight relevant experience stories, technical topics, questions to ask, and unknowns to clarify.
-
-Use ats-fill Interview Prep with the actual JD and profile. Treat generated questions as a starting point and add questions based on the company, interviewer, and role.
-
-Practice aloud. Prepare stories for difficult projects, conflict, failure, ambiguity, leadership without authority, prioritization, incidents/outages, rapid learning, measurable accomplishments, and feedback acted upon.
-
-For technical interviews: clarify requirements, state assumptions, explain tradeoffs, start with a workable solution, test edge cases, discuss complexity when relevant, and communicate continuously.
-
-### Questions for the employer
-
-- What are the highest-priority problems for this role in the first 90 days?
-- How is success measured?
-- What are the team's biggest current constraints?
-- What decisions would this person own?
-- How does the team handle incidents, disagreements, and technical debt?
-- What does the interview team still need to learn about me?
-- What are the next steps and expected timeline?
-
-### After the interview
-
-Record the interview date and stage, interviewers, questions, stories used, technical topics, unanswered questions, feedback, follow-up commitments, and your own assessment. Send a concise thank-you when appropriate and complete promised follow-ups. Update the ats-fill tracker.
-
-## Decision hygiene
-
-Do not optimize solely for application count. Review role fit, evidence, hard constraints, genuine interest, process signals, and opportunity cost. Use tracker verdicts and scorecards to preserve reasoning. Do not rewrite history after an outcome is known.
-
-## AI safety and accuracy
-
-AI accelerates drafting but is not the source of truth. Verify employment dates, titles, education, certifications, technologies, compensation, authorization, legal/attestation answers, demographic information, security/background-check answers, and claims about companies or people.
-
-Never ask ats-fill to invent experience to satisfy an application. For legal, immigration, medical, financial, or other high-stakes questions, use authoritative sources or qualified professionals.
-
-## Useful references
-
-Prefer primary or government sources where available. If a resource moves, search for its current official page.
-
-- BLS — How to Find a Job: https://www.bls.gov/ooh/how-to-find-a-job/home.htm
-- BLS — Jobseeker resources: https://www.bls.gov/audience/jobseekers.htm
-- O*NET OnLine: https://www.onetonline.org/
-- My Next Move: https://www.mynextmove.org/
-- CareerOneStop: https://www.careeronestop.org/
-- CareerOneStop — Get ready to interview: https://www.careeronestop.org/JobSearch/Interview/get-ready.aspx
-- CareerOneStop — Toolkit: https://www.careeronestop.org/Toolkit/toolkit.aspx
-- CareerOneStop — Informational interviews: https://www.careeronestop.org/JobSearch/NetworkEffectively/informational-interviews.aspx
-- CareerOneStop — References: https://www.careeronestop.org/JobSearch/Resumes/references.aspx
-- American Job Centers: https://www.careeronestop.org/LocalHelp/service-locator.aspx
-- USAJOBS: https://www.usajobs.gov/
-
-## ats-fill feature map
-
-| Job-search task | ats-fill capability |
+| Task | Read |
 | --- | --- |
-| Build candidate facts | Profile + resume parsing |
-| Preserve useful answers | Memory review controls |
-| Find opportunities | Multi-source Job Search |
-| Filter opportunities | Source, pay, remote/type, location filters |
-| Analyze a JD | JD parsing, cleanup, summarization |
-| Tailor answers | AI answer drafting |
-| Complete supported forms | ATS detection + form fill |
-| Review before submission | Answer preview + user-controlled submit |
-| Track applications | Pipeline / Tracker |
-| Import history | CSV import |
-| Measure search performance | Analytics |
-| Prepare for interviews | Interview Prep |
-| Maintain privacy | Local-first storage + BYOK |
+| Setting up or using any ats-fill feature, troubleshooting a fill | [references/using-ats-fill.md](references/using-ats-fill.md) |
+| Choosing targets, sources, networking, referrals, outreach messages, weekly cadence | [references/search-strategy.md](references/search-strategy.md) |
+| Resume, cover letter, application questions, "ATS keyword" questions | [references/applications.md](references/applications.md) |
+| Any interview: screens, behavioral/STAR, technical, system design, panels, follow-up | [references/interviews.md](references/interviews.md) |
+| Offers, negotiation, comparing offers, rejections, staying motivated | [references/offers.md](references/offers.md) |
+| Links to authoritative tools, data and further reading | [references/resources.md](references/resources.md) |
 
-## Suggested session workflow
+## Non-negotiables
 
-1. Clarify target role and hard constraints.
-2. Research the occupation, company, and job using primary sources.
-3. Search and shortlist relevant roles.
-4. Save serious candidates to ats-fill.
-5. Analyze each JD and identify evidence gaps.
-6. Tailor resume/profile emphasis and draft answers.
-7. Review every generated answer for factual accuracy and voice.
-8. Fill supported forms with ats-fill.
-9. Manually review the complete application and submit it yourself.
-10. Track the application and source.
-11. If an interview arrives, run Interview Prep against the actual JD.
-12. After the interview, record outcomes and lessons in the tracker.
+- **Truth first.** Reframe and prioritize real experience; never fabricate titles, dates, degrees, metrics, tools or stories. If there is a gap, say so and suggest the closest true bridge or a way to close it.
+- **Verify AI output.** Generated answers, JD summaries and interview questions are drafts. Check facts, numbers and tone against the candidate's own record before anything reaches a form.
+- **Human submits.** Never suggest bypassing employer controls, CAPTCHAs or rate limits, or submitting without the candidate reviewing the complete application.
+- **Protect privacy.** Keep demographic, health, immigration and financial details out of drafts unless the candidate deliberately provides them for a specific question. ats-fill keeps sensitive fields off by default; keep it that way unless asked.
+- **High stakes → primary sources.** For legal, immigration, tax or benefits questions, point to official sources or a qualified professional (see resources).
+- **Watch for scams.** Upfront fees, equipment checks, chat-only interviews, or requests for SSN/bank details before an offer are red flags.
 
-## Anti-patterns
+## Quick answers to common asks
 
-Do not mass-apply blindly, invent experience or credentials, copy job descriptions into resumes without evidence, submit AI-generated answers without review, treat ATS keywords as the whole hiring process, ignore hard constraints, rely on one job board, infer causation from one rejection, disclose unnecessary private information, or use automation to bypass employer controls or submit without the candidate's knowledge.
+- **"Tailor my answer to this question"**: answer the exact question in the requested length; lead with one concrete true example; tie it to the role's stated problem; quantify only real results; end with why it matters for this team.
+- **"Is this role a fit?"**: map each must-have to evidence (strong / partial / missing), list hard-constraint conflicts, give a verdict (`strong yes` → `no`) the candidate can save as the ats-fill verdict, and name the one question to resolve in a screen.
+- **"Prep me for tomorrow's interview"**: build the one-page prep sheet in [interviews.md](references/interviews.md), pick 6–8 stories, and run 3–5 practice questions with feedback.
+- **"I got an offer"**: congratulate, then get it in writing, compare total compensation, and follow the negotiation steps in [offers.md](references/offers.md).
 
-The candidate remains the decision-maker. ats-fill should reduce repetitive work while keeping judgment, truthfulness, and final submission with the human.
+## Anti-patterns to steer away from
+
+Mass-applying without reading the JD; keyword stuffing; one generic resume for every role; relying on one job board; submitting unreviewed AI text; treating silence as a verdict on the candidate's worth; skipping thank-you notes and follow-ups; negotiating before an offer exists; accepting verbally before seeing the written offer.
