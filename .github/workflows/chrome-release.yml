@@ -81,6 +81,69 @@ jobs:
             gh release create "$TAG" "$PACKAGE" SHA256SUMS.txt --title "$TAG" --generate-notes
           fi
 
+  # The Chrome Web Store API (v2) only uploads and publishes the package; it has
+  # no endpoint for listing screenshots, promo tiles or the store icon. Build the
+  # exact listing set from the release tag and attach it to the GitHub Release so
+  # the Developer Dashboard upload is a one-step drag-and-drop for this version.
+  store-assets:
+    name: Store listing assets
+    needs: package
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout exact release
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          ref: ${{ github.event_name == 'workflow_dispatch' && inputs.tag || github.ref }}
+
+      - name: Resolve release tag
+        id: release
+        env:
+          EVENT_TAG: ${{ github.event_name == 'workflow_dispatch' && inputs.tag || github.ref_name }}
+        run: echo "tag=$EVENT_TAG" >> "$GITHUB_OUTPUT"
+
+      - name: Build e2e image
+        run: docker build --target e2e -t ats-fill:e2e .
+
+      - name: Generate store screenshots, promo tiles and icon
+        run: |
+          rm -rf store-assets
+          mkdir -p store-assets
+          docker run --rm \
+            -v "${{ github.workspace }}/store-assets:/app/store-assets" \
+            ats-fill:e2e \
+            sh -c "xvfb-run --server-args='-screen 0 1400x900x24' npx playwright test --config config/playwright.config.mjs tests/e2e/store-assets.spec.mjs"
+
+      - name: Validate against Chrome Web Store image specs
+        run: node scripts/validate-store-assets.mjs store-assets
+
+      - name: Attach listing bundle to the GitHub Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ steps.release.outputs.tag }}
+        run: |
+          BUNDLE="ats-fill-${TAG}-store-assets.zip"
+          cp docs/CHROME_WEB_STORE_ASSETS.md store-assets/README.md
+          (cd store-assets && zip -q -r "../$BUNDLE" .)
+          gh release upload "$TAG" "$BUNDLE" --clobber
+          {
+            echo "### Chrome Web Store listing assets for $TAG"
+            echo
+            echo "The Store API cannot update listing images, so upload these by hand:"
+            echo "1. Download \`$BUNDLE\` from the [$TAG release](${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/releases/tag/${TAG})."
+            echo "2. Open the [Developer Dashboard](https://chrome.google.com/webstore/devconsole) → ats-fill → **Store listing**."
+            echo "3. Replace the store icon, the five screenshots (in file order) and both promo tiles, then save."
+            echo
+            echo "| File | Dashboard slot |"
+            echo "| --- | --- |"
+            echo "| store-icon-128.png | Store icon |"
+            echo "| screenshot-01 … 05 (*.jpg) | Screenshots 1–5 |"
+            echo "| small-promo.jpg | Small promo tile |"
+            echo "| marquee-promo.jpg | Marquee promo tile |"
+          } >> "$GITHUB_STEP_SUMMARY"
+
   publish:
     name: Publish to Chrome Web Store
     needs: package

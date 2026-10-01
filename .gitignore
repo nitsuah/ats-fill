@@ -4,3 +4,5 @@
 .claude/
 brag-output*/
 .agents/
+/store-assets/
+/video-build/

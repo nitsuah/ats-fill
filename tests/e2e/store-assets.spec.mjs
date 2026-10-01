@@ -1,6 +1,8 @@
 /**
  * Chrome Web Store asset capture.
- * Produces five 1280x800 JPEG screenshots plus 440x280 and 1400x560 promo tiles.
+ * Produces five 1280x800 JPEG screenshots, 440x280 and 1400x560 promo tiles,
+ * and a 128x128 store icon (96x96 artwork inside 16px transparent padding, per
+ * https://developer.chrome.com/docs/webstore/images#icons).
  * All data comes from the deterministic fictional Playwright fixture.
  */
 import { test, expect } from '@playwright/test';
@@ -13,6 +15,7 @@ import { seedDemoState, DEMO_NOW, DEMO_JOBS, DEMO_SEARCH_SOURCES, DEMO_ACTIVE_TA
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const EXTENSION_PATH = path.join(__dirname, '../../dist');
 const OUT_DIR = path.resolve('store-assets');
+const ICON_PATH = path.join(__dirname, '../../icons/icon128.png');
 const STORE_VIEWPORT = { width: 1280, height: 800 };
 const STABLE_STYLE = [
   '*, *::before, *::after {',
@@ -164,6 +167,13 @@ test('Chrome Web Store screenshots and promo tiles', async () => {
   await marquee.setContent(promoMarkup(1400, 560, 'The same 20 questions on 47 different forms.', 'ats-fill · local-first application assistant', 'Save your profile once. Fill supported ATS forms locally, track every application, search jobs across multiple boards, and keep the final submit button yours.', imageData));
   await marquee.screenshot({ path: path.join(OUT_DIR, 'marquee-promo.jpg'), type: 'jpeg', quality: 92 });
   await marquee.close();
+
+  const iconData = 'data:image/png;base64,' + (await fs.readFile(ICON_PATH)).toString('base64');
+  const icon = await context.newPage();
+  await icon.setViewportSize({ width: 128, height: 128 });
+  await icon.setContent('<!doctype html><style>html,body{margin:0;background:transparent}img{display:block;width:96px;height:96px;margin:16px}</style><img src="' + iconData + '" alt="">');
+  await icon.screenshot({ path: path.join(OUT_DIR, 'store-icon-128.png'), type: 'png', omitBackground: true });
+  await icon.close();
 
   await main.close();
   await tracker.close();
