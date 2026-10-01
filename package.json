@@ -9,7 +9,8 @@
     "test:e2e": "xvfb-run --auto-servernum playwright test --config config/playwright.config.mjs",
     "test:e2e-headed": "playwright test --headed",
     "lint": "eslint popup/popup.js lib/*.js --max-warnings=0 --config config/eslint.config.mjs",
-    "preview": "node scripts/preview/server.mjs"
+    "preview": "node scripts/preview/server.mjs",
+    "video": "ATS_FILL_VIDEO=1 xvfb-run --auto-servernum --server-args='-screen 0 1920x1200x24' playwright test --config config/playwright.config.mjs tests/e2e/feature-video.spec.mjs && node scripts/build-feature-video.mjs"
   },
   "dependencies": {
     "@eslint/js": "^9.0.0",

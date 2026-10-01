@@ -3,3 +3,5 @@ coverage
 playwright-report
 test-results
 .git
+store-assets
+video-build

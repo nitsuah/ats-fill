@@ -10,7 +10,8 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import fs from 'node:fs/promises';
 import { launchExtensionContext } from './helpers/extension-context.mjs';
-import { seedDemoState, DEMO_NOW, DEMO_JOBS, DEMO_SEARCH_SOURCES, DEMO_ACTIVE_TAB } from './helpers/demo-state.mjs';
+import { seedDemoState, DEMO_JOBS } from './helpers/demo-state.mjs';
+import { installDemoFixtures } from './helpers/demo-fixtures.mjs';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const EXTENSION_PATH = path.join(__dirname, '../../dist');
@@ -83,44 +84,9 @@ function promoMarkup(width, height, title, eyebrow, body, imageData) {
   ].join('');
 }
 
-async function installFixtures() {
-  await context.addInitScript(({ timestamp }) => {
-    const OriginalDate = Date;
-    class FixedDate extends OriginalDate {
-      constructor(...args) { super(...(args.length ? args : [timestamp])); }
-      static now() { return timestamp; }
-    }
-    globalThis.Date = FixedDate;
-  }, { timestamp: DEMO_NOW });
-
-  await context.addInitScript(({ jobs, sources, activeTab }) => {
-    if (typeof chrome === 'undefined' || !chrome.runtime) return;
-    const realSend = chrome.runtime.sendMessage.bind(chrome.runtime);
-    chrome.runtime.sendMessage = (msg, callback) => {
-      if (msg?.type === 'SEARCH_JOBS') {
-        const response = { success: true, jobs, sources };
-        if (typeof callback === 'function') setTimeout(() => callback(response), 50);
-        return Promise.resolve(response);
-      }
-      return realSend(msg, callback);
-    };
-    if (chrome.tabs) {
-      const fakeTab = { id: 424242, url: activeTab.url, active: true };
-      chrome.tabs.query = async () => [fakeTab];
-      chrome.tabs.sendMessage = (_tabId, msg, callback) => {
-        let response;
-        if (msg?.type === 'DETECT_ATS') response = { ats: activeTab.ats };
-        else if (msg?.type === 'GET_JOB_INFO') response = { success: true, job: activeTab.job };
-        else response = { success: false, error: 'Store fixture: no live job page.' };
-        setTimeout(() => callback?.(response), 0);
-      };
-    }
-  }, { jobs: DEMO_JOBS, sources: DEMO_SEARCH_SOURCES, activeTab: DEMO_ACTIVE_TAB });
-}
-
 test.beforeAll(async () => {
   ({ context, extensionId } = await launchExtensionContext(EXTENSION_PATH, 'playwright-store-assets'));
-  await installFixtures();
+  await installDemoFixtures(context);
 });
 
 test.afterAll(async () => { await context?.close(); });
