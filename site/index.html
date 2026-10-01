@@ -30,7 +30,9 @@
       <a href="#features">Features</a>
       <a href="#privacy">Privacy</a>
       <a href="#install">Install</a>
+      <a href="#skill">Skill</a>
       <a class="nav-gh" href="https://github.com/nitsuah/ats-fill" target="_blank" rel="noopener">GitHub</a>
+      <a class="nav-store" href="https://chromewebstore.google.com/detail/ats-fill/amofaeopfmaicbiijgjaojenedkkadmn" target="_blank" rel="noopener">Chrome Web Store</a>
     </nav>
   </div>
 
@@ -41,14 +43,14 @@
       <p class="tagline">Fill the form. Keep the receipts.</p>
       <p class="hero-sub">ats-fill is a Chrome extension that fills <strong>Greenhouse, Lever, Ashby and Workday</strong> application forms from the profile you saved once. <strong>You review every field and press submit.</strong> Every application lands in a pipeline that lives in your browser, not on someone's server.</p>
       <div class="hero-ctas">
-        <a class="btn btn-primary" href="#install">Install it</a>
+        <a class="btn btn-primary" href="https://chromewebstore.google.com/detail/ats-fill/amofaeopfmaicbiijgjaojenedkkadmn" target="_blank" rel="noopener"><svg class="btn-icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="10" fill="none" stroke="currentColor" stroke-width="2"/><circle cx="12" cy="12" r="4" fill="currentColor"/><path d="M12 8h9M8.5 14 4 6.2M15.5 14 11 21.8" fill="none" stroke="currentColor" stroke-width="2"/></svg> Add to Chrome</a>
         <a class="btn btn-ghost" href="https://github.com/nitsuah/ats-fill" target="_blank" rel="noopener">View on GitHub <span aria-hidden="true">↗</span></a>
       </div>
       <p class="hero-note">Free and open source (MIT). Screenshots and video use fictional demo data.</p>
     </div>
 
     <figure class="hero-video">
-      <video id="hero-vid" src="assets/ats-fill.mp4" poster="assets/poster.jpg" muted loop playsinline preload="metadata" aria-label="21-second ats-fill launch video"></video>
+      <video id="hero-vid" src="assets/ats-fill.mp4" poster="assets/poster.jpg" muted loop playsinline preload="metadata" aria-label="23-second ats-fill launch video"></video>
       <div class="hero-controls">
         <button id="hero-play" class="vid-btn" type="button" aria-label="Play video" data-state="paused">
           <svg class="i-pause" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M6 5h4v14H6zm8 0h4v14h-4z"/></svg>
@@ -138,7 +140,11 @@
 
   <section class="install-sec" id="install" aria-labelledby="install-title">
     <h2 id="install-title">Install it.</h2>
-    <p class="install-lead">Not on the Chrome Web Store yet. Until it is, load it unpacked from the repo; it takes about two minutes.</p>
+    <p class="install-lead">Get it from the Chrome Web Store: one click, and Chrome keeps it up to date.</p>
+    <div class="hero-ctas center">
+      <a class="btn btn-primary btn-lg" href="https://chromewebstore.google.com/detail/ats-fill/amofaeopfmaicbiijgjaojenedkkadmn" target="_blank" rel="noopener"><svg class="btn-icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="10" fill="none" stroke="currentColor" stroke-width="2"/><circle cx="12" cy="12" r="4" fill="currentColor"/><path d="M12 8h9M8.5 14 4 6.2M15.5 14 11 21.8" fill="none" stroke="currentColor" stroke-width="2"/></svg> Add to Chrome, it's free</a>
+    </div>
+    <p class="install-alt">Prefer to run it from source? Load it unpacked from the repo; it takes about two minutes.</p>
     <pre class="install"><button class="copy" type="button" data-copy="git clone https://github.com/nitsuah/ats-fill.git">Copy</button><code><span class="prompt">$</span> git clone https://github.com/nitsuah/ats-fill.git</code></pre>
     <ol class="steps">
       <li>Clone the repo (or <a href="https://github.com/nitsuah/ats-fill/archive/refs/heads/main.zip">download the ZIP</a> and unzip it).</li>
@@ -152,10 +158,24 @@
       <a class="btn btn-ghost" href="https://github.com/nitsuah/ats-fill/blob/main/docs/FEATURES.md" target="_blank" rel="noopener">All features <span aria-hidden="true">↗</span></a>
     </div>
   </section>
+
+  <section class="skill-sec" id="skill" aria-labelledby="skill-title">
+    <p class="kicker">Skill</p>
+    <h2 id="skill-title">A job-search coach <span class="emph">for your AI assistant.</span></h2>
+    <p class="skill-lead">The repo ships a Claude skill: a playbook for searching, applying and interviewing well, plus how to get the most out of ats-fill. Drop it into Claude Code, the Claude apps, or any agent that reads <code>SKILL.md</code> files.</p>
+    <ul class="skill-grid">
+      <li><h3>Search with intent</h3><p>Pick role families, triage job descriptions into must-haves and learnables, and keep a scored shortlist instead of mass-applying.</p></li>
+      <li><h3>Apply honestly</h3><p>Tailor emphasis without inventing experience, write STAR answers from real stories, and review every AI draft before it reaches a form.</p></li>
+      <li><h3>Interview prepared</h3><p>Build a prep sheet per interview, rehearse 6–8 stories aloud, structure technical answers, and ask questions that surface the real job.</p></li>
+      <li><h3>Negotiate and follow up</h3><p>Research pay with public data, respond to offers in writing, and log every stage so the next search starts smarter.</p></li>
+    </ul>
+    <pre class="install"><button class="copy" type="button" data-copy="npx skills add nitsuah/ats-fill --skill ats-fill-job-search -g">Copy</button><code><span class="prompt">$</span> npx skills add nitsuah/ats-fill --skill ats-fill-job-search -g</code></pre>
+    <p class="install-alt">Or copy <a href="https://github.com/nitsuah/ats-fill/tree/main/skills/ats-fill-job-search" target="_blank" rel="noopener"><code>skills/ats-fill-job-search</code></a> into <code>~/.claude/skills/</code>. In the Claude apps, zip the folder, then go to Customize → Skills → + → Create skill → Upload a skill and toggle it on.</p>
+  </section>
 </main>
 
 <footer class="foot">
-  <span>ats-fill · MIT · made by <a href="https://github.com/nitsuah" target="_blank" rel="noopener">@nitsuah</a></span>
+  <span>ats-fill · MIT · made by <a href="https://github.com/nitsuah" target="_blank" rel="noopener">@nitsuah</a> · <a href="https://chromewebstore.google.com/detail/ats-fill/amofaeopfmaicbiijgjaojenedkkadmn" target="_blank" rel="noopener">Chrome Web Store</a></span>
   <span class="foot-note">Screenshots and video show fictional demo data.</span>
 </footer>
 <script src="main.js" defer></script>

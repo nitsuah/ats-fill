@@ -1,0 +1,50 @@
+name: Feature Tour Video
+
+# Renders the YouTube feature tour (per-feature shorts + combined cut with
+# chapters) from the real extension and fictional demo data. Manual only: the
+# encode takes several minutes and the output is uploaded to YouTube by hand.
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  render:
+    name: Render feature tour
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+
+      - name: Build video image
+        run: docker build --target video -t ats-fill:video .
+
+      - name: Capture frames and encode
+        run: |
+          mkdir -p video-build
+          docker run --rm -v "${{ github.workspace }}/video-build:/app/video-build" ats-fill:video
+
+      - name: Summary
+        run: |
+          {
+            echo '### Feature tour'
+            echo
+            echo '```'
+            ls -lh video-build/out/*.mp4 video-build/out/shorts/*.mp4
+            echo '```'
+            echo
+            cat video-build/out/youtube.md
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Upload video
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: ats-fill-feature-tour
+          path: |
+            video-build/out/*.mp4
+            video-build/out/shorts/
+            video-build/out/youtube.md
+            video-build/out/thumbnail.jpg
+          if-no-files-found: error
+          retention-days: 30

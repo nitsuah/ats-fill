@@ -30,9 +30,11 @@ async function waitForServiceWorker(context, timeout = 45000) {
  *
  * @param {string} extensionPath - Absolute path to the built extension dist dir.
  * @param {string} [profilePrefix] - Prefix for the temporary user data dir.
+ * @param {object} [contextOptions] - Extra launchPersistentContext options
+ *   (e.g. deviceScaleFactor for high-DPI video frames).
  * @returns {{ context: import('@playwright/test').BrowserContext, extensionId: string }}
  */
-export async function launchExtensionContext(extensionPath, profilePrefix = 'playwright-ext') {
+export async function launchExtensionContext(extensionPath, profilePrefix = 'playwright-ext', contextOptions = {}) {
   if (!fs.existsSync(extensionPath)) {
     throw new Error(
       `Extension build not found at "${extensionPath}". Run npm run build first.`
@@ -41,6 +43,7 @@ export async function launchExtensionContext(extensionPath, profilePrefix = 'pla
 
   const userDataDir = `/tmp/${profilePrefix}-${Math.random().toString(36).slice(2)}`;
   const context = await chromium.launchPersistentContext(userDataDir, {
+    ...contextOptions,
     headless: false,
     args: [
       `--disable-extensions-except=${extensionPath}`,

@@ -18,3 +18,11 @@ RUN npx playwright install chromium
 COPY . .
 RUN npm run build
 CMD ["npm", "run", "test:e2e"]
+
+# Feature-tour video: e2e image + ffmpeg. Renders frames from the real extension
+# and assembles the YouTube cut into /app/video-build (see video/README.md).
+FROM e2e AS video
+RUN apt-get update \
+  && apt-get install -y --no-install-recommends ffmpeg \
+  && rm -rf /var/lib/apt/lists/*
+CMD ["npm", "run", "video"]
