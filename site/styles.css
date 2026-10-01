@@ -110,6 +110,7 @@ nav { display: flex; flex-wrap: wrap; gap: 6px clamp(12px, 2.4vw, 28px); font-si
 nav a { color: var(--ink-2); text-decoration: none; }
 nav a:hover { color: var(--stamp); }
 .nav-gh { color: var(--ink) !important; font-weight: 600; }
+.nav-store { color: var(--stamp) !important; font-weight: 600; }
 
 .hero-main { max-width: var(--max); margin: clamp(28px, 5vw, 64px) auto 0; display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.15fr); gap: clamp(28px, 4vw, 56px); align-items: center; }
 .eyebrow { color: var(--ink-2); margin-bottom: 18px; display: flex; align-items: center; gap: 10px; }
@@ -124,6 +125,8 @@ nav a:hover { color: var(--stamp); }
 
 .btn { display: inline-flex; align-items: center; gap: 8px; padding: 12px 22px; border-radius: 9px; font-weight: 600; font-size: 1rem; text-decoration: none; transition: transform .15s ease, box-shadow .15s ease, background .2s ease; }
 .btn:hover { transform: translate(-1px, -1px); }
+.btn-icon { width: 1.15em; height: 1.15em; flex: none; }
+.btn-lg { padding: 15px 28px; font-size: 1.1rem; }
 .btn-primary { background: var(--stamp); color: var(--on-stamp); border: 1px solid var(--stamp-strong); box-shadow: 3px 3px 0 var(--stamp-strong); }
 .btn-primary:hover { color: var(--on-stamp); background: var(--stamp-strong); box-shadow: 4px 4px 0 var(--ink); }
 .btn-ghost { border: 1px solid var(--rule-strong); color: var(--ink); background: var(--card); box-shadow: 3px 3px 0 var(--rule); }
@@ -192,6 +195,19 @@ main { padding: 0 var(--gutter); }
 .steps li { counter-increment: step; position: relative; padding: 14px 18px 14px 58px; background: var(--card); border: 1px solid var(--rule); border-radius: 10px; color: var(--ink-2); }
 .steps li::before { content: counter(step, decimal-leading-zero); position: absolute; left: 18px; top: 14px; font-family: var(--mono); font-weight: 500; font-size: 0.85rem; color: var(--stamp); }
 .steps strong { color: var(--ink); }
+.install-alt { color: var(--muted); margin: 26px auto 0; max-width: 40em; font-size: 0.95rem; }
+
+/* ---------- Skill ---------- */
+.skill-sec { max-width: var(--max); margin: clamp(80px, 11vw, 140px) auto 0; }
+.skill-lead { color: var(--ink-2); margin-top: 18px; max-width: 46em; }
+.skill-grid { list-style: none; padding: 0; margin: 30px 0 0; display: grid; grid-template-columns: 1fr; gap: 14px; }
+/* Four cards: step 1 → 2 → 4 columns so a lone card never trails a row. */
+@media (min-width: 640px) { .skill-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (min-width: 1100px) { .skill-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); } }
+.skill-grid li { background: var(--card); border: 1px solid var(--rule); border-radius: var(--radius); padding: 20px 22px; }
+.skill-grid h3 { font-size: 1.2rem; letter-spacing: -0.01em; }
+.skill-grid p { color: var(--ink-2); margin-top: 8px; font-size: 0.97rem; }
+.skill-sec .install-alt { margin-left: 0; }
 
 .foot { max-width: var(--max); margin: clamp(80px, 10vw, 120px) auto 0; padding: 28px var(--gutter) 40px; border-top: 1px solid var(--rule); display: flex; flex-wrap: wrap; justify-content: space-between; gap: 12px; color: var(--muted); font-size: 0.9rem; }
 .foot-note { color: var(--faint); }
