@@ -17,7 +17,7 @@ _None._
   - Type: Bug · Confidence: High
   - Problem: the latest `Chrome Web Store Release` run ([36816311174](https://github.com/nitsuah/ats-fill/actions/runs/36816311174), 2026-10-01) failed at "Publish to Chrome Web Store" with `OAuth token refresh failed (400): invalid_grant — Token has been expired or revoked`. The run before it (2026-09-30 22:15) also failed. On 2026-10-01 the public listing still showed **Version 1.0.0**, while `manifest.json` and the `v1.0.2` tag are 1.0.2.
   - Why: no fix since 1.0.0 reaches store users until publishing works again.
-  - Acceptance Criteria: a new refresh token is stored in the repo secret the workflow reads; a `chrome-release.yml` run publishes successfully; the listing's version matches the latest tag (or the item is in review, with the dashboard status noted here).
+  - Acceptance Criteria: a new refresh token is stored in the production environment secret `CWS_REFRESH_TOKEN`; a `chrome-release.yml` run publishes successfully; the listing's version matches the latest tag (or the item is in review, with the dashboard status noted here).
   - Dependencies: needs the store owner's Google account (a human step; an agent can't do it).
 - [ ] Fix the release workflow's "Store listing assets" job ("No tests found").
   - Priority: P2
