@@ -31,10 +31,11 @@ async function waitForServiceWorker(context, timeout = 45000) {
  * @param {string} extensionPath - Absolute path to the built extension dist dir.
  * @param {string} [profilePrefix] - Prefix for the temporary user data dir.
  * @param {object} [contextOptions] - Extra launchPersistentContext options
- *   (e.g. deviceScaleFactor for high-DPI video frames).
+ *   (e.g. deviceScaleFactor for high-DPI video frames). `args` are appended
+ *   to the extension flags rather than replacing them.
  * @returns {{ context: import('@playwright/test').BrowserContext, extensionId: string }}
  */
-export async function launchExtensionContext(extensionPath, profilePrefix = 'playwright-ext', contextOptions = {}) {
+export async function launchExtensionContext(extensionPath, profilePrefix = 'playwright-ext', { args: extraArgs = [], ...contextOptions } = {}) {
   if (!fs.existsSync(extensionPath)) {
     throw new Error(
       `Extension build not found at "${extensionPath}". Run npm run build first.`
@@ -55,6 +56,7 @@ export async function launchExtensionContext(extensionPath, profilePrefix = 'pla
       '--disable-setuid-sandbox',
       '--disable-dev-shm-usage',
       '--force-color-profile=srgb',
+      ...extraArgs,
     ],
   });
 
