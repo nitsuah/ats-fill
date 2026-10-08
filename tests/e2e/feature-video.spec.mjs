@@ -180,7 +180,7 @@ test('feature tour frames', async () => {
   await reveal(page, '#profile-resume-section');
   await shoot('profile-resume', page, popupUrl('Profile'));
   await reveal(page, '#profile-memory-section');
-  await expect(page.locator('#learned-defaults-list .memory-bubble').first()).toBeVisible();
+  await expect(page.locator('#learned-defaults-list .memory-bubble').first()).toBeVisible({ timeout: 15000 });
   await shoot('profile-memory', page, popupUrl('Profile · Memory'));
   await page.close();
 

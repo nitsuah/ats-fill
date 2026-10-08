@@ -253,7 +253,7 @@ Or copy `skills/ats-fill-job-search/` into `~/.claude/skills/` (Claude Code) or 
 
 ## Feature tour video
 
-A longer walkthrough for YouTube is generated from the real extension and fictional demo data: one short per feature plus a combined cut with chapters, rendered in 4K (2160p). See [video/README.md](./video/README.md).
+A longer walkthrough for YouTube is generated from the real extension and fictional demo data: one short per feature plus a narrated combined cut with chapters, rendered in 4K (2160p) for YouTube. A 1080p cut plays in the [feature tour](https://nitsuah.github.io/ats-fill/#tour) section of the landing page. See [video/README.md](./video/README.md).
 
 ## Tech Stack
 
