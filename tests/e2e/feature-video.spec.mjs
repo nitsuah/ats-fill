@@ -22,7 +22,9 @@ import {
   SEGMENTS, INTRO, OUTRO, STORE_URL, REPO_URL, SITE_URL, FPS, SCALE, TITLE_HOLD, holdSeconds,
 } from '../../video/storyboard.mjs';
 import { sceneFrame, titleFrame, introFrame, outroFrame } from '../../video/stage.mjs';
-import { cardTimeline, sceneTimeline, SHOT } from '../../video/timeline.mjs';
+import {
+  cardTimeline, sceneTimeline, fitCard, fitBeat, stepVoiceAt, VOICE, SHOT,
+} from '../../video/timeline.mjs';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const EXTENSION_PATH = path.join(__dirname, '../../dist');
@@ -31,6 +33,8 @@ const FIXTURE_PATH = path.join(__dirname, 'fixtures/fake-ats.html');
 // the content script's real host match and ATS detection run on the fixture.
 const ATS_URL = 'https://boards.greenhouse.io/northstarlabs/jobs/4410388';
 const OUT_DIR = path.resolve('video-build/frames');
+// Narration from scripts/voice/narrate.mjs; without it the video is silent.
+const VOICE_MANIFEST = path.resolve('video-build/voice/manifest.json');
 const VIEWPORT = { width: SHOT.w, height: SHOT.h };
 // 3x capture (3840x2400): the window is 2472px wide in the 4K frame, so the
 // camera can zoom ~1.55x into a step before any pixel is upscaled. Grayscale
@@ -310,6 +314,9 @@ test('feature tour frames', async () => {
   const chapters = SEGMENTS.map((seg) => seg.title);
   const units = [];
   const started = Date.now();
+  const voiceClips = fs.existsSync(VOICE_MANIFEST) ? JSON.parse(fs.readFileSync(VOICE_MANIFEST, 'utf8')).clips : {};
+  const voiceOf = (id) => voiceClips[id]?.seconds;
+  const cue = (id, at) => (voiceClips[id] ? [{ file: voiceClips[id].file, at: Math.round(at * 1000) / 1000 }] : []);
   const unit = async (id, kind, parts, extra = {}) => {
     const entries = [];
     for (const [html, runs] of parts) entries.push(...await renderRuns(id, html, runs, entries.length));
@@ -318,23 +325,36 @@ test('feature tour frames', async () => {
     console.log(`frames  ${id}: ${entries.length} renders, ${(frames / FPS).toFixed(1)}s (${Math.round((Date.now() - started) / 1000)}s elapsed)`);
   };
 
+  // Cards and steps stretch to fit their narration; each unit lists its cues.
   await unit('intro', 'intro', [
-    [introFrame({ ...INTRO, shot: shots.get('intro-shot').shot }), cardTimeline(holdSeconds(INTRO))],
-  ], { title: 'Intro' });
+    [introFrame({ ...INTRO, shot: shots.get('intro-shot').shot }), cardTimeline(fitCard(holdSeconds(INTRO), voiceOf('intro')))],
+  ], { title: 'Intro', voice: cue('intro', VOICE.card) });
   for (const [i, segment] of SEGMENTS.entries()) {
-    const beats = segment.beats.map((beat) => {
+    const beats = segment.beats.map((beat, j) => {
       const captured = shots.get(beat.id);
       if (!captured) throw new Error(`No capture for storyboard beat "${beat.id}"`);
-      return { ...beat, ...captured, click: clicks.get(beat.id) ?? null };
+      return fitBeat({ ...beat, ...captured, click: clicks.get(beat.id) ?? null }, j, voiceOf(beat.id));
     });
+    const titleId = `title-${segment.slug}`;
+    const titleRuns = cardTimeline(fitCard(TITLE_HOLD, voiceOf(titleId)));
+    const titleSeconds = titleRuns.reduce((sum, r) => sum + r.frames, 0) / FPS;
+    const scene = sceneTimeline(beats);
     await unit(`${String(i + 1).padStart(2, '0')}-${segment.slug}`, 'chapter', [
-      [titleFrame({ chapter: i + 1, chapters, title: segment.title, summary: segment.summary }), cardTimeline(TITLE_HOLD)],
-      [sceneFrame({ chapter: i + 1, chapterCount: SEGMENTS.length, chapterTitle: segment.title, beats }), sceneTimeline(beats).runs],
-    ], { title: segment.title, slug: segment.slug, summary: segment.summary });
+      [titleFrame({ chapter: i + 1, chapters, title: segment.title, summary: segment.summary }), titleRuns],
+      [sceneFrame({ chapter: i + 1, chapterCount: SEGMENTS.length, chapterTitle: segment.title, beats }), scene.runs],
+    ], {
+      title: segment.title,
+      slug: segment.slug,
+      summary: segment.summary,
+      voice: [
+        ...cue(titleId, VOICE.card),
+        ...scene.plan.flatMap((step) => cue(step.beat.id, titleSeconds + step.start + stepVoiceAt(step.index))),
+      ],
+    });
   }
   await unit('outro', 'outro', [
-    [outroFrame({ ...OUTRO, storeUrl: STORE_URL, repoUrl: REPO_URL, siteUrl: SITE_URL }), cardTimeline(holdSeconds(OUTRO), { dipOut: false })],
-  ]);
+    [outroFrame({ ...OUTRO, storeUrl: STORE_URL, repoUrl: REPO_URL, siteUrl: SITE_URL }), cardTimeline(fitCard(holdSeconds(OUTRO), voiceOf('outro')), { dipOut: false })],
+  ], { voice: cue('outro', VOICE.card) });
 
   // Thumbnail source: the intro's long hold, once everything has risen in.
   const poster = units[0].entries.reduce((best, e) => (e.frames > best.frames ? e : best)).file;

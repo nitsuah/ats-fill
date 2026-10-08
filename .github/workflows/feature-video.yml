@@ -1,13 +1,24 @@
 name: Feature Tour Video
 
-# Renders the YouTube feature tour (per-feature shorts + combined cut with
-# chapters) from the real extension and fictional demo data. Manual only: the
-# encode takes several minutes and the output is uploaded to YouTube by hand.
+# Renders the narrated 4K YouTube feature tour (per-feature shorts + combined
+# cut with chapters) from the real extension and fictional demo data. Manual
+# only: the render takes ~15 minutes. Outputs:
+#   - artifact ats-fill-feature-tour: 4K master, shorts, captions, YouTube copy
+#     (upload to YouTube by hand)
+#   - artifact ats-fill-feature-tour-web: the 1080p cut for site/assets
+#     (commit it with `npm run video:publish`, see video/README.md)
+#   - optionally, the 4K master, shorts and captions attached to a GitHub
+#     Release (too large for git; GitHub rejects files over 100 MB)
 on:
   workflow_dispatch:
+    inputs:
+      release_tag:
+        description: Attach the 4K master to this existing release tag (e.g. v1.2.0); leave empty to skip
+        required: false
+        default: ''
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
   render:
@@ -46,5 +57,26 @@ jobs:
             video-build/out/shorts/
             video-build/out/youtube.md
             video-build/out/thumbnail.jpg
+            video-build/out/web/feature-tour.en.vtt
           if-no-files-found: error
           retention-days: 30
+
+      - name: Upload web cut
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: ats-fill-feature-tour-web
+          path: video-build/out/web/
+          if-no-files-found: error
+          retention-days: 30
+
+      - name: Attach to release
+        if: inputs.release_tag != ''
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ inputs.release_tag }}
+        run: |
+          gh release upload "$TAG" --clobber \
+            video-build/out/ats-fill-feature-tour.mp4 \
+            video-build/out/shorts/*.mp4 \
+            video-build/out/web/feature-tour.en.vtt \
+            video-build/out/thumbnail.jpg

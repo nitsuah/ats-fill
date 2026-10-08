@@ -2,6 +2,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import {
   cameraFor, mixCamera, project, cardTimeline, sceneTimeline, beatSeconds, frameCount, VIEW, SHOT, MAX_ZOOM,
+  fitCard, fitBeat, stepVoiceAt, VOICE,
 } from '../video/timeline.mjs';
 import { SEGMENTS, INTRO, TITLE_HOLD, FPS, holdSeconds } from '../video/storyboard.mjs';
 
@@ -82,4 +83,19 @@ test('every storyboard chapter fits its motion and runs long enough for a YouTub
     const seconds = TITLE_HOLD + frameCount(sceneTimeline(beats).runs) / FPS;
     assert.ok(seconds >= 10, `${segment.slug} is ${seconds}s`);
   }
+});
+
+test('narration stretches cards and steps so each line ends before the next screen', () => {
+  assert.equal(fitCard(4, null), 4);
+  assert.equal(fitCard(4, 1.5), 4);
+  assert.ok(fitCard(4, 6) >= VOICE.card + 6 + VOICE.cardTail);
+  const beats = [
+    { id: 'a', title: 'A', body: 'short', focus: null, click: null },
+    { id: 'b', title: 'B', body: 'short', focus: null, click: null },
+  ].map((b, i) => fitBeat(b, i, 14));
+  const { plan } = sceneTimeline(beats);
+  for (const step of plan) assert.ok(step.start + stepVoiceAt(step.index) + 14 <= step.end - VOICE.stepTail + 1e-9);
+  const plain = { id: 'c', title: 'C', body: 'x', focus: null, click: null };
+  assert.equal(fitBeat(plain, 0, null), plain);
+  assert.equal(fitBeat(plain, 0, 1).hold, holdSeconds(plain));
 });

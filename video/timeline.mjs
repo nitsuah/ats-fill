@@ -125,6 +125,23 @@ export function cardTimeline(seconds, { dipOut = true } = {}) {
 export const beatSeconds = (beat) => holdSeconds(beat) + MOTION_PAD;
 
 /**
+ * Voiceover cues. A card's line starts once the dip-in settles; a step's line
+ * starts as its screen finishes fading in and must end before the step does,
+ * so the narrator never talks over the next screen.
+ */
+export const VOICE = { card: 0.5, cardTail: 0.7, stepTail: 0.35 };
+export const stepVoiceAt = (index) => (index === 0 ? TIMING.dip : TIMING.swap) + 0.2;
+
+/** Card length that fits its narration (`voice` seconds, or none). */
+export const fitCard = (seconds, voice) => (voice ? Math.max(seconds, VOICE.card + voice + VOICE.cardTail) : seconds);
+
+/** The step with its hold stretched, if needed, to fit its narration. */
+export function fitBeat(beat, index, voice) {
+  if (!voice) return beat;
+  return { ...beat, hold: Math.max(holdSeconds(beat), stepVoiceAt(index) + voice + VOICE.stepTail - MOTION_PAD) };
+}
+
+/**
  * Plan one chapter's steps. Each step: enter (dip from paper for the first,
  * otherwise a crossfade inside the same window), look at the whole screen,
  * zoom into its focus area, hold, then zoom back out while the cursor travels
