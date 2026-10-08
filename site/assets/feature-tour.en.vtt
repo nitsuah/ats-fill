@@ -1,0 +1,313 @@
+WEBVTT
+
+00:00:00.500 --> 00:00:03.523
+The same 20 questions on 47 different forms.
+
+00:00:03.523 --> 00:00:04.828
+ats-fill is a free,
+
+00:00:04.828 --> 00:00:10.735
+local-first Chrome extension that fills job applications from a profile you save once,
+
+00:00:10.735 --> 00:00:12.796
+then tracks every application.
+
+00:00:12.796 --> 00:00:14.651
+Here is everything it does.
+
+00:00:15.867 --> 00:00:16.605
+Chapter one.
+
+00:00:16.605 --> 00:00:18.143
+Your profile, saved once.
+
+00:00:19.967 --> 00:00:21.676
+Upload your resume once.
+
+00:00:21.676 --> 00:00:23.456
+PDF, DOCX or pasted text.
+
+00:00:23.456 --> 00:00:24.596
+Contact details,
+
+00:00:24.596 --> 00:00:28.727
+work history and standard answers like work authorization,
+
+00:00:28.727 --> 00:00:32.145
+start date and salary range are saved in Chrome,
+
+00:00:32.145 --> 00:00:33.214
+on your device.
+
+00:00:34.314 --> 00:00:35.691
+Memory you can audit.
+
+00:00:35.691 --> 00:00:38.905
+Answers you correct on real forms are remembered.
+
+00:00:38.905 --> 00:00:41.528
+Review, edit, ignore or delete each one.
+
+00:00:41.528 --> 00:00:45.201
+Sensitive demographic fields stay off unless you opt in.
+
+00:00:46.567 --> 00:00:47.280
+Chapter two.
+
+00:00:47.280 --> 00:00:48.706
+Fill a real application.
+
+00:00:50.667 --> 00:00:52.140
+Land on an application.
+
+00:00:52.140 --> 00:00:56.239
+Greenhouse, Lever, Ashby and Workday are detected automatically.
+
+00:00:56.239 --> 00:00:59.954
+ats-fill reads the job description straight from the page.
+
+00:01:02.817 --> 00:01:03.745
+Open ats-fill.
+
+00:01:03.745 --> 00:01:06.329
+The home screen shows the detected ATS,
+
+00:01:06.329 --> 00:01:07.655
+whether your resume,
+
+00:01:07.655 --> 00:01:09.577
+profile and memory are ready,
+
+00:01:09.577 --> 00:01:11.367
+and how the last fill went.
+
+00:01:15.317 --> 00:01:17.186
+Review before anything is typed.
+
+00:01:17.186 --> 00:01:21.276
+Preview every answer it will use, search them, and fix anything first.
+
+00:01:21.276 --> 00:01:24.315
+Questions it cannot answer are flagged, not guessed.
+
+00:01:27.817 --> 00:01:28.854
+Filled in place.
+
+00:01:28.854 --> 00:01:29.956
+You press submit.
+
+00:01:29.956 --> 00:01:32.355
+Fields are filled on the page itself.
+
+00:01:32.355 --> 00:01:33.198
+File uploads,
+
+00:01:33.198 --> 00:01:38.710
+attestations and the submit button stay yours: ats-fill never submits an application.
+
+00:01:40.067 --> 00:01:41.004
+Chapter three.
+
+00:01:41.004 --> 00:01:42.946
+Search 16 job boards at once.
+
+00:01:44.234 --> 00:01:45.979
+One search box, 16 boards.
+
+00:01:45.979 --> 00:01:48.665
+Nine keyless boards work out of the box,
+
+00:01:48.665 --> 00:01:49.941
+including Remotive,
+
+00:01:49.941 --> 00:01:52.425
+We Work Remotely and HN Who's Hiring.
+
+00:01:52.425 --> 00:01:55.245
+Toggle any source on or off with its chip.
+
+00:01:56.884 --> 00:01:58.788
+Deduped results, ready to save.
+
+00:01:58.788 --> 00:02:02.413
+Each card shows pay, location and a source-confidence hint.
+
+00:02:02.413 --> 00:02:06.776
+One click saves the job to your pipeline with its description attached.
+
+00:02:09.384 --> 00:02:10.774
+Filter before you read.
+
+00:02:10.774 --> 00:02:11.801
+Narrow by remote,
+
+00:02:11.801 --> 00:02:13.433
+employment type and region,
+
+00:02:13.433 --> 00:02:14.400
+set a pay range,
+
+00:02:14.400 --> 00:02:17.483
+and hide listings that don't publish salary at all.
+
+00:02:21.884 --> 00:02:23.407
+Bring your own boards.
+
+00:02:23.407 --> 00:02:24.793
+Add keys for Adzuna,
+
+00:02:24.793 --> 00:02:25.347
+USAJOBS,
+
+00:02:25.347 --> 00:02:26.455
+Reed and Jooble,
+
+00:02:26.455 --> 00:02:29.294
+or any RSS feed: a state workforce board,
+
+00:02:29.294 --> 00:02:30.541
+a niche community,
+
+00:02:30.541 --> 00:02:32.273
+an internal careers page.
+
+00:02:34.133 --> 00:02:34.930
+Chapter four.
+
+00:02:34.930 --> 00:02:36.401
+Track every application.
+
+00:02:38.233 --> 00:02:40.355
+Every application on one board.
+
+00:02:40.355 --> 00:02:42.819
+Drafts, submitted, interview, offer.
+
+00:02:42.819 --> 00:02:45.968
+Jobs you fill or save land here automatically.
+
+00:02:45.968 --> 00:02:48.637
+Import or export CSV whenever you like.
+
+00:02:50.883 --> 00:02:52.377
+Verdicts and scorecards.
+
+00:02:52.377 --> 00:02:54.120
+Each job keeps its pay band,
+
+00:02:54.120 --> 00:02:54.680
+location,
+
+00:02:54.680 --> 00:02:55.054
+notes,
+
+00:02:55.054 --> 00:02:56.423
+verdict and scorecard,
+
+00:02:56.423 --> 00:02:59.971
+so you remember why you applied when the recruiter calls.
+
+00:03:03.383 --> 00:03:05.140
+Capture any job in seconds.
+
+00:03:05.140 --> 00:03:08.785
+Save the job on the current tab, or paste a description.
+
+00:03:08.785 --> 00:03:13.014
+With a Gemini key, clean up or summarize the JD before saving it.
+
+00:03:15.883 --> 00:03:16.698
+Light or dark.
+
+00:03:16.698 --> 00:03:20.596
+Follows your system theme, for late-night application sessions too.
+
+00:03:22.633 --> 00:03:23.323
+Chapter five.
+
+00:03:23.323 --> 00:03:24.701
+Prepare for the interview.
+
+00:03:26.733 --> 00:03:28.561
+Questions from the actual JD.
+
+00:03:28.561 --> 00:03:33.981
+Interview Prep turns a saved job's description and your profile into likely questions,
+
+00:03:33.981 --> 00:03:36.439
+each with a suggested answer structure.
+
+00:03:39.383 --> 00:03:41.613
+Draft answers next to each question.
+
+00:03:41.613 --> 00:03:44.152
+Write STAR stories against each question.
+
+00:03:44.152 --> 00:03:47.867
+Answers are saved locally per job, ready for the next round.
+
+00:03:51.633 --> 00:03:52.283
+Chapter six.
+
+00:03:52.283 --> 00:03:53.420
+Learn what's working.
+
+00:03:55.733 --> 00:03:57.197
+Response rate by source.
+
+00:03:57.197 --> 00:03:59.758
+See which boards actually lead to replies,
+
+00:03:59.758 --> 00:04:01.099
+not just applications,
+
+00:04:01.099 --> 00:04:03.538
+computed locally from your own pipeline.
+
+00:04:07.383 --> 00:04:09.047
+Pay bands and response time.
+
+00:04:09.047 --> 00:04:10.949
+Which salary ranges get answers,
+
+00:04:10.949 --> 00:04:13.088
+and how long employers usually take,
+
+00:04:13.088 --> 00:04:14.870
+so you know when to follow up.
+
+00:04:19.633 --> 00:04:20.549
+Chapter seven.
+
+00:04:20.549 --> 00:04:21.726
+Private by design.
+
+00:04:23.733 --> 00:04:26.083
+AI is optional and uses your own key.
+
+00:04:26.083 --> 00:04:31.608
+Gemini powers resume parsing, answer drafting and interview prep with a key you supply.
+
+00:04:31.608 --> 00:04:34.974
+Fill, tracking, search and analytics work without it.
+
+00:04:36.383 --> 00:04:37.949
+Your data, your controls.
+
+00:04:37.949 --> 00:04:40.643
+Everything stays in Chrome's local storage.
+
+00:04:40.643 --> 00:04:44.777
+Export to CSV, clear the cache, or delete everything in one click.
+
+00:04:48.633 --> 00:04:50.207
+Add ats-fill to Chrome.
+
+00:04:50.207 --> 00:04:52.055
+Free and open source (MIT).
+
+00:04:52.055 --> 00:04:54.725
+No server, no account, no subscription.
+
+00:04:54.725 --> 00:04:57.462
+You review every field and press submit.
