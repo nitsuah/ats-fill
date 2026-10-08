@@ -1,23 +1,30 @@
 /**
  * Feature-tour frame capture for the YouTube walkthrough (see video/README.md).
  *
- * Drives the real extension through every beat in video/storyboard.mjs and
- * renders one 1920x1080 PNG per beat, chapter title, intro and outro into
- * video-build/frames/. scripts/build-feature-video.mjs turns them into video.
+ * Drives the real extension through every beat in video/storyboard.mjs,
+ * capturing each screen at 3x along with the rects the camera zooms to and
+ * the cursor clicks, then renders every distinct video frame at 3840x2160
+ * (video/timeline.mjs plans the motion) into video-build/frames/<unit>/ with a
+ * manifest.json. scripts/build-feature-video.mjs encodes them.
  *
  * Opt-in: skipped unless ATS_FILL_VIDEO=1, so `npm run test:e2e` stays fast.
  * All data is the fictional demo fixture; the form-fill chapter runs the real
  * fill against the fictional ATS page used by fake-ats-flow.spec.mjs.
  */
-import { test, expect } from '@playwright/test';
+import { test, expect, chromium } from '@playwright/test';
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { launchExtensionContext } from './helpers/extension-context.mjs';
 import { seedDemoState, DEMO_STATE, DEMO_JOBS } from './helpers/demo-state.mjs';
 import { installDemoFixtures } from './helpers/demo-fixtures.mjs';
-import { SEGMENTS, INTRO, OUTRO, STORE_URL, REPO_URL, SITE_URL } from '../../video/storyboard.mjs';
-import { beatFrame, titleFrame, introFrame, outroFrame } from '../../video/stage.mjs';
+import {
+  SEGMENTS, INTRO, OUTRO, STORE_URL, REPO_URL, SITE_URL, FPS, SCALE, TITLE_HOLD, holdSeconds,
+} from '../../video/storyboard.mjs';
+import { sceneFrame, titleFrame, introFrame, outroFrame } from '../../video/stage.mjs';
+import {
+  cardTimeline, sceneTimeline, fitCard, fitBeat, stepVoiceAt, VOICE, SHOT,
+} from '../../video/timeline.mjs';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const EXTENSION_PATH = path.join(__dirname, '../../dist');
@@ -26,9 +33,14 @@ const FIXTURE_PATH = path.join(__dirname, 'fixtures/fake-ats.html');
 // the content script's real host match and ATS detection run on the fixture.
 const ATS_URL = 'https://boards.greenhouse.io/northstarlabs/jobs/4410388';
 const OUT_DIR = path.resolve('video-build/frames');
-const VIEWPORT = { width: 1280, height: 800 };
-// 1.5x capture so popup text stays crisp when framed at 1236px wide in 1080p.
-const HIDPI = { deviceScaleFactor: 1.5, viewport: VIEWPORT };
+// Narration from scripts/voice/narrate.mjs; without it the video is silent.
+const VOICE_MANIFEST = path.resolve('video-build/voice/manifest.json');
+const VIEWPORT = { width: SHOT.w, height: SHOT.h };
+// 3x capture (3840x2400): the window is 2472px wide in the 4K frame, so the
+// camera can zoom ~1.55x into a step before any pixel is upscaled. Grayscale
+// text antialiasing avoids colour fringes that chroma subsampling smears.
+const HIDPI = { deviceScaleFactor: 3, viewport: VIEWPORT, args: ['--disable-lcd-text'] };
+const BEATS = new Map(SEGMENTS.flatMap((s) => s.beats).map((b) => [b.id, b]));
 const STABLE_STYLE = '*,*::before,*::after{animation:none!important;transition:none!important;caret-color:transparent!important}';
 
 // The fill chapter's answers, matching the fictional ATS form's fields.
@@ -52,8 +64,12 @@ test.skip(!process.env.ATS_FILL_VIDEO, 'Set ATS_FILL_VIDEO=1 to render feature-t
 
 let demo;
 let live;
+let stageBrowser;
 let stage;
+let cdp;
 const shots = new Map();
+const clicks = new Map();
+const stageErrors = [];
 
 async function stabilize(page) {
   await page.addStyleTag({ content: STABLE_STYLE });
@@ -89,15 +105,50 @@ async function reveal(page, selector) {
   }, selector);
 }
 
-async function shoot(id, page, url) {
-  const png = await page.screenshot({ type: 'png' });
-  shots.set(id, { shot: `data:image/png;base64,${png.toString('base64')}`, url });
+/** Visible part of the first match, in screenshot CSS px, or null. */
+async function rectOf(target) {
+  const box = await target.first().boundingBox();
+  if (!box) return null;
+  const x = Math.max(0, box.x);
+  const y = Math.max(0, box.y);
+  const width = Math.min(SHOT.w, box.x + box.width) - x;
+  const height = Math.min(SHOT.h, box.y + box.height) - y;
+  return width > 0 && height > 0 ? { x, y, width, height } : null;
 }
 
-async function render(file, html) {
+async function shoot(id, page, url) {
+  const png = await page.screenshot({ type: 'png' });
+  const selector = BEATS.get(id)?.focus;
+  const focus = selector ? await rectOf(page.locator(selector)) : null;
+  if (selector && !focus) throw new Error(`Focus "${selector}" for "${id}" is not on screen`);
+  shots.set(id, { shot: `data:image/png;base64,${png.toString('base64')}`, url, focus });
+}
+
+/** Record where the cursor clicks (on the current screen) to reach step `nextId`. */
+async function aim(nextId, target) {
+  const box = await target.first().boundingBox();
+  clicks.set(nextId, box && { x: box.x, y: box.y, width: box.width, height: box.height });
+}
+
+/** Render each distinct pose once; the manifest says how many frames it holds. */
+async function renderRuns(dir, html, runs, offset = 0) {
+  stageErrors.length = 0;
   await stage.setContent(html, { waitUntil: 'load' });
-  await stage.evaluate(() => document.fonts.ready);
-  await stage.screenshot({ path: path.join(OUT_DIR, file), type: 'png', scale: 'css' });
+  if (stageErrors.length) throw new Error(`Stage template for ${dir} failed: ${stageErrors.join('; ')}`);
+  await stage.evaluate(() => Promise.all([document.fonts.ready, ...[...document.images].map((img) => img.decode())]));
+  fs.mkdirSync(path.join(OUT_DIR, dir), { recursive: true });
+  const entries = [];
+  for (const [n, run] of runs.entries()) {
+    await stage.evaluate((p) => {
+      window.pose(p);
+      return new Promise((done) => requestAnimationFrame(() => requestAnimationFrame(done)));
+    }, run.pose);
+    const { data } = await cdp.send('Page.captureScreenshot', { format: 'png', optimizeForSpeed: true });
+    const file = path.join(dir, `${String(offset + n).padStart(5, '0')}.png`);
+    fs.writeFileSync(path.join(OUT_DIR, file), Buffer.from(data, 'base64'));
+    entries.push({ file, frames: run.frames });
+  }
+  return entries;
 }
 
 test.beforeAll(async () => {
@@ -106,17 +157,20 @@ test.beforeAll(async () => {
   demo = await launchExtensionContext(EXTENSION_PATH, 'playwright-video-demo', HIDPI);
   await installDemoFixtures(demo.context);
   live = await launchExtensionContext(EXTENSION_PATH, 'playwright-video-live', HIDPI);
-  stage = await demo.context.newPage();
-  await stage.setViewportSize({ width: 1920, height: 1080 });
+  stageBrowser = await chromium.launch({ args: ['--force-color-profile=srgb', '--disable-lcd-text', '--font-render-hinting=none'] });
+  stage = await stageBrowser.newPage({ viewport: { width: 1920, height: 1080 }, deviceScaleFactor: SCALE });
+  stage.on('pageerror', (err) => stageErrors.push(err.message));
+  cdp = await stage.context().newCDPSession(stage);
 });
 
 test.afterAll(async () => {
   await demo?.context.close();
   await live?.context.close();
+  await stageBrowser?.close();
 });
 
 test('feature tour frames', async () => {
-  test.setTimeout(300_000);
+  test.setTimeout(60 * 60_000);
   const popupUrl = (screen) => `ats-fill · ${screen}`;
 
   // ── Profile ──
@@ -126,7 +180,7 @@ test('feature tour frames', async () => {
   await reveal(page, '#profile-resume-section');
   await shoot('profile-resume', page, popupUrl('Profile'));
   await reveal(page, '#profile-memory-section');
-  await expect(page.locator('#learned-defaults-list .memory-bubble').first()).toBeVisible();
+  await expect(page.locator('#learned-defaults-list .memory-bubble').first()).toBeVisible({ timeout: 15000 });
   await shoot('profile-memory', page, popupUrl('Profile · Memory'));
   await page.close();
 
@@ -154,11 +208,13 @@ test('feature tour frames', async () => {
   await stabilize(popup);
   await shoot('fill-dashboard', popup, popupUrl('Home'));
 
+  await aim('fill-preview', popup.locator('#preview-btn'));
   await popup.locator('#preview-btn').click();
   await expect(popup.locator('#preview-screen')).toBeVisible({ timeout: 10000 });
   await expect(popup.locator('#preview-content')).toContainText('Jordan Morgan');
   await shoot('fill-preview', popup, popupUrl('Preview answers'));
 
+  await aim('fill-filled', popup.locator('#inject-from-preview-btn'));
   await popup.locator('#inject-from-preview-btn').click();
   await expect(ats.locator('#why-role')).toHaveValue(/cloud reliability/);
   await ats.evaluate(() => document.querySelector('#application-form').scrollIntoView({ block: 'start', behavior: 'instant' }));
@@ -172,13 +228,16 @@ test('feature tour frames', async () => {
   await expect(page.locator('.job-source-chip').first()).toBeVisible();
   await page.locator('#job-search-input').fill('platform engineer');
   await shoot('search-sources', page, popupUrl('Job search'));
+  await aim('search-results', page.locator('#job-search-submit-btn'));
   await page.locator('#job-search-submit-btn').click();
   await expect(page.locator('.job-search-result')).toHaveCount(DEMO_JOBS.length);
   await shoot('search-results', page, popupUrl('Job search'));
+  await aim('search-filters', page.locator('#job-filters-toggle'));
   await page.locator('#job-filters-toggle').click();
   await expect(page.locator('#job-search-subbar')).toBeVisible();
   await page.locator('#pay-hide-unknown').check();
   await shoot('search-filters', page, popupUrl('Job search · Filters'));
+  await aim('search-custom-sources', page.locator('#header-ai-btn'));
   await openScreen(page, 'header-ai-btn', 'ai-screen');
   await reveal(page, '#job-sources-section');
   await shoot('search-custom-sources', page, popupUrl('Settings · Job sources'));
@@ -190,10 +249,12 @@ test('feature tour frames', async () => {
   await expect(page.locator('.tracker-card').first()).toBeVisible();
   await shoot('pipeline-board', page, popupUrl('Pipeline'));
   const card = page.locator('.tracker-card:not(.expanded) .tracker-card-toggle').first();
+  await aim('pipeline-card', card);
   await card.click();
   await expect(page.locator('.tracker-card.expanded').first()).toBeVisible();
   await page.evaluate(() => document.querySelector('.tracker-card.expanded').scrollIntoView({ block: 'start', behavior: 'instant' }));
   await shoot('pipeline-card', page, popupUrl('Pipeline'));
+  await aim('pipeline-add', page.locator('#add-application-btn'));
   await page.evaluate(() => window.scrollTo({ top: 0, behavior: 'instant' }));
   await page.locator('#add-application-btn').click();
   await expect(page.locator('#tracker-add-card')).toBeVisible();
@@ -218,6 +279,7 @@ test('feature tour frames', async () => {
   await expect(page.locator('.interview-prep-question-card').first()).toBeVisible();
   await shoot('prep-questions', page, popupUrl('Interview prep'));
   const answer = page.locator('.interview-prep-answer-input').nth(1);
+  await aim('prep-answer', answer);
   await answer.fill('Situation: our deploy pipeline failed one release in five.\nTask: I owned getting it under 1%.\nAction: added canary stages, automated rollback and a flaky-test quarantine.\nResult: failures dropped to 0.4% within a quarter, and on-call pages halved.');
   await page.evaluate(() => document.querySelectorAll('.interview-prep-question-card')[1].scrollIntoView({ block: 'center', behavior: 'instant' }));
   await shoot('prep-answer', page, popupUrl('Interview prep'));
@@ -240,30 +302,63 @@ test('feature tour frames', async () => {
   await openScreen(page, 'header-ai-btn', 'ai-screen');
   await reveal(page, '#profile-api-section');
   await shoot('privacy-byok', page, popupUrl('Settings · AI'));
+  await aim('privacy-controls', page.locator('#header-help-btn'));
   await openScreen(page, 'header-help-btn', 'help-screen');
   await reveal(page, '#help-data-controls-section');
   await shoot('privacy-controls', page, popupUrl('Help & privacy'));
   await page.close();
 
   // ── Render frames ──
-  const chapters = SEGMENTS.map((s) => s.title);
-  await render('intro.png', introFrame({ ...INTRO, shot: shots.get('intro-shot').shot }));
-  await render('outro.png', outroFrame({ ...OUTRO, storeUrl: STORE_URL, repoUrl: REPO_URL, siteUrl: SITE_URL }));
+  // Units are encoded separately and joined on full-paper frames, so the
+  // shorts and the combined cut reuse the same encodes (see the build script).
+  const chapters = SEGMENTS.map((seg) => seg.title);
+  const units = [];
+  const started = Date.now();
+  const voiceClips = fs.existsSync(VOICE_MANIFEST) ? JSON.parse(fs.readFileSync(VOICE_MANIFEST, 'utf8')).clips : {};
+  const voiceOf = (id) => voiceClips[id]?.seconds;
+  const cue = (id, at) => (voiceClips[id] ? [{ file: voiceClips[id].file, at: Math.round(at * 1000) / 1000 }] : []);
+  const unit = async (id, kind, parts, extra = {}) => {
+    const entries = [];
+    for (const [html, runs] of parts) entries.push(...await renderRuns(id, html, runs, entries.length));
+    const frames = entries.reduce((sum, e) => sum + e.frames, 0);
+    units.push({ id, kind, frames, entries, ...extra });
+    console.log(`frames  ${id}: ${entries.length} renders, ${(frames / FPS).toFixed(1)}s (${Math.round((Date.now() - started) / 1000)}s elapsed)`);
+  };
+
+  // Cards and steps stretch to fit their narration; each unit lists its cues.
+  await unit('intro', 'intro', [
+    [introFrame({ ...INTRO, shot: shots.get('intro-shot').shot }), cardTimeline(fitCard(holdSeconds(INTRO), voiceOf('intro')))],
+  ], { title: 'Intro', voice: cue('intro', VOICE.card) });
   for (const [i, segment] of SEGMENTS.entries()) {
-    await render(`title-${segment.slug}.png`, titleFrame({ chapter: i + 1, chapters, title: segment.title, summary: segment.summary }));
-    for (const [j, beat] of segment.beats.entries()) {
+    const beats = segment.beats.map((beat, j) => {
       const captured = shots.get(beat.id);
       if (!captured) throw new Error(`No capture for storyboard beat "${beat.id}"`);
-      await render(`${beat.id}.png`, beatFrame({
-        ...captured,
-        chapter: i + 1,
-        chapterCount: SEGMENTS.length,
-        chapterTitle: segment.title,
-        step: j + 1,
-        stepCount: segment.beats.length,
-        title: beat.title,
-        body: beat.body,
-      }));
-    }
+      return fitBeat({ ...beat, ...captured, click: clicks.get(beat.id) ?? null }, j, voiceOf(beat.id));
+    });
+    const titleId = `title-${segment.slug}`;
+    const titleRuns = cardTimeline(fitCard(TITLE_HOLD, voiceOf(titleId)));
+    const titleSeconds = titleRuns.reduce((sum, r) => sum + r.frames, 0) / FPS;
+    const scene = sceneTimeline(beats);
+    await unit(`${String(i + 1).padStart(2, '0')}-${segment.slug}`, 'chapter', [
+      [titleFrame({ chapter: i + 1, chapters, title: segment.title, summary: segment.summary }), titleRuns],
+      [sceneFrame({ chapter: i + 1, chapterCount: SEGMENTS.length, chapterTitle: segment.title, beats }), scene.runs],
+    ], {
+      title: segment.title,
+      slug: segment.slug,
+      summary: segment.summary,
+      voice: [
+        ...cue(titleId, VOICE.card),
+        ...scene.plan.flatMap((step) => cue(step.beat.id, titleSeconds + step.start + stepVoiceAt(step.index))),
+      ],
+    });
   }
+  await unit('outro', 'outro', [
+    [outroFrame({ ...OUTRO, storeUrl: STORE_URL, repoUrl: REPO_URL, siteUrl: SITE_URL }), cardTimeline(fitCard(holdSeconds(OUTRO), voiceOf('outro')), { dipOut: false })],
+  ], { voice: cue('outro', VOICE.card) });
+
+  // Thumbnail source: the intro's long hold, once everything has risen in.
+  const poster = units[0].entries.reduce((best, e) => (e.frames > best.frames ? e : best)).file;
+  fs.writeFileSync(path.join(OUT_DIR, 'manifest.json'), JSON.stringify({
+    fps: FPS, width: 1920 * SCALE, height: 1080 * SCALE, poster, units,
+  }, null, 2));
 });
