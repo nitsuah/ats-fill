@@ -64,3 +64,49 @@
         });
     });
 })();
+
+// Feature tour: chapter buttons from the cut's chapters file, so the list
+// always matches the rendered video (scripts/build-feature-video.mjs). Fetched
+// directly: a lazy-loaded <video> also defers its text tracks.
+(() => {
+    const vid = document.getElementById('tour-vid');
+    const trackEl = document.getElementById('tour-chapters');
+    const list = document.getElementById('tour-chapter-list');
+    if (!vid || !trackEl || !list) return;
+    const secs = (t) =>
+        t.split(':').reduce((sum, part) => sum * 60 + Number(part), 0);
+    const stamp = (s) =>
+        `${Math.floor(s / 60)}:${String(Math.floor(s % 60)).padStart(2, '0')}`;
+    const jump = (start) => {
+        const go = () => {
+            vid.currentTime = start;
+            vid.play().catch(() => {});
+        };
+        if (vid.readyState >= HTMLMediaElement.HAVE_METADATA) return go();
+        // A chapter click asks to watch now: lift lazy loading, and seek only
+        // once metadata is in (with preload="none" an earlier seek is dropped).
+        vid.removeAttribute('loading');
+        vid.addEventListener('loadedmetadata', go, { once: true });
+        vid.load();
+    };
+    fetch(trackEl.getAttribute('src'))
+        .then((res) => (res.ok ? res.text() : ''))
+        .then((vtt) => {
+            for (const block of vtt.split(/\r?\n\r?\n/)) {
+                const [timing, ...text] = block.trim().split(/\r?\n/);
+                const match = /^([\d:.]+)\s+-->/.exec(timing ?? '');
+                if (!match || !text.length) continue;
+                const start = secs(match[1]);
+                const li = document.createElement('li');
+                const btn = document.createElement('button');
+                btn.type = 'button';
+                const time = document.createElement('time');
+                time.textContent = stamp(start);
+                btn.append(time, text.join(' '));
+                btn.addEventListener('click', () => jump(start));
+                li.append(btn);
+                list.append(li);
+            }
+        })
+        .catch(() => {});
+})();
