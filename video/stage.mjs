@@ -69,7 +69,7 @@ $('.dip').style.opacity=p.dip;
 document.querySelectorAll('.shot,.url span,.cap').forEach((el)=>{el.style.opacity=0;});
 p.shots.forEach((s,n)=>{const el=$('#shot-'+s.i);el.style.opacity=s.o;el.style.zIndex=1+n;
 el.querySelector('img').style.transform='translate('+s.x+'px,'+s.y+'px) scale('+s.s+')';
-$('#url-'+s.i).style.opacity=s.o;
+const nx=p.shots[n+1];$('#url-'+s.i).style.opacity=nx?1-nx.o:s.o;
 const st=el.querySelector('.stamp');if(st){const u=s.st||0;st.style.opacity=Math.min(1,u*2.2);
 st.style.transform='rotate(-8deg) scale('+(1+(1-u)*(1-u)*0.9).toFixed(3)+')';}});
 for(const c of p.caps){const el=$('#cap-'+c.i);el.style.opacity=c.o;el.style.transform='translateY('+c.dy+'px)';}

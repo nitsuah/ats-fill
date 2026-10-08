@@ -210,6 +210,9 @@ export const SEGMENTS = [
 export const FPS = 30;
 /** Frames are laid out at 1920x1080 CSS px and rendered at this device scale: 2 → 3840x2160 (4K). */
 export const SCALE = Number(process.env.ATS_FILL_VIDEO_SCALE || 2);
+if (!Number.isFinite(SCALE) || SCALE <= 0) {
+  throw new Error(`ATS_FILL_VIDEO_SCALE must be a positive number, got "${process.env.ATS_FILL_VIDEO_SCALE}"`);
+}
 export const TITLE_HOLD = 4;
 
 /**
