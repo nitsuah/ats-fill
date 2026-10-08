@@ -226,7 +226,9 @@ for (const unit of manifest.units) {
   }
   offset += unit.frames / FPS;
 }
-if (captions.length) fs.writeFileSync(path.join(WEB, 'feature-tour.en.vtt'), vtt(captions));
+// Always written (empty for a silent render) so no stale captions survive and
+// publishing never finds the file missing.
+fs.writeFileSync(path.join(WEB, 'feature-tour.en.vtt'), captions.length ? vtt(captions) : 'WEBVTT\n');
 fs.writeFileSync(path.join(WEB, 'feature-tour.chapters.vtt'), vtt(chapterStarts.map((c, i) => ({
   start: c.at, end: i + 1 < chapterStarts.length ? chapterStarts[i + 1].at : total, text: c.title,
 }))));
