@@ -1,0 +1,393 @@
+{
+  "product": "ats-fill",
+  "live": null,
+  "page": "https://nitsuah.github.io/ats-fill/",
+  "pagesDir": "site",
+  "features": [
+    {
+      "id": "resume-learning",
+      "title": "Resume Learning",
+      "category": "Candidate Profile Intelligence",
+      "screenshots": [],
+      "spots": []
+    },
+    {
+      "id": "profile-reuse",
+      "title": "Profile Reuse",
+      "category": "Candidate Profile Intelligence",
+      "screenshots": [],
+      "spots": []
+    },
+    {
+      "id": "memory-review-controls",
+      "title": "Memory Review Controls",
+      "category": "Candidate Profile Intelligence",
+      "screenshots": [],
+      "spots": []
+    },
+    {
+      "id": "jd-parsing",
+      "title": "JD Parsing",
+      "category": "Job Matching and Response Generation",
+      "screenshots": [],
+      "spots": []
+    },
+    {
+      "id": "tailored-answer-generation",
+      "title": "Tailored Answer Generation",
+      "category": "Job Matching and Response Generation",
+      "screenshots": [],
+      "spots": []
+    },
+    {
+      "id": "form-fill-automation",
+      "title": "Form Fill Automation",
+      "category": "Application Automation",
+      "screenshots": [],
+      "spots": []
+    },
+    {
+      "id": "supported-ats-platforms",
+      "title": "Supported ATS Platforms",
+      "category": "Application Automation",
+      "screenshots": [],
+      "spots": []
+    },
+    {
+      "id": "receiver-auto-recovery",
+      "title": "Receiver Auto-Recovery",
+      "category": "Application Automation",
+      "screenshots": [],
+      "spots": []
+    },
+    {
+      "id": "resume-parsing",
+      "title": "Resume Parsing",
+      "category": "AI-Powered Writing Tools",
+      "screenshots": [],
+      "spots": []
+    },
+    {
+      "id": "answer-drafting",
+      "title": "Answer Drafting",
+      "category": "AI-Powered Writing Tools",
+      "screenshots": [],
+      "spots": []
+    },
+    {
+      "id": "jd-summarize",
+      "title": "JD Summarize",
+      "category": "AI-Powered Writing Tools",
+      "screenshots": [],
+      "spots": []
+    },
+    {
+      "id": "jd-clean-up",
+      "title": "JD Clean-up",
+      "category": "AI-Powered Writing Tools",
+      "screenshots": [],
+      "spots": []
+    },
+    {
+      "id": "search-result-ai-tools",
+      "title": "Search Result AI Tools",
+      "category": "AI-Powered Writing Tools",
+      "screenshots": [],
+      "spots": []
+    },
+    {
+      "id": "auto-detect-best-model",
+      "title": "Auto-detect Best Model",
+      "category": "AI-Powered Writing Tools",
+      "screenshots": [],
+      "spots": []
+    },
+    {
+      "id": "local-first-storage",
+      "title": "Local-First Storage",
+      "category": "Privacy & Consent",
+      "screenshots": [],
+      "spots": []
+    },
+    {
+      "id": "consent-gate",
+      "title": "Consent Gate",
+      "category": "Privacy & Consent",
+      "screenshots": [],
+      "spots": []
+    },
+    {
+      "id": "sensitive-data-opt-in",
+      "title": "Sensitive Data Opt-In",
+      "category": "Privacy & Consent",
+      "screenshots": [],
+      "spots": []
+    },
+    {
+      "id": "byok-bring-your-own-key",
+      "title": "BYOK (Bring Your Own Key)",
+      "category": "Privacy & Consent",
+      "screenshots": [],
+      "spots": []
+    },
+    {
+      "id": "full-reset-controls",
+      "title": "Full Reset Controls",
+      "category": "Privacy & Consent",
+      "screenshots": [],
+      "spots": []
+    },
+    {
+      "id": "gdpr-ccpa-compliance",
+      "title": "GDPR / CCPA Compliance",
+      "category": "Privacy & Consent",
+      "screenshots": [],
+      "spots": []
+    },
+    {
+      "id": "linkedin-oauth-import",
+      "title": "LinkedIn OAuth Import",
+      "category": "Profile Import",
+      "screenshots": [],
+      "spots": []
+    },
+    {
+      "id": "google-oauth-import",
+      "title": "Google OAuth Import",
+      "category": "Profile Import",
+      "screenshots": [],
+      "spots": []
+    },
+    {
+      "id": "resume-upload",
+      "title": "Resume Upload",
+      "category": "Profile Import",
+      "screenshots": [],
+      "spots": []
+    },
+    {
+      "id": "csv-tracker-import",
+      "title": "CSV Tracker Import",
+      "category": "Profile Import",
+      "screenshots": [],
+      "spots": []
+    },
+    {
+      "id": "linkedin-session-scraping",
+      "title": "LinkedIn Session Scraping",
+      "category": "Profile Import",
+      "screenshots": [],
+      "spots": []
+    },
+    {
+      "id": "16-built-in-job-sources",
+      "title": "16 Built-in Job Sources",
+      "category": "Multi-Source Job Search",
+      "screenshots": [],
+      "spots": []
+    },
+    {
+      "id": "custom-rss-job-sources",
+      "title": "Custom RSS Job Sources",
+      "category": "Multi-Source Job Search",
+      "screenshots": [],
+      "spots": []
+    },
+    {
+      "id": "source-confidence-hints",
+      "title": "Source Confidence Hints",
+      "category": "Multi-Source Job Search",
+      "screenshots": [],
+      "spots": []
+    },
+    {
+      "id": "per-source-filter-chips",
+      "title": "Per-Source Filter Chips",
+      "category": "Multi-Source Job Search",
+      "screenshots": [],
+      "spots": []
+    },
+    {
+      "id": "pay-filter-with-hide-unknown-toggle",
+      "title": "Pay Filter with Hide-Unknown Toggle",
+      "category": "Multi-Source Job Search",
+      "screenshots": [],
+      "spots": []
+    },
+    {
+      "id": "remote-type-and-location-filters",
+      "title": "Remote, Type, and Location Filters",
+      "category": "Multi-Source Job Search",
+      "screenshots": [],
+      "spots": []
+    },
+    {
+      "id": "one-click-save-to-tracker",
+      "title": "One-Click Save to Tracker",
+      "category": "Multi-Source Job Search",
+      "screenshots": [],
+      "spots": []
+    },
+    {
+      "id": "plug-and-play-source-registry",
+      "title": "Plug-and-Play Source Registry",
+      "category": "Multi-Source Job Search",
+      "screenshots": [],
+      "spots": []
+    },
+    {
+      "id": "response-rate-by-source",
+      "title": "Response Rate by Source",
+      "category": "Application Analytics",
+      "screenshots": [],
+      "spots": []
+    },
+    {
+      "id": "salary-band-effectiveness",
+      "title": "Salary-Band Effectiveness",
+      "category": "Application Analytics",
+      "screenshots": [],
+      "spots": []
+    },
+    {
+      "id": "time-to-first-response-distribution",
+      "title": "Time-to-First-Response Distribution",
+      "category": "Application Analytics",
+      "screenshots": [],
+      "spots": []
+    },
+    {
+      "id": "ai-interview-question-generation",
+      "title": "AI Interview Question Generation",
+      "category": "Interview Prep",
+      "screenshots": [],
+      "spots": []
+    },
+    {
+      "id": "answer-editing-and-saving",
+      "title": "Answer Editing and Saving",
+      "category": "Interview Prep",
+      "screenshots": [],
+      "spots": []
+    },
+    {
+      "id": "job-workspace-view",
+      "title": "Job Workspace View",
+      "category": "Job Tracker Workspace",
+      "screenshots": [],
+      "spots": []
+    },
+    {
+      "id": "verdicts-scorecards",
+      "title": "Verdicts & Scorecards",
+      "category": "Job Tracker Workspace",
+      "screenshots": [],
+      "spots": []
+    },
+    {
+      "id": "picker-style-jd-capture",
+      "title": "Picker-Style JD Capture",
+      "category": "Job Tracker Workspace",
+      "screenshots": [],
+      "spots": []
+    },
+    {
+      "id": "axe-accessibility-audit",
+      "title": "axe Accessibility Audit",
+      "category": "Accessibility Enhancements",
+      "screenshots": [],
+      "spots": []
+    },
+    {
+      "id": "wcag-aa-contrast-audit",
+      "title": "WCAG AA Contrast Audit",
+      "category": "Accessibility Enhancements",
+      "screenshots": [],
+      "spots": []
+    },
+    {
+      "id": "improved-keyboard-navigation",
+      "title": "Improved Keyboard Navigation",
+      "category": "Accessibility Enhancements",
+      "screenshots": [],
+      "spots": []
+    },
+    {
+      "id": "accessible-form-elements",
+      "title": "Accessible Form Elements",
+      "category": "Accessibility Enhancements",
+      "screenshots": [],
+      "spots": []
+    },
+    {
+      "id": "responsive-tracker-view",
+      "title": "Responsive Tracker View",
+      "category": "UI/UX Enhancements",
+      "screenshots": [],
+      "spots": []
+    },
+    {
+      "id": "collapsible-header-nav",
+      "title": "Collapsible Header Nav",
+      "category": "UI/UX Enhancements",
+      "screenshots": [],
+      "spots": []
+    },
+    {
+      "id": "auto-collapsing-settings-cards",
+      "title": "Auto-Collapsing Settings Cards",
+      "category": "UI/UX Enhancements",
+      "screenshots": [],
+      "spots": []
+    },
+    {
+      "id": "chrome-mock-for-e2e-tests",
+      "title": "Chrome Mock for E2E Tests",
+      "category": "UI/UX Enhancements",
+      "screenshots": [],
+      "spots": []
+    },
+    {
+      "id": "dynamic-css-variable-mapping",
+      "title": "Dynamic CSS Variable Mapping",
+      "category": "UI/UX Enhancements",
+      "screenshots": [],
+      "spots": []
+    }
+  ],
+  "spots": [
+    {
+      "id": "launch-23s",
+      "seconds": 23.5,
+      "format": "landscape",
+      "tool": "brag (one-off, source not kept)",
+      "features": [],
+      "published": "site/assets/ats-fill.mp4",
+      "rendered": "2026-10-01"
+    }
+  ],
+  "reels": [
+    {
+      "id": "hero",
+      "spots": [
+        "launch-23s"
+      ],
+      "published": "site/assets/ats-fill.mp4"
+    }
+  ],
+  "brand": {
+    "source": "icons/icon128.png",
+    "derived": [
+      "icons/icon16.png",
+      "icons/icon32.png",
+      "icons/icon48.png",
+      "icons/icon128.png"
+    ],
+    "manual": [
+      {
+        "what": "Chrome Web Store listing icon and promo tiles (CI generates store-assets/)",
+        "url": "https://chrome.google.com/webstore/devconsole"
+      }
+    ]
+  }
+}
