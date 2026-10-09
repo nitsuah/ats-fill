@@ -104,10 +104,26 @@ jobs:
           EVENT_TAG: ${{ github.event_name == 'workflow_dispatch' && inputs.tag || github.ref_name }}
         run: echo "tag=$EVENT_TAG" >> "$GITHUB_OUTPUT"
 
+      # Tags cut before the listing-asset tooling landed (#112) have no spec to run,
+      # which made this job fail with 'No tests found'. Skip those with a notice.
+      - name: Check the tag has the listing-asset tooling
+        id: tooling
+        env:
+          TAG: ${{ steps.release.outputs.tag }}
+        run: |
+          if [ -f tests/e2e/store-assets.spec.mjs ] && [ -f scripts/validate-store-assets.mjs ]; then
+            echo "available=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "available=false" >> "$GITHUB_OUTPUT"
+            echo "::notice title=Store listing assets skipped::$TAG predates the listing-asset tooling (tests/e2e/store-assets.spec.mjs); tag a newer release to generate them."
+          fi
+
       - name: Build e2e image
+        if: steps.tooling.outputs.available == 'true'
         run: docker build --target e2e -t ats-fill:e2e .
 
       - name: Generate store screenshots, promo tiles and icon
+        if: steps.tooling.outputs.available == 'true'
         run: |
           rm -rf store-assets
           mkdir -p store-assets
@@ -117,9 +133,11 @@ jobs:
             sh -c "xvfb-run --server-args='-screen 0 1400x900x24' npx playwright test --config config/playwright.config.mjs tests/e2e/store-assets.spec.mjs"
 
       - name: Validate against Chrome Web Store image specs
+        if: steps.tooling.outputs.available == 'true'
         run: node scripts/validate-store-assets.mjs store-assets
 
       - name: Attach listing bundle to the GitHub Release
+        if: steps.tooling.outputs.available == 'true'
         env:
           GH_TOKEN: ${{ github.token }}
           TAG: ${{ steps.release.outputs.tag }}
