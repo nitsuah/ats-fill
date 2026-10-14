@@ -53,6 +53,7 @@ class CdpConnection {
     this.ws = ws;
     this.nextId = 1;
     this.pending = new Map();
+    this.closed = false;
     ws.addEventListener('message', (event) => {
       const msg = JSON.parse(String(event.data));
       if (!msg.id || !this.pending.has(msg.id)) return;
@@ -61,12 +62,25 @@ class CdpConnection {
       if (msg.error) reject(new Error(`${msg.error.message} (${msg.error.code})`));
       else resolve(msg.result);
     });
+    // Once the socket is gone no reply can arrive, so fail every in-flight
+    // request instead of letting `send` promises hang the CLI.
+    const onGone = (reason) => {
+      this.closed = true;
+      for (const { reject } of this.pending.values()) reject(new Error(reason));
+      this.pending.clear();
+    };
+    ws.addEventListener('close', () => onGone('Chrome closed the DevTools connection'));
+    ws.addEventListener('error', () => onGone('DevTools connection to Chrome failed'));
   }
 
   send(method, params = {}, sessionId) {
     const id = this.nextId++;
     const payload = { id, method, params, ...(sessionId ? { sessionId } : {}) };
     return new Promise((resolve, reject) => {
+      if (this.closed) {
+        reject(new Error('Chrome closed the DevTools connection'));
+        return;
+      }
       this.pending.set(id, { resolve, reject });
       this.ws.send(JSON.stringify(payload));
     });

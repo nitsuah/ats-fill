@@ -199,7 +199,12 @@ export function planTrackerChanges(applications, classified, { addMissing = true
     const match = findApplication(apps, mail);
     if (match) {
       const from = match.status || 'drafted';
-      const forward = (STATUS_RANK[status] ?? 0) > (STATUS_RANK[from] ?? 0);
+      const currentRank = STATUS_RANK[from] ?? 0;
+      const nextRank = STATUS_RANK[status] ?? 0;
+      // offer and rejected share a rank; like pickHigherPriorityStatus, a later
+      // terminal email replaces the other one rather than being skipped.
+      const terminalTie = ['offer', 'rejected'].includes(from) && ['offer', 'rejected'].includes(status) && status !== from;
+      const forward = nextRank > currentRank || terminalTie;
       if (match.pendingAdd) {
         // A later email about a company this run is already adding: it can
         // still supply the role title even when the status is unchanged.
