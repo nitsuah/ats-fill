@@ -6,8 +6,9 @@
  * hundred tokens. See skills/ats-fill-job-search/references/automation.md.
  *
  * Reads come straight from the extension's storage on disk (no Chrome setup).
- * Writes go through the running extension when Chrome remote debugging is on;
- * otherwise they become a CSV for the popup's Tracker → Import CSV.
+ * Writes go through ats-fill's native messaging bridge once the helper is set
+ * up (`setup`, once) and Settings → "AI assistant access" is on; otherwise
+ * they become a CSV for the popup's Tracker → Import CSV.
  *
  *   node scripts/tracker/cli.mjs summary            counts, stale apps, next actions
  *   node scripts/tracker/cli.mjs list [--status s] [--json]
@@ -17,16 +18,22 @@
  *   node scripts/tracker/cli.mjs triage <emails.json>   classify only
  *   node scripts/tracker/cli.mjs export [--out file.json]
  *   node scripts/tracker/cli.mjs gmail-query            Gmail search for mail since the last sync
+ *   node scripts/tracker/cli.mjs setup                  install the bridge helper (once), show status
+ *   node scripts/tracker/cli.mjs uninstall-helper
  *
- * Global flags: --disk (never touch Chrome), --live (require remote debugging).
+ * Flags: --csv out.csv (write a CSV even when the bridge is on), --wait <s>
+ * (how long to wait for the bridge, default 90), --live (opt in to Chrome
+ * remote debugging instead; never used unless asked).
  */
 import process from 'node:process';
-import { readFileSync, writeFileSync, mkdirSync } from 'node:fs';
+import { readFileSync, writeFileSync, mkdirSync, realpathSync } from 'node:fs';
+import { fileURLToPath } from 'node:url';
 import { homedir } from 'node:os';
 import { join, dirname } from 'node:path';
 import { withExtensionPage, sendMessage, readApplications, resolveBrowserWsUrl } from './cdp.mjs';
 import { readExtensionStorage } from './leveldb.mjs';
 import { classifyEmail, flattenEmails, planTrackerChanges, findApplication } from './email-triage.mjs';
+import { installHost, uninstallHost, bridgeStatus, enqueue, waitForResults } from './bridge.mjs';
 
 const STATUSES = ['drafted', 'filled', 'pending', 'submitted', 'interview', 'offer', 'rejected', 'retired'];
 const STATE_FILE = process.env.ATS_FILL_STATE || join(homedir(), '.ats-fill', 'email-sync.json');
@@ -144,37 +151,64 @@ export function changesToCsv(ops) {
   return { csv: lines.join('\n') + '\n', rows: lines.length - 1, manual };
 }
 
+/** Apply tracker changes as a CSV for the popup's Tracker → Import CSV. */
+function csvWriter(flags) {
+  return async (ops) => {
+    const { csv, rows, manual } = changesToCsv(ops);
+    const out = flags.csv || join(dirname(STATE_FILE), `import-${new Date().toISOString().slice(0, 10)}.csv`);
+    if (rows) {
+      mkdirSync(dirname(out), { recursive: true });
+      writeFileSync(out, csv);
+      console.log(`wrote ${rows} row(s) to ${out} — import it in ats-fill: Tracker → Import CSV`);
+      console.log('tip: run "setup" once and turn on Settings → "AI assistant access" in ats-fill to apply changes directly');
+    }
+    for (const op of manual) console.log(`edit by hand (no URL to match on): ${op.app.company} → ${op.to}`);
+    return { written: 0, queued: rows };
+  };
+}
+
+function toMessage(op) {
+  return op.kind === 'update'
+    ? { type: 'UPDATE_APPLICATION', payload: { id: op.app.id, patch: { status: op.to } } }
+    : { type: 'LOG_APPLICATION', payload: { url: '', ...op.fields } };
+}
+
+/** Apply tracker changes through ats-fill's native messaging bridge. */
+function bridgeWriter(flags) {
+  return async (ops) => {
+    const ids = ops.map((op) => {
+      const { type, payload } = toMessage(op);
+      return enqueue(type, payload);
+    });
+    const { done, pending } = await waitForResults(ids, { timeoutMs: Number(flags.wait || 90) * 1000 });
+    const failed = done.filter((r) => !r.ok);
+    for (const r of failed) console.log(`ats-fill refused a change: ${r.error}`);
+    const queuedNote = pending.length ? `; ${pending.length} queued, applied at its next check-in (about a minute)` : '';
+    console.log(`applied ${done.length - failed.length} change(s) in ats-fill${queuedNote}`);
+    return { written: done.length - failed.length, queued: pending.length };
+  };
+}
+
 /**
- * Run `fn` against live Chrome (remote debugging) when it answers, otherwise
- * against the on-disk store. `fn` receives {mode, apps, write}.
+ * Run `fn` with the tracker. Reads come from disk; writes go through the
+ * native messaging bridge when ats-fill has checked in recently, else become
+ * an import CSV. --live opts in to Chrome remote debugging instead.
+ * `fn` receives {mode, apps, write}.
  */
 async function withTracker(flags, fn) {
-  const requireLive = Boolean(flags.live || process.env.ATS_FILL_CDP_URL);
-  if (!flags.disk) {
-    let started = false;
-    try {
-      resolveBrowserWsUrl();
-      return await withExtensionPage(async ({ evaluate }) => {
-        const apps = await readApplications(evaluate);
-        started = true;
-        return fn({
-          mode: 'live',
-          apps,
-          write: async (ops) => {
-            for (const op of ops) {
-              if (op.kind === 'update') await sendMessage(evaluate, 'UPDATE_APPLICATION', { id: op.app.id, patch: { status: op.to } });
-              else await sendMessage(evaluate, 'LOG_APPLICATION', { url: '', ...op.fields });
-            }
-            return { written: ops.length, queued: 0 };
-          },
-        });
-      });
-    } catch (err) {
-      // Only fall back if Chrome never answered; an error inside fn is real.
-      if (started || requireLive) throw err;
-      // A missing DevToolsActivePort just means "not on"; anything else is worth a line.
-      if (!/remote debugging is off/i.test(err.message)) console.error(`note: live Chrome unavailable (${err.message}); reading from disk`);
-    }
+  if (flags.live || process.env.ATS_FILL_CDP_URL) {
+    resolveBrowserWsUrl();
+    return withExtensionPage(async ({ evaluate }) => fn({
+      mode: 'live',
+      apps: await readApplications(evaluate),
+      write: async (ops) => {
+        for (const op of ops) {
+          const { type, payload } = toMessage(op);
+          await sendMessage(evaluate, type, payload);
+        }
+        return { written: ops.length, queued: 0 };
+      },
+    }));
   }
 
   const { dir, data } = readExtensionStorage();
@@ -182,26 +216,34 @@ async function withTracker(flags, fn) {
     // The Web Store build and an unpacked dev build each get their own store.
     console.error(`note: no tracker data in ${dir}. If you track jobs in an unpacked build, set ATS_FILL_EXTENSION_ID to its ID (chrome://extensions).`);
   }
+  const bridge = !flags.csv && bridgeStatus().connected;
   return fn({
-    mode: 'disk',
+    mode: bridge ? 'bridge' : 'disk',
     apps: Array.isArray(data.applications) ? data.applications : [],
-    write: async (ops) => {
-      const { csv, rows, manual } = changesToCsv(ops);
-      const out = flags.csv || join(dirname(STATE_FILE), `import-${new Date().toISOString().slice(0, 10)}.csv`);
-      if (rows) {
-        mkdirSync(dirname(out), { recursive: true });
-        writeFileSync(out, csv);
-        console.log(`wrote ${rows} row(s) to ${out} — import it in ats-fill: Tracker → Import CSV`);
-      }
-      for (const op of manual) console.log(`edit by hand (no URL to match on): ${op.app.company} → ${op.to}`);
-      return { written: 0, queued: rows };
-    },
+    write: bridge ? bridgeWriter(flags) : csvWriter(flags),
   });
 }
 
 async function main() {
   const [command = 'summary', ...rest] = process.argv.slice(2);
   const { positional, flags } = parseArgs(rest);
+
+  // The only commands that touch Chrome's helper registration, and only when asked.
+  if (command === 'setup') {
+    const { changed, manifestPath } = installHost();
+    console.log(changed ? `installed the ats-fill helper (${manifestPath})` : `the ats-fill helper is already installed (${manifestPath})`);
+    const status = bridgeStatus();
+    console.log(status.connected
+      ? `ats-fill is connected (last check-in ${status.lastSeen}); tracker changes apply directly.`
+      : 'next: in ats-fill open Settings → "AI assistant access" and turn it on. It connects within a minute.');
+    return;
+  }
+
+  if (command === 'uninstall-helper') {
+    uninstallHost();
+    console.log('removed the ats-fill helper. Also turn off Settings → "AI assistant access" in ats-fill.');
+    return;
+  }
 
   if (command === 'gmail-query') {
     console.log(gmailQuery(loadState().lastRun));
@@ -279,10 +321,11 @@ async function main() {
           ...plan.adds.map(({ email: _email, ...fields }) => ({ kind: 'add', fields })),
         ];
         await write(ops);
-        // Live writes are final, so these emails never need another look. A CSV
+        // Live and bridge writes are final (queued ones apply at the next
+        // check-in), so these emails never need another look. A CSV
         // isn't final until it's imported, so keep the Gmail window open; the
         // next run re-plans against the tracker, and imported rows match.
-        if (mode === 'live' || !pending) {
+        if (mode !== 'disk' || !pending) {
           saveState({ processed: [...state.processed, ...emails.map((m) => String(m.id))], lastRun: new Date().toISOString() });
         } else {
           console.log('Gmail window stays open until a run finds nothing left to import');
@@ -296,7 +339,10 @@ async function main() {
   });
 }
 
-const isDirectRun = process.argv[1] && import.meta.url.endsWith(process.argv[1].replace(/\\/g, '/').split('/').pop());
+// Compare real paths: an npm/npx bin link has a different name than this file.
+const isDirectRun = (() => {
+  try { return Boolean(process.argv[1]) && realpathSync(process.argv[1]) === realpathSync(fileURLToPath(import.meta.url)); } catch { return false; }
+})();
 if (isDirectRun) {
   main().catch((err) => {
     console.error(`ats-fill tracker: ${err.message}`);
