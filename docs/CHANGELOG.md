@@ -34,6 +34,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- Tracker entries capture the real company instead of the browser tab title. Ashby application pages had saved "Staff Software Engineer - DevX @ Amplitude" as the company; the tab title is now only parsed for "Role @ Company" / "Role at Company", after the page's company element and the posting's structured data, with the ATS board slug in the URL as a last resort. Workday on `*.myworkdayjobs.com` is recognised as Workday and its legal-entity code is dropped ("100 Everfox Holdings, LLC" → "Everfox Holdings, LLC"). Titles lose apply-flow prefixes such as "My Application –". Added `CHROMEWEBSTORE.md` with listing copy and a justification for every permission.
 - Chrome release workflow is dispatched automatically after a version tag (#73).
 
 ### Security
