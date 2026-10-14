@@ -1,0 +1,30 @@
+name: Chrome Web Store token check
+
+# Proves the Store OAuth credentials still work, without uploading or
+# publishing anything, so an expired refresh token shows up as a failed
+# weekly check instead of a failed release. Using the token weekly also keeps
+# it from lapsing for inactivity.
+on:
+  schedule:
+    - cron: "17 13 * * 1"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  check:
+    name: Refresh an access token
+    runs-on: ubuntu-latest
+    environment:
+      name: production
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+
+      - name: Check Chrome Web Store OAuth credentials
+        env:
+          CWS_CLIENT_ID: ${{ secrets.CWS_CLIENT_ID }}
+          CWS_CLIENT_SECRET: ${{ secrets.CWS_CLIENT_SECRET }}
+          CWS_REFRESH_TOKEN: ${{ secrets.CWS_REFRESH_TOKEN }}
+        run: node scripts/publish-chrome-web-store.mjs --check-token

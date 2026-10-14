@@ -34,6 +34,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- Chrome Web Store publishing: an `invalid_grant` failure now prints the fix (the refresh token expires after 7 days while the OAuth consent screen is in "Testing"; set it to "In production", then re-mint the token with your own client in OAuth Playground). A weekly **Chrome Web Store token check** workflow (`--check-token`) refreshes a token without publishing, so a dead token shows up before release day. The setup doc covers both.
 - Chrome release workflow is dispatched automatically after a version tag (#73).
 
 ### Security
