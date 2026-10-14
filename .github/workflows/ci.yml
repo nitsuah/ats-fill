@@ -38,7 +38,7 @@ jobs:
       - name: Generate coverage
         run: docker run --rm -v ${{ github.workspace }}/coverage:/app/coverage ats-fill:test npm run test:coverage
       - name: Upload coverage report
-        uses: actions/upload-artifact@v7.0.1
+        uses: actions/upload-artifact@v7.0.2
         if: always()
         with:
           name: coverage-report
@@ -61,14 +61,14 @@ jobs:
             -v ${{ github.workspace }}/test-results:/app/test-results \
             ats-fill:e2e sh -c "ls -la /app/dist && xvfb-run --server-args='-screen 0 1280x720x24' npm run test:e2e"
       - name: Upload Playwright report
-        uses: actions/upload-artifact@v7.0.1
+        uses: actions/upload-artifact@v7.0.2
         if: always()
         with:
           name: playwright-report
           path: playwright-report/
           retention-days: 14
       - name: Upload failure screenshots
-        uses: actions/upload-artifact@v7.0.1
+        uses: actions/upload-artifact@v7.0.2
         if: failure()
         with:
           name: playwright-screenshots
@@ -98,7 +98,7 @@ jobs:
       - name: Validate screenshot gallery
         run: node scripts/validate-screenshot-gallery.mjs
       - name: Upload screenshot gallery
-        uses: actions/upload-artifact@v7.0.1
+        uses: actions/upload-artifact@v7.0.2
         if: always()
         with:
           name: ats-fill-ui-gallery-${{ github.run_id }}
@@ -132,7 +132,7 @@ jobs:
       - name: Validate Chrome Web Store assets
         run: node scripts/validate-store-assets.mjs store-assets
       - name: Upload Chrome Web Store assets
-        uses: actions/upload-artifact@v7.0.1
+        uses: actions/upload-artifact@v7.0.2
         if: always()
         with:
           name: chrome-web-store-assets
