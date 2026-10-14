@@ -9,6 +9,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.0.3] - 2026-10-14
+
 ### Added
 
 - Tracker CLI (`npx -y github:nitsuah/ats-fill <command>` or `npm run tracker`, `scripts/tracker/`): reads the tracker straight from Chrome's on-disk LevelDB store with no setup, and syncs job emails (Gmail search output) into the tracker with a deterministic classifier. Status only moves forward, and processed emails are remembered. The skill gains `references/automation.md` covering the inbox loop and low-token daily/weekly routines.
@@ -36,7 +38,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
-- Chrome Web Store publishing: an `invalid_grant` failure now prints the fix (the refresh token expires after 7 days while the OAuth consent screen is in "Testing"; set it to "In production", then re-mint the token with your own client in OAuth Playground). A weekly **Chrome Web Store token check** workflow (`--check-token`) refreshes a token without publishing, so a dead token shows up before release day. The setup doc covers both.
+- Chrome Web Store publishing: `invalid_grant` and `unauthorized_client` failures now print the fix (the refresh token expires after 7 days while the OAuth consent screen is in "Testing"; set it to "In production", then re-mint the token with your own client in OAuth Playground). A weekly **Chrome Web Store token check** workflow (`--check-token`) refreshes a token without publishing, so a dead token shows up before release day. The setup doc covers both.
 - Tracker entries capture the real company instead of the browser tab title. Ashby application pages had saved "Staff Software Engineer - DevX @ Amplitude" as the company; the tab title is now only parsed for "Role @ Company" / "Role at Company", after the page's company element and the posting's structured data, with the ATS board slug in the URL as a last resort. Workday on `*.myworkdayjobs.com` is recognised as Workday and its legal-entity code is dropped ("100 Everfox Holdings, LLC" → "Everfox Holdings, LLC"). Titles lose apply-flow prefixes such as "My Application –". Added `CHROMEWEBSTORE.md` with listing copy and a justification for every permission.
 - Chrome release workflow is dispatched automatically after a version tag (#73).
 

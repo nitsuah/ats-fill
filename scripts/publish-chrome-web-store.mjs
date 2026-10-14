@@ -32,6 +32,15 @@ const INVALID_GRANT_HELP = [
   "  See docs/release/chrome-web-store.md.",
 ].join("\n");
 
+// The refresh token works but was issued to a different OAuth client than
+// CWS_CLIENT_ID, almost always OAuth Playground's built-in client.
+const UNAUTHORIZED_CLIENT_HELP = [
+  "The refresh token belongs to a different OAuth client than CWS_CLIENT_ID/CWS_CLIENT_SECRET (unauthorized_client).",
+  "  Re-mint it in OAuth 2.0 Playground with the gear icon → \"Use your own OAuth credentials\" ticked and this",
+  "  client's ID and secret entered, then save it to the production secret CWS_REFRESH_TOKEN.",
+  "  See docs/release/chrome-web-store.md.",
+].join("\n");
+
 const publisher = process.env.CWS_PUBLISHER_ID;
 const extension = process.env.CWS_EXTENSION_ID;
 const base = `https://chromewebstore.googleapis.com/v2/publishers/${publisher}/items/${extension}`;
@@ -56,7 +65,9 @@ async function getAccessToken() {
   });
   const body = await jsonOrText(response);
   if (!response.ok || !body.access_token) {
-    const help = body.error === "invalid_grant" ? `\n${INVALID_GRANT_HELP}` : "";
+    const help = body.error === "invalid_grant" ? `\n${INVALID_GRANT_HELP}`
+      : body.error === "unauthorized_client" ? `\n${UNAUTHORIZED_CLIENT_HELP}`
+        : "";
     throw new Error(`OAuth token refresh failed (${response.status}): ${JSON.stringify(body)}${help}`);
   }
   return body.access_token;
