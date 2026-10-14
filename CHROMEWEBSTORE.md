@@ -56,6 +56,8 @@ Built and validated from each release tag by the release workflow (see [docs/CHR
 | `activeTab` | permissions | When the user opens ats-fill on a job page, lets it read that page's job details and fill the application form the user is looking at. |
 | `scripting` | permissions | Re-attaches the form-filling script to the current job page when the user presses Fill on a tab opened before the extension was installed or updated, so the fill works without a page reload. |
 | `identity` | permissions | Runs the optional "Import profile from LinkedIn/Google" sign-in that the user starts themselves, using their own app credentials. |
+| `alarms` | permissions | When the user has turned on AI assistant access, checks about once a minute for tracker changes their AI assistant queued on this computer. Does nothing while that setting is off. |
+| `nativeMessaging` | optional permissions | Requested only when the user turns on Settings → "AI assistant access". Lets ats-fill exchange messages with one local helper program the user installs, so an AI assistant on the same computer can add or update tracker entries (never delete). No data goes online, and the helper can't reach any other part of the browser. |
 | `cookies` | optional permissions | Requested only if the user turns on LinkedIn job search, so searches can use the LinkedIn session they're already signed in to. Never requested otherwise. |
 | `https://*/*`, `http://*/*` | optional host permissions | Requested one site at a time, only when the user adds a custom job feed (for example a state workforce board or a company careers feed), so ats-fill can read that one feed. |
 | `https://generativelanguage.googleapis.com/*` | host_permissions | Sends the user's own AI requests (resume parsing, answer drafts, job summaries, interview questions) to Google Gemini with the user's own API key. |
@@ -116,6 +118,7 @@ https://nitsuah.github.io/ats-fill/
 
 | Version | Date | Changes | Status |
 |---------|------|---------|--------|
+| Unreleased | 2026-10-14 | Optional "AI assistant access" setting: a local AI assistant can add and update tracker entries through a helper program on the user's computer (new `alarms` permission; optional `nativeMessaging`, requested only from that setting). |
 | Unreleased | 2026-10-14 | Tracker entries capture the real company name on Ashby, Workday and generic apply pages instead of the page title; "My Application –" prefixes are dropped from job titles. | Draft |
 | 1.0.2 | 2026-10-05 | See [CHANGELOG](docs/CHANGELOG.md). | Published |
 

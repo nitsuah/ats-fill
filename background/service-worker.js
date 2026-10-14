@@ -4,6 +4,9 @@
  * message-type handlers live in ./message-router.js and ./modules/handlers/.
  */
 
-import { setupMessageRouter } from './message-router.js';
+import { setupMessageRouter, handleMessage } from './message-router.js';
+import { setupNativeBridge } from './native-bridge.js';
 
 setupMessageRouter();
+// Optional AI-assistant access to the tracker; inert until the user turns it on.
+setupNativeBridge(handleMessage);

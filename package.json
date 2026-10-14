@@ -2,6 +2,9 @@
   "name": "apply-bot",
   "private": true,
   "type": "module",
+  "bin": {
+    "ats-fill": "scripts/tracker/cli.mjs"
+  },
   "scripts": {
     "build": "node -e \"const fs=require('fs'),path=require('path');if(fs.existsSync('dist'))fs.rmSync('dist',{recursive:true});fs.mkdirSync('dist');['popup','lib','data','manifest.json','background','content','icons'].forEach(f=>fs.cpSync(f,path.join('dist',f),{recursive:true}))\"",
     "test": "node --test tests/*.test.mjs",
@@ -10,14 +13,13 @@
     "test:e2e-headed": "playwright test --headed",
     "lint": "eslint popup/popup.js lib/*.js --max-warnings=0 --config config/eslint.config.mjs",
     "video:publish": "node scripts/publish-feature-tour.mjs",
-    "preview":"node scripts/preview/server.mjs",
+    "preview": "node scripts/preview/server.mjs",
+    "tracker": "node scripts/tracker/cli.mjs",
     "video": "node scripts/voice/narrate.mjs && ATS_FILL_VIDEO=1 xvfb-run --auto-servernum --server-args='-screen 0 1920x1200x24' playwright test --config config/playwright.config.mjs tests/e2e/feature-video.spec.mjs && node scripts/build-feature-video.mjs"
   },
-  "dependencies": {
-    "@eslint/js": "^9.0.0",
-    "eslint": "^10.12.0"
-  },
   "devDependencies": {
+    "@eslint/js": "^9.0.0",
+    "eslint": "^10.12.0",
     "@axe-core/playwright": "4.13.0",
     "@playwright/test": "1.64.0",
     "esbuild": "^0.28.2",

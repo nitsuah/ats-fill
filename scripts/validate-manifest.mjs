@@ -8,7 +8,7 @@ if (!/^\d+\.\d+\.\d+$/.test(manifest.version)) {
   throw new Error(`manifest version must be MAJOR.MINOR.PATCH; got "${manifest.version}"`);
 }
 
-const requiredPermissionSet = new Set(["storage", "activeTab", "scripting", "identity"]);
+const requiredPermissionSet = new Set(["storage", "activeTab", "scripting", "identity", "alarms"]);
 for (const permission of manifest.permissions || []) {
   if (!requiredPermissionSet.has(permission)) {
     throw new Error(`Unexpected required permission: ${permission}`);
@@ -19,6 +19,9 @@ if ((manifest.permissions || []).includes("tabs")) {
 }
 if (!(manifest.optional_permissions || []).includes("cookies")) {
   throw new Error('The "cookies" permission must remain optional and be requested only when LinkedIn session search is enabled.');
+}
+if ((manifest.permissions || []).includes("nativeMessaging") || !(manifest.optional_permissions || []).includes("nativeMessaging")) {
+  throw new Error('The "nativeMessaging" permission must remain optional: it carries an install warning and is requested only when the user turns on AI assistant access.');
 }
 
 if (manifest.web_accessible_resources?.length) {

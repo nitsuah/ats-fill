@@ -4,6 +4,7 @@
  * ./modules/handlers/. Extracted from service-worker.js.
  */
 
+import { checkInWithBridge } from './native-bridge.js';
 import {
   handleSaveSetup,
   handleSaveSettingsOnly,
@@ -79,6 +80,7 @@ const MESSAGE_HANDLERS = {
   SAVE_INTERVIEW_PREP: handleSaveInterviewPrep,
   GENERATE_INTERVIEW_QUESTIONS: handleGenerateInterviewQuestions,
   GENERATE_INTERVIEW_ANSWER: handleGenerateInterviewAnswer,
+  NATIVE_BRIDGE_CHECK: () => checkInWithBridge(),
 };
 
 /**
