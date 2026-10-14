@@ -55,6 +55,8 @@ Designed so the user stays in control of all data without relying on any externa
 - **Google OAuth Import**: BYO Google Cloud OAuth Client ID/Secret; same local-only, consent-based OIDC sign-in flow as LinkedIn, pre-fills name and email
 - **Resume Upload**: Supports PDF, DOCX, and plain-text paste; parsed locally via Gemini if a key is present
 - **CSV Tracker Import**: Import past applications from any spreadsheet export using flexible header matching
+- **Tracker CLI and inbox sync** (`npx -y github:nitsuah/ats-fill`): read the pipeline from a terminal or scheduled routine straight from the extension's on-disk storage, and turn job emails (application confirmations, interview requests, rejections, offers) into forward-only tracker updates
+- **AI assistant access** (optional): let Claude or another assistant on your computer add and update tracker entries through a local helper, without remote debugging or any open port; it can't delete or see anything else
 - **LinkedIn Session Scraping**: When signed into LinkedIn in any browser tab, the extension can search LinkedIn Jobs via the Voyager API using your active session — no separate API key needed
 
 ### 🔍 Multi-Source Job Search

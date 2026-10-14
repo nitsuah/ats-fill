@@ -772,6 +772,21 @@
             </div>
           </details>
 
+          <details class="ai-panel-group profile-panel profile-section" id="ai-bridge-section">
+            <summary class="collapsible-summary profile-section-summary">
+              <span class="profile-section-title">AI assistant access (optional)</span>
+              <span class="config-badge hidden" data-config-badge>On</span>
+            </summary>
+            <div class="collapsible-body">
+            <p class="helper-text">Lets Claude or another AI assistant on this computer add and update applications in your tracker, for example from job emails. It can't delete anything or see your profile, keys or other sites. Changes go through a small helper on this computer; nothing goes online.</p>
+            <label class="checkbox-row">
+              <input type="checkbox" id="ai-bridge-optin" />
+              Let AI assistants on this computer update my tracker
+            </label>
+            <p id="ai-bridge-status" class="status-msg" role="status" aria-live="polite"></p>
+            </div>
+          </details>
+
           <div class="profile-save-bar ai-save-bar">
             <button id="save-ai-settings-btn" class="btn btn-primary btn-full">Save settings</button>
             <p id="ai-status" class="status-msg" role="status" aria-live="polite"></p>

@@ -265,7 +265,46 @@ export async function handleSaveAiSettings() {
 /**
  * Initialize all AI panel event handlers and UI logic.
  */
+// ── AI assistant access (native messaging bridge) ──────────────────────────
+
+const BRIDGE_SETUP_HINT = 'On. One more step, once: ask your AI assistant to run any ats-fill tracker command (or run "npx -y github:nitsuah/ats-fill setup") so the local helper gets installed.';
+
+async function refreshBridgeUi({ checkNow = false } = {}) {
+  const box = $('ai-bridge-optin');
+  if (!box || !chrome.permissions) return;
+  const granted = await chrome.permissions.contains({ permissions: ['nativeMessaging'] });
+  box.checked = granted;
+  setCardBadgeOnly('ai-bridge-section', granted);
+  if (!granted) {
+    setStatus('ai-bridge-status', '');
+    return;
+  }
+  const status = checkNow
+    ? await sendMessage({ type: 'NATIVE_BRIDGE_CHECK' }, { timeout: 15_000 })
+    : (await chrome.storage.local.get('nativeBridgeStatus')).nativeBridgeStatus;
+  if (status?.connected) setStatus('ai-bridge-status', '✅ Connected. Assistants on this computer can update your tracker.', 'success');
+  else setStatus('ai-bridge-status', BRIDGE_SETUP_HINT);
+}
+
+async function handleBridgeToggle(event) {
+  const box = event.currentTarget;
+  // permissions.request must run inside this click, before any other await.
+  if (box.checked) {
+    const granted = await chrome.permissions.request({ permissions: ['nativeMessaging'] });
+    if (!granted) {
+      box.checked = false;
+      return;
+    }
+  } else {
+    await chrome.permissions.remove({ permissions: ['nativeMessaging'] });
+  }
+  await refreshBridgeUi({ checkNow: true });
+}
+
 export function initAiHandlers() {
+  $('ai-bridge-optin')?.addEventListener('change', handleBridgeToggle);
+  refreshBridgeUi().catch(() => {});
+
   // Save AI settings
   const saveBtn = $('save-ai-settings-btn');
   if (saveBtn) saveBtn.onclick = handleSaveAiSettings;
