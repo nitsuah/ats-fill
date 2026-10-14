@@ -238,7 +238,7 @@ function extractJobInfo() {
   else if (matchesDomain(hostname, 'ashbyhq.com') || matchesDomain(hostname, 'ashby.io')) info = extractAshby();
   else if (matchesDomain(hostname, 'lever.co')) info = extractLever();
   else if (matchesDomain(hostname, 'linkedin.com')) info = extractLinkedIn();
-  else if (matchesDomain(hostname, 'workday.com')) info = extractWorkday();
+  else if (isWorkdayHost(hostname)) info = extractWorkday();
   else if (matchesDomain(hostname, 'icims.com')) info = extractICIMS();
   else if (matchesDomain(hostname, 'jobvite.com')) info = extractJobvite();
   else if (matchesDomain(hostname, 'circle.com') || matchesDomain(hostname, 'phenompeople.com')) info = extractPhenom();
@@ -254,7 +254,7 @@ function extractJobInfo() {
 function extractGreenhouse() {
   return {
     title: qs('#header h1, .app-title, h1')?.textContent?.trim() || '',
-    company: qs('#header .company-name, .company')?.textContent?.trim() || document.title,
+    company: qs('#header .company-name, .company')?.textContent?.trim() || '',
     jd: qs('#content, #app_body, .content')?.innerText?.trim() || extractGenericText(),
   };
 }
@@ -262,7 +262,7 @@ function extractGreenhouse() {
 function extractAshby() {
   return {
     title: qs('h1[data-testid="job-title"], h1.ashby-job-posting-heading, h1')?.textContent?.trim() || '',
-    company: qs('.ashby-application-portal-name, [data-testid="company-name"]')?.textContent?.trim() || document.title,
+    company: qs('.ashby-application-portal-name, [data-testid="company-name"]')?.textContent?.trim() || '',
     jd: qs('.ashby-job-posting-brief-list, .ashby-job-posting-description, main')?.innerText?.trim() || extractGenericText(),
   };
 }
@@ -270,7 +270,7 @@ function extractAshby() {
 function extractLever() {
   return {
     title: qs('.posting-header h2, h2.posting-title')?.textContent?.trim() || '',
-    company: qs('.main-header-logo img')?.alt?.trim() || document.title,
+    company: qs('.main-header-logo img')?.alt?.trim() || '',
     jd: qs('.posting-description, section.page-centered')?.innerText?.trim() || extractGenericText(),
   };
 }
@@ -294,7 +294,7 @@ function extractWorkday() {
 function extractICIMS() {
   return {
     title: qs('.iCIMS_JobHeaderTitle, #iCIMS_MainColumn h1')?.textContent?.trim() || '',
-    company: qs('.iCIMS_CompanyLogo img')?.alt || document.title,
+    company: qs('.iCIMS_CompanyLogo img')?.alt || '',
     jd: qs('#iCIMS_JobContent, .iCIMS_JobContent')?.innerText?.trim() || extractGenericText(),
   };
 }
@@ -302,7 +302,7 @@ function extractICIMS() {
 function extractJobvite() {
   return {
     title: qs('[data-qa="job-title"], h1, .job-title')?.textContent?.trim() || '',
-    company: qs('[data-qa="company-name"], .company-name')?.textContent?.trim() || document.title,
+    company: qs('[data-qa="company-name"], .company-name')?.textContent?.trim() || '',
     jd: qs('[data-qa="job-description"], .job-description, main')?.innerText?.trim() || extractGenericText(),
   };
 }
@@ -310,7 +310,7 @@ function extractJobvite() {
 function extractPhenom() {
   return {
     title: qs('[data-ph-id="ph-page-element-page16-j5r8i0"], h1, [class*="job-title"]')?.textContent?.trim() || '',
-    company: qs('[class*="company"], [data-qa="company-name"]')?.textContent?.trim() || document.title,
+    company: qs('[class*="company"], [data-qa="company-name"]')?.textContent?.trim() || '',
     jd: qs('[class*="job-description"], [data-qa="job-description"], main')?.innerText?.trim() || extractGenericText(),
   };
 }
@@ -334,10 +334,20 @@ function enrichJobInfo(info = {}) {
     'Unknown'
   );
 
+  // Company: the page's own company element, then schema.org, then the tab
+  // title ("Role @ Company"), then the ATS board slug in the URL. The raw tab
+  // title is never used whole: it's usually "<role> @ <company>".
+  const company = cleanCompanyName(firstNonEmptyText(
+    info.company,
+    ld && ld.company,
+    companyFromTitleText(document.title),
+    companyFromUrl(location.href)
+  ));
+
   const result = {
     ...info,
-    title: info.title || (ld && ld.title) || '',
-    company: info.company || (ld && ld.company) || '',
+    title: cleanJobTitle(info.title || (ld && ld.title) || '', company),
+    company,
     jd,
     location: locationText || 'Unknown',
     employment_type: (ld && ld.employment_type) || detectEmploymentTypeFromText(`${info.title || ''}\n${jd}`),
@@ -348,6 +358,75 @@ function enrichJobInfo(info = {}) {
   };
   delete result._ld;
   return result;
+}
+
+// ── Company / title cleanup ───────────────────────────────────────────────────
+
+function isWorkdayHost(hostname) {
+  return matchesDomain(hostname, 'workday.com') || matchesDomain(hostname, 'myworkdayjobs.com');
+}
+
+function collapseText(value) {
+  return String(value || '').replace(/\s+/g, ' ').trim();
+}
+
+/** "Careers at Acme" / "Acme Careers" / "Acme | Jobs" → "Acme". */
+function stripCareersNoise(name) {
+  return collapseText(name)
+    .replace(/\s+[|·–—-]\s+.*$/, '')
+    .replace(/^(?:careers|jobs)\s+(?:at|@)\s+/i, '')
+    .replace(/\s+(?:careers|jobs|job board|hiring)$/i, '')
+    .trim();
+}
+
+/**
+ * Pull the company out of a tab title such as "Staff Engineer @ Acme" or
+ * "Job Application for Staff Engineer at Acme". Returns '' when the title
+ * doesn't name one; a bare title is never treated as a company.
+ */
+function companyFromTitleText(text) {
+  const t = collapseText(text);
+  const match = t.match(/^job application for .+? at (.+)$/i)
+    || t.match(/^.+? @ (.+)$/)
+    || t.match(/^.+? at ([A-Z0-9][^|–—]*?)(?:\s+[|–—-]\s+.*)?$/);
+  return match ? stripCareersNoise(match[1]) : '';
+}
+
+/** Company slug from hosted ATS board URLs (jobs.ashbyhq.com/acme/…, jobs.lever.co/acme/…, boards.greenhouse.io/acme/…). */
+function companyFromUrl(href) {
+  let url;
+  try { url = new URL(href); } catch { return ''; }
+  const host = url.hostname;
+  let slug = '';
+  if (matchesDomain(host, 'greenhouse.io')) slug = url.searchParams.get('for') || url.pathname.split('/')[1] || '';
+  else if (matchesDomain(host, 'ashbyhq.com') || matchesDomain(host, 'lever.co')) slug = url.pathname.split('/')[1] || '';
+  if (!slug || /^(?:embed|jobs?|job_app|v\d+|api)$/i.test(slug)) return '';
+  return decodeURIComponent(slug)
+    .split(/[-_]+/)
+    .filter(Boolean)
+    .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+    .join(' ');
+}
+
+function cleanCompanyName(name, hostname = location.hostname) {
+  let text = collapseText(name);
+  // A "<role> @ <company>" string that reached the company slot.
+  const at = text.match(/^.+? @ (.+)$/);
+  if (at) text = at[1].trim();
+  // Workday's hiringOrganization carries the legal-entity code: "100 Everfox Holdings, LLC".
+  if (isWorkdayHost(hostname)) text = text.replace(/^\d{2,5}\s+(?=\D)/, '');
+  return text;
+}
+
+/** Drop flow-page prefixes ("My Application - …") and a trailing "at/@ <company>". */
+function cleanJobTitle(title, company = '') {
+  let text = collapseText(title)
+    .replace(/^(?:(?:my |job )?application\s*(?:for\b|[-–—:|])|apply(?: now)? for\b)\s*/i, '');
+  if (company) {
+    const escaped = company.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    text = text.replace(new RegExp(`\\s+(?:@|at|[-–—|])\\s+${escaped}$`, 'i'), '');
+  }
+  return text.trim();
 }
 
 // ── JSON-LD JobPosting (schema.org) — inlined pure copy of lib/jd-parser.js ────
