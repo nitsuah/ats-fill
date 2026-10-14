@@ -144,3 +144,12 @@ test('extension bridge backs off when the helper is not installed', async () => 
   assert.equal(calls.alarms[0].periodInMinutes, 30);
   assert.equal(storage.nativeBridgeStatus.connected, false);
 });
+
+test('changes queued in the same millisecond keep their order', () => {
+  const dir = tempDir();
+  const env = { ATS_FILL_BRIDGE_DIR: dir };
+  const ids = Array.from({ length: 50 }, (_, i) => enqueue('UPDATE_APPLICATION', { n: i }, env));
+  const reply = handleHostMessage({ type: 'poll' }, { dir });
+  assert.deepEqual(reply.ops.map((op) => op.id), ids);
+  assert.deepEqual(reply.ops.map((op) => op.payload.n), ids.map((_, i) => i));
+});

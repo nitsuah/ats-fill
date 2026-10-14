@@ -108,9 +108,16 @@ export function bridgeStatus(env = process.env, now = Date.now()) {
   }
 }
 
-/** Queue one change for ats-fill to apply. */
+let enqueueSeq = 0;
+
+/**
+ * Queue one change for ats-fill to apply. The helper hands changes over in
+ * file-name order, so ids sort by time and then by a per-process counter:
+ * two changes queued in the same millisecond still apply in the order given.
+ */
 export function enqueue(type, payload, env = process.env) {
-  const id = `${Date.now()}-${randomUUID().slice(0, 8)}`;
+  enqueueSeq = (enqueueSeq + 1) % 1_000_000;
+  const id = `${String(Date.now()).padStart(15, '0')}-${String(enqueueSeq).padStart(6, '0')}-${randomUUID().slice(0, 8)}`;
   const outbox = join(bridgeDir(env), 'outbox');
   mkdirSync(outbox, { recursive: true });
   const tmp = join(outbox, `${id}.json.tmp`);
