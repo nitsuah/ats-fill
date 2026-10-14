@@ -242,6 +242,7 @@ Company,Role Title,Status,Date,Employment Type,Remote,Location,Pay Min,Pay Max,S
 | [interviews.md](./skills/ats-fill-job-search/references/interviews.md) | Prep sheet, STAR story bank, technical and system design, questions to ask, thank-yous |
 | [offers.md](./skills/ats-fill-job-search/references/offers.md) | Pay research, negotiation scripts, comparing offers, rejections |
 | [resources.md](./skills/ats-fill-job-search/references/resources.md) | Curated, primary-source links (O*NET, BLS, CareerOneStop, EEOC, FTC and more) |
+| [automation.md](./skills/ats-fill-job-search/references/automation.md) | Tracker CLI, Gmail-to-tracker sync, low-token daily/weekly routines |
 
 **Install**
 

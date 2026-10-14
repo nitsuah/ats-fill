@@ -1,0 +1,2 @@
+# Raw LevelDB written by Chromium: keep bytes exact.
+tests/fixtures/leveldb-tracker/** binary
