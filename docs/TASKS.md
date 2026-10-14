@@ -19,6 +19,7 @@ _None._
   - Why: store users have 1.0.2, but the next release can't be published by the workflow until the token is rotated.
   - Acceptance Criteria: a new refresh token is stored in the production environment secret `CWS_REFRESH_TOKEN`; a `chrome-release.yml` run publishes successfully; the listing's version matches the latest tag (or the item is in review, with the dashboard status noted here).
   - Dependencies: needs the store owner's Google account (a human step; an agent can't do it).
+  - Progress 2026-10-14 (stays open until a release publishes): root cause found. `CWS_REFRESH_TOKEN` was set 2026-09-23 22:42 UTC. A run at 09-30 22:15 still authenticated (it failed only on "item is in review"), and every run from 10-01 04:41 got `invalid_grant`: the token died at 7 days, which is Google's limit for refresh tokens of a consent screen in "Testing". Rotating alone would fail again in a week, so set the consent screen to "In production" first, then mint the token with "Use your own OAuth credentials" in OAuth Playground (steps in `docs/release/chrome-web-store.md` → Token health and rotation). The publish script now explains `invalid_grant`, and a weekly **Chrome Web Store token check** workflow catches a dead token before release day.
 - [/] Fix the release workflow's "Store listing assets" job ("No tests found").
   - Priority: P2
   - Type: Bug · Confidence: Medium
