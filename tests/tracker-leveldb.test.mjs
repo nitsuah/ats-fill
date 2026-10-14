@@ -30,17 +30,19 @@ test('snappyUncompress handles literals and overlapping copies', () => {
   assert.equal(snappyUncompress(Buffer.from([8, 0x04, 97, 98, 0x09, 0x02])).toString(), 'abababab');
 });
 
-test('changesToCsv keeps existing fields on updates and skips URL-less updates', () => {
+test('changesToCsv keeps existing fields on updates and routes URL-less ops to manual', () => {
   const tracked = { id: '1', company: 'Contoso', title: 'Staff ML Engineer', url: 'https://jobs.example.com/1', status: 'submitted', date: '2026-09-01', location: 'Remote', remote: true, employment_type: 'Contract', source: 'remotive', verdict: 'strong yes' };
   const { csv, rows, manual } = changesToCsv([
     { kind: 'update', app: tracked, to: 'interview' },
     { kind: 'update', app: { id: '2', company: 'NoLink', url: '' }, to: 'rejected' },
-    { kind: 'add', fields: { company: 'Wingtip', title: 'Admin, Productivity', status: 'rejected', date: '2026-10-04', source: 'email' } },
+    { kind: 'add', fields: { company: 'Wingtip', title: 'Admin, Productivity', url: 'https://jobs.example.com/2', status: 'rejected', date: '2026-10-04', source: 'email' } },
+    { kind: 'add', fields: { company: 'NoUrlAdd', title: 'Engineer', url: '', status: 'submitted', date: '2026-10-04', source: 'email' } },
   ]);
   const lines = csv.trim().split('\n');
   assert.equal(rows, 2);
   assert.equal(lines[0], 'company,title,url,status,date,location,remote,salary range,employment type,source,scorecard,verdict');
   assert.equal(lines[1], 'Contoso,Staff ML Engineer,https://jobs.example.com/1,interview,2026-09-01,Remote,yes,,Contract,remotive,,strong yes');
-  assert.equal(lines[2], 'Wingtip,"Admin, Productivity",,rejected,2026-10-04,Unknown,no,,Full-time,email,,');
-  assert.deepEqual(manual.map((m) => m.app.company), ['NoLink']);
+  assert.equal(lines[2], 'Wingtip,"Admin, Productivity",https://jobs.example.com/2,rejected,2026-10-04,Unknown,no,,Full-time,email,,');
+  assert.deepEqual(manual.map((m) => m.kind), ['update', 'add']);
+  assert.deepEqual(manual.map((m) => (m.kind === 'update' ? m.app.company : m.fields.company)), ['NoLink', 'NoUrlAdd']);
 });

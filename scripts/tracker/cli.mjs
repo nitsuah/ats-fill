@@ -132,7 +132,7 @@ export function changesToCsv(ops) {
   const manual = [];
   for (const op of ops) {
     const base = op.kind === 'update' ? op.app : op.fields;
-    if (op.kind === 'update' && !base.url) { manual.push(op); continue; }
+    if (!base.url) { manual.push(op); continue; }
     const cells = {
       company: base.company, title: base.title, url: base.url, status: op.kind === 'update' ? op.to : base.status,
       date: base.date, location: base.location || 'Unknown', remote: base.remote ? 'yes' : 'no',
@@ -193,7 +193,11 @@ async function withTracker(flags, fn) {
         writeFileSync(out, csv);
         console.log(`wrote ${rows} row(s) to ${out} — import it in ats-fill: Tracker → Import CSV`);
       }
-      for (const op of manual) console.log(`edit by hand (no URL to match on): ${op.app.company} → ${op.to}`);
+      for (const op of manual) {
+        const item = op.kind === 'update' ? op.app : op.fields;
+        const next = op.kind === 'update' ? ` → ${op.to}` : '';
+        console.log(`edit by hand (no URL to match on): ${item.company}${next}`);
+      }
       return { written: 0, queued: rows };
     },
   });

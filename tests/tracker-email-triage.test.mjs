@@ -97,6 +97,12 @@ test('an abbreviated mail domain folds into the company name the emails spell ou
   assert.deepEqual(plan.adds.map((a) => [a.company, a.title, a.status]), [['Litware Global Solutions', 'ITSM Engineer', 'submitted']]);
 });
 
+test('planTrackerChanges lets an offer replace an earlier rejected status', () => {
+  const apps = [{ id: 'r1', company: 'Contoso', title: 'Staff ML Engineer', status: 'rejected', updated_at: '2026-10-01' }];
+  const plan = planTrackerChanges(apps, [MAIL.offer].map(classifyEmail));
+  assert.deepEqual(plan.updates.map((u) => [u.id, u.from, u.to]), [['r1', 'rejected', 'offer']]);
+});
+
 test('normalizeCompany strips suffixes and punctuation', () => {
   assert.equal(normalizeCompany('Contoso, Inc.'), 'contoso');
   assert.equal(normalizeCompany('Litware Solutions LLC'), 'litware solutions');
