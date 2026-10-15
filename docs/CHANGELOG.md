@@ -15,6 +15,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Mermaid architecture and form-fill-flow diagrams in `docs/diagrams/`, embedded in the README. The `screenshot-gallery` CI job renders them (pinned `minlag/mermaid-cli`) and the rolling "docs: refresh UI screenshots" PR now carries the `.svg` renders too.
 - `promo/spots.json`: existing gallery screenshots linked to the features they show, and non-visual features marked `"visual": "none"`. No spot, reel or video changed.
 
+### Changed
+
+- Docs: merged the duplicate 1.0.3 rows in CHROMEWEBSTORE.md's version history.
+
 ## [1.0.3] - 2026-10-14
 
 ### Added
