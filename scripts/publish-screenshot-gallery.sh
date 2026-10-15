@@ -58,7 +58,7 @@ open_pr="$(gh pr list --repo "$GH_REPO" --state open --limit 200 \
 
 node scripts/update-screenshot-metadata.mjs
 
-if git diff --quiet -- screenshots README.md; then
+if git diff --quiet -- screenshots README.md docs/diagrams; then
   echo "UI gallery is already current."
   if [ -n "$open_pr" ]; then
     echo "Closing #$open_pr: main already matches the captured gallery."
@@ -75,7 +75,7 @@ git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
 # Rebuild the rolling branch from current main. It only ever holds a single
 # bot commit, so replacing it (force push) is safe and keeps the PR diff exact.
 git switch -C "$branch"
-git add screenshots/ README.md
+git add screenshots/ README.md docs/diagrams/*.svg
 git commit -m "docs: refresh UI screenshots"
 git push --force origin "$branch"
 

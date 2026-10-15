@@ -1,0 +1,28 @@
+flowchart LR
+  subgraph Page["Job page tab"]
+    CS["Content script<br/>content/content.js"]
+    DET["ATS detector + form filler<br/>ats-detector.js, form-filler.js"]
+  end
+  subgraph Ext["Extension"]
+    POP["Popup UI<br/>popup/popup.html"]
+    SW["Service worker<br/>message-router.js"]
+    H["Handlers<br/>modules/handlers/"]
+    NB["Native bridge<br/>alarm poll, opt-in"]
+  end
+  STORE[("chrome.storage.local<br/>profile, memory, tracker, settings")]
+  GEM["Gemini API<br/>user's own key"]
+  JOBS["Job boards and RSS<br/>keyless and BYOK sources"]
+  OAUTH["LinkedIn / Google OIDC<br/>user's own client ID"]
+  HELPER["Local helper and CLI<br/>com.nitsuah.ats_fill"]
+
+  POP -- "sendMessage: GET_STATE, SEARCH_JOBS, ..." --> SW
+  POP -- "tabs.sendMessage: FILL_FORM, INJECT_ANSWERS" --> CS
+  CS -- "GENERATE_ANSWERS, LOG_APPLICATION" --> SW
+  CS --- DET
+  SW --> H
+  H <--> STORE
+  H -- "optional, key required" --> GEM
+  H --> JOBS
+  H --> OAUTH
+  NB -- "queued tracker adds and updates only" --> H
+  HELPER <--> NB
