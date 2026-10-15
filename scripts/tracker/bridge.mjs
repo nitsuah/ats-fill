@@ -58,16 +58,21 @@ export function registerViaExplorer(manifestPath, dir, { run = execFileSync, tim
   const script = join(dir, 'register.cmd');
   const result = join(dir, 'register.out');
   rmSync(result, { force: true });
-  writeFileSync(script, `@echo off\r\nreg add "${WIN_REG_KEY}" /ve /t REG_SZ /d "${manifestPath}" /f > "${result}" 2>&1\r\n`);
+  // %% keeps a literal % in the path from expanding inside the batch file.
+  // The result file holds reg's exit code (0 = success) so no localized text
+  // is parsed.
+  const batchPath = manifestPath.replace(/%/g, '%%');
+  writeFileSync(script, `@echo off\r\nreg add "${WIN_REG_KEY}" /ve /t REG_SZ /d "${batchPath}" /f >nul 2>&1\r\n>"${result}" echo %errorlevel%\r\n`);
   // explorer.exe returns before the script finishes (and often exits 1), so
   // the result file is the only signal.
   try { run('explorer.exe', [script], { stdio: 'ignore' }); } catch { /* checked below */ }
   const pause = new Int32Array(new SharedArrayBuffer(4));
-  let ok = false;
-  for (let waited = 0; waited < timeoutMs && !ok; waited += 250) {
+  let code = '';
+  for (let waited = 0; waited < timeoutMs && !/^\d+$/.test(code); waited += 250) {
     Atomics.wait(pause, 0, 0, 250);
-    try { ok = /success/i.test(readFileSync(result, 'utf8')); } catch { /* not written yet */ }
+    try { code = readFileSync(result, 'utf8').trim(); } catch { /* not written yet */ }
   }
+  const ok = code === '0';
   rmSync(script, { force: true });
   rmSync(result, { force: true });
   return ok;

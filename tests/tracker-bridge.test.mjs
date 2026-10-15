@@ -176,19 +176,32 @@ test('changes queued in the same millisecond keep their order', () => {
 test('Windows registration goes through Explorer and waits for its result file', () => {
   const dir = mkdtempSync(join(tmpdir(), 'ats-fill-reg-'));
   const calls = [];
-  const manifest = String.raw`C:\x\host.json`;
+  const manifest = String.raw`C:\%USERNAME%\host.json`;
   const ok = registerViaExplorer(manifest, dir, {
     timeoutMs: 2000,
     run: (cmd, args) => {
       calls.push(cmd);
       const script = readFileSync(args[0], 'utf8');
-      assert.ok(script.includes(String.raw`reg add "HKCU\Software\Google\Chrome\NativeMessagingHosts\com.nitsuah.ats_fill" /ve /t REG_SZ /d "C:\x\host.json" /f`), script);
-      writeFileSync(join(dir, 'register.out'), 'The operation completed successfully.\r\n');
+      // A literal % in the path is doubled so the batch file doesn't expand it.
+      assert.ok(script.includes(String.raw`reg add "HKCU\Software\Google\Chrome\NativeMessagingHosts\com.nitsuah.ats_fill" /ve /t REG_SZ /d "C:\%%USERNAME%%\host.json" /f`), script);
+      assert.ok(script.includes('echo %errorlevel%'), script);
+      writeFileSync(join(dir, 'register.out'), '0 \r\n');
     },
   });
   assert.equal(ok, true);
   assert.deepEqual(calls, ['explorer.exe']);
   assert.equal(existsSync(join(dir, 'register.cmd')), false, 'temporary script removed');
+});
+
+test('Windows registration fails fast on a non-zero reg exit code', () => {
+  const dir = mkdtempSync(join(tmpdir(), 'ats-fill-reg-'));
+  const started = Date.now();
+  const ok = registerViaExplorer(String.raw`C:\x\host.json`, dir, {
+    timeoutMs: 10_000,
+    run: () => writeFileSync(join(dir, 'register.out'), '1\r\n'),
+  });
+  assert.equal(ok, false);
+  assert.ok(Date.now() - started < 5000, 'stops waiting once reg reports');
 });
 
 test('Windows registration reports failure when Explorer never confirms', () => {
