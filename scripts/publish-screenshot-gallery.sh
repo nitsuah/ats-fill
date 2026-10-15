@@ -58,7 +58,8 @@ open_pr="$(gh pr list --repo "$GH_REPO" --state open --limit 200 \
 
 node scripts/update-screenshot-metadata.mjs
 
-if git diff --quiet -- screenshots README.md docs/diagrams; then
+# status, not diff: a newly rendered diagram SVG is untracked and diff would miss it
+if [ -z "$(git status --porcelain -- screenshots README.md docs/diagrams)" ]; then
   echo "UI gallery is already current."
   if [ -n "$open_pr" ]; then
     echo "Closing #$open_pr: main already matches the captured gallery."
