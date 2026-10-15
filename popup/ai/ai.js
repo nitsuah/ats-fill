@@ -288,17 +288,21 @@ async function refreshBridgeUi({ checkNow = false } = {}) {
 
 async function handleBridgeToggle(event) {
   const box = event.currentTarget;
-  // permissions.request must run inside this click, before any other await.
   if (box.checked) {
-    const granted = await chrome.permissions.request({ permissions: ['nativeMessaging'] });
-    if (!granted) {
+    // The service worker asks for the permission, so Chrome's Allow prompt
+    // survives the popup closing when the prompt takes focus. Send before any
+    // other await: the click's user gesture ends there.
+    setStatus('ai-bridge-status', 'Chrome will ask you to allow this. Click Allow.');
+    const status = await sendMessage({ type: 'NATIVE_BRIDGE_ENABLE' }, { timeout: 120_000 });
+    if (!status?.enabled) {
       box.checked = false;
+      setStatus('ai-bridge-status', status?.error ? '❌ ' + status.error : 'Not turned on: Chrome\'s Allow prompt was closed.');
       return;
     }
   } else {
     await chrome.permissions.remove({ permissions: ['nativeMessaging'] });
   }
-  await refreshBridgeUi({ checkNow: true });
+  await refreshBridgeUi();
 }
 
 export function initAiHandlers() {

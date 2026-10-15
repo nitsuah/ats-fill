@@ -19,6 +19,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Docs: merged the duplicate 1.0.3 rows in CHROMEWEBSTORE.md's version history.
 
+### Fixed
+
+- **AI assistant access** wouldn't turn on from the toolbar popup: Chrome's Allow prompt could close along with the popup, so the permission was never granted and the helper never heard from ats-fill. The background now asks for the permission (the popup only relays the click), so the prompt stays up, and Settings says when the prompt was closed instead of looking switched on.
+
 ## [1.0.3] - 2026-10-14
 
 ### Added

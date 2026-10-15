@@ -10,7 +10,7 @@ import process from 'node:process';
 
 import { handleHostMessage, encodeFrame, decodeFrame } from '../scripts/tracker/native-host.mjs';
 import { enqueue, waitForResults, bridgeStatus } from '../scripts/tracker/bridge.mjs';
-import { checkInWithBridge, setupNativeBridge, BRIDGE_ALLOWED_TYPES, BRIDGE_ALARM } from '../background/native-bridge.js';
+import { checkInWithBridge, requestBridgeAccess, setupNativeBridge, BRIDGE_ALLOWED_TYPES, BRIDGE_ALARM } from '../background/native-bridge.js';
 
 const HOST = fileURLToPath(new URL('../scripts/tracker/native-host.mjs', import.meta.url));
 const tempDir = () => mkdtempSync(join(tmpdir(), 'ats-fill-bridge-'));
@@ -143,6 +143,25 @@ test('extension bridge backs off when the helper is not installed', async () => 
   assert.match(status.error, /not found/);
   assert.equal(calls.alarms[0].periodInMinutes, 30);
   assert.equal(storage.nativeBridgeStatus.connected, false);
+});
+
+test('enabling from Settings asks Chrome before any await, then checks in', async () => {
+  const { calls } = installChromeMock({ hostReply: { ops: [] } });
+  let asked = 0;
+  chrome.permissions.request = async (req) => { asked += 1; calls.request = req; return true; };
+  const pending = requestBridgeAccess();
+  assert.equal(asked, 1, 'permissions.request must run synchronously to keep the user gesture');
+  assert.deepEqual(calls.request, { permissions: ['nativeMessaging'] });
+  const status = await pending;
+  assert.equal(status.connected, true);
+  assert.equal(calls.native[0].msg.type, 'poll');
+});
+
+test('declining Chrome\'s prompt leaves the bridge off', async () => {
+  const { calls } = installChromeMock({ granted: false });
+  chrome.permissions.request = async () => false;
+  assert.deepEqual(await requestBridgeAccess(), { enabled: false });
+  assert.equal(calls.native.length, 0);
 });
 
 test('changes queued in the same millisecond keep their order', () => {

@@ -91,6 +91,18 @@ export async function checkInWithBridge() {
 }
 
 /**
+ * Turn the bridge on for a Settings click relayed from the popup. Asking from
+ * here rather than the popup keeps Chrome's Allow prompt up if the popup
+ * closes. The click only counts as a user gesture until the first await, so
+ * the message router must reach this without awaiting anything first.
+ * @returns {Promise<{enabled:boolean, connected?:boolean, error?:string}>}
+ */
+export function requestBridgeAccess() {
+  return chrome.permissions.request({ permissions: ['nativeMessaging'] })
+    .then((granted) => (granted ? checkInWithBridge() : { enabled: false }));
+}
+
+/**
  * Register listeners. Call once at service-worker top level.
  * @param {(msg:{type:string,payload:any})=>Promise<any>} handleMessage The router's dispatcher.
  */
