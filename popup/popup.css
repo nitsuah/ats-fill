@@ -953,6 +953,16 @@ body[data-standalone="true"] .main-hero {
   color: var(--muted);
 }
 
+/* Phone-width standalone: stack the masthead so the intro keeps a readable column. */
+@media (max-width: 639px) {
+  body[data-standalone="true"] .main-hero { grid-template-columns: minmax(0, 1fr); }
+  .main-stats { grid-column: 1; grid-row: auto; align-self: stretch; margin-top: 14px; }
+  .main-stat { flex: 1 1 0; min-width: 0; }
+  /* 100vw counts the scrollbar, so the page would overflow by its width. */
+  body[data-standalone="true"] { width: 100%; }
+  body[data-standalone="true"][data-screen] { width: 100%; }
+}
+
 .main-top-grid {
   display: grid;
   grid-template-columns: 1fr;
