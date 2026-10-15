@@ -22,6 +22,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fixed
 
 - **AI assistant access** wouldn't turn on from the toolbar popup: Chrome's Allow prompt could close along with the popup, so the permission was never granted and the helper never heard from ats-fill. The background now asks for the permission (the popup only relays the click), so the prompt stays up, and Settings says when the prompt was closed instead of looking switched on.
+- **AI assistant access** setup on Windows now registers the helper through Explorer and confirms it. Run from inside a packaged app such as the Claude desktop app, the old `reg add` landed in that app's private copy of the registry, so Chrome kept reporting "Specified native messaging host not found". Settings now shows the real connection error and when ats-fill last tried, instead of a generic setup hint.
 
 ## [1.0.3] - 2026-10-14
 

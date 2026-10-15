@@ -46,19 +46,37 @@ function writeIfChanged(path, content, mode) {
   return true;
 }
 
-function windowsRegisteredPath() {
-  try {
-    const out = execFileSync('reg', ['query', WIN_REG_KEY, '/ve'], { encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] });
-    return out.match(/REG_SZ\s+(.+)\s*$/m)?.[1]?.trim() || '';
-  } catch {
-    return '';
+/**
+ * Write Chrome's HKCU registration from Explorer's context and wait for proof.
+ * Programs started by a packaged Windows app (the Claude desktop app is one)
+ * can get a private copy of HKCU: a plain `reg add` from an assistant's shell
+ * then succeeds but stays invisible to Chrome, which reports "Specified native
+ * messaging host not found". Explorer always runs outside any package.
+ * @returns {boolean} true once the write is confirmed
+ */
+export function registerViaExplorer(manifestPath, dir, { run = execFileSync, timeoutMs = 15_000 } = {}) {
+  const script = join(dir, 'register.cmd');
+  const result = join(dir, 'register.out');
+  rmSync(result, { force: true });
+  writeFileSync(script, `@echo off\r\nreg add "${WIN_REG_KEY}" /ve /t REG_SZ /d "${manifestPath}" /f > "${result}" 2>&1\r\n`);
+  // explorer.exe returns before the script finishes (and often exits 1), so
+  // the result file is the only signal.
+  try { run('explorer.exe', [script], { stdio: 'ignore' }); } catch { /* checked below */ }
+  const pause = new Int32Array(new SharedArrayBuffer(4));
+  let ok = false;
+  for (let waited = 0; waited < timeoutMs && !ok; waited += 250) {
+    Atomics.wait(pause, 0, 0, 250);
+    try { ok = /success/i.test(readFileSync(result, 'utf8')); } catch { /* not written yet */ }
   }
+  rmSync(script, { force: true });
+  rmSync(result, { force: true });
+  return ok;
 }
 
 /**
  * Make sure the helper is installed and registered. Idempotent and cheap:
  * only writes files or the registry when something changed.
- * @returns {{changed:boolean, manifestPath:string}}
+ * @returns {{changed:boolean, manifestPath:string, registered:boolean}}
  */
 export function installHost(env = process.env) {
   const dir = hostDir(env);
@@ -82,11 +100,21 @@ export function installHost(env = process.env) {
   const manifestPath = chromeHostManifestPath(env);
   changed = writeIfChanged(manifestPath, JSON.stringify(manifest, null, 2) + '\n') || changed;
 
-  if (process.platform === 'win32' && windowsRegisteredPath() !== manifestPath) {
-    execFileSync('reg', ['add', WIN_REG_KEY, '/ve', '/t', 'REG_SZ', '/d', manifestPath, '/f'], { stdio: 'ignore' });
-    changed = true;
+  let registered = true;
+  if (process.platform === 'win32') {
+    // The marker records a registration Explorer confirmed, so this runs once
+    // per manifest path rather than on every command.
+    const marker = join(dir, 'registered.txt');
+    let previous = '';
+    try { previous = readFileSync(marker, 'utf8'); } catch { /* first run */ }
+    if (previous !== manifestPath) {
+      registered = registerViaExplorer(manifestPath, dir);
+      if (registered) writeFileSync(marker, manifestPath);
+      else execFileSync('reg', ['add', WIN_REG_KEY, '/ve', '/t', 'REG_SZ', '/d', manifestPath, '/f'], { stdio: 'ignore' });
+      changed = true;
+    }
   }
-  return { changed, manifestPath };
+  return { changed, manifestPath, registered };
 }
 
 export function uninstallHost(env = process.env) {

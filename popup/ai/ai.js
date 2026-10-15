@@ -283,7 +283,10 @@ async function refreshBridgeUi({ checkNow = false } = {}) {
     ? await sendMessage({ type: 'NATIVE_BRIDGE_CHECK' }, { timeout: 15_000 })
     : (await chrome.storage.local.get('nativeBridgeStatus')).nativeBridgeStatus;
   if (status?.connected) setStatus('ai-bridge-status', '✅ Connected. Assistants on this computer can update your tracker.', 'success');
-  else setStatus('ai-bridge-status', BRIDGE_SETUP_HINT);
+  else if (status?.error) {
+    const when = status.at ? ` (last tried ${new Date(status.at).toLocaleTimeString()})` : '';
+    setStatus('ai-bridge-status', `On, but ats-fill can't reach the helper: ${status.error}${when} ${BRIDGE_SETUP_HINT.replace(/^On\. /, '')}`);
+  } else setStatus('ai-bridge-status', BRIDGE_SETUP_HINT);
 }
 
 async function handleBridgeToggle(event) {

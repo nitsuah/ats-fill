@@ -39,8 +39,9 @@ async function scheduleCheckIn(minutes) {
 
 async function recordStatus(status) {
   const { nativeBridgeStatus: previous } = await chrome.storage.local.get('nativeBridgeStatus');
-  // Only write on a change, so a quiet minute doesn't touch storage.
-  if (previous?.connected === status.connected && previous?.error === status.error && !status.applied) return;
+  // Skip quiet connected minutes so they don't touch storage. Failures always
+  // write (at most every IDLE_MINUTES), so Settings shows when it last tried.
+  if (status.connected && previous?.connected && !status.applied) return;
   await chrome.storage.local.set({ nativeBridgeStatus: { ...status, at: new Date().toISOString() } });
 }
 

@@ -9,7 +9,7 @@ import { Buffer } from 'node:buffer';
 import process from 'node:process';
 
 import { handleHostMessage, encodeFrame, decodeFrame } from '../scripts/tracker/native-host.mjs';
-import { enqueue, waitForResults, bridgeStatus } from '../scripts/tracker/bridge.mjs';
+import { enqueue, waitForResults, bridgeStatus, registerViaExplorer } from '../scripts/tracker/bridge.mjs';
 import { checkInWithBridge, requestBridgeAccess, setupNativeBridge, BRIDGE_ALLOWED_TYPES, BRIDGE_ALARM } from '../background/native-bridge.js';
 
 const HOST = fileURLToPath(new URL('../scripts/tracker/native-host.mjs', import.meta.url));
@@ -171,4 +171,27 @@ test('changes queued in the same millisecond keep their order', () => {
   const reply = handleHostMessage({ type: 'poll' }, { dir });
   assert.deepEqual(reply.ops.map((op) => op.id), ids);
   assert.deepEqual(reply.ops.map((op) => op.payload.n), ids.map((_, i) => i));
+});
+
+test('Windows registration goes through Explorer and waits for its result file', () => {
+  const dir = mkdtempSync(join(tmpdir(), 'ats-fill-reg-'));
+  const calls = [];
+  const manifest = String.raw`C:\x\host.json`;
+  const ok = registerViaExplorer(manifest, dir, {
+    timeoutMs: 2000,
+    run: (cmd, args) => {
+      calls.push(cmd);
+      const script = readFileSync(args[0], 'utf8');
+      assert.ok(script.includes(String.raw`reg add "HKCU\Software\Google\Chrome\NativeMessagingHosts\com.nitsuah.ats_fill" /ve /t REG_SZ /d "C:\x\host.json" /f`), script);
+      writeFileSync(join(dir, 'register.out'), 'The operation completed successfully.\r\n');
+    },
+  });
+  assert.equal(ok, true);
+  assert.deepEqual(calls, ['explorer.exe']);
+  assert.equal(existsSync(join(dir, 'register.cmd')), false, 'temporary script removed');
+});
+
+test('Windows registration reports failure when Explorer never confirms', () => {
+  const dir = mkdtempSync(join(tmpdir(), 'ats-fill-reg-'));
+  assert.equal(registerViaExplorer(String.raw`C:\x\host.json`, dir, { timeoutMs: 500, run: () => { throw new Error('no explorer'); } }), false);
 });
