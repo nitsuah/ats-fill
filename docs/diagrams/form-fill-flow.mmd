@@ -1,0 +1,25 @@
+sequenceDiagram
+  actor U as User
+  participant P as Popup
+  participant C as Content script
+  participant S as Service worker
+  participant ST as chrome.storage.local
+  participant G as Gemini (optional)
+
+  U->>P: Click Fill on a job page
+  P->>C: FILL_FORM via sendToActiveTab
+  Note over P,C: No receiver yet? Popup injects content.js and retries once
+  C->>C: detectAts, extract JD, collect custom questions
+  C->>S: GENERATE_ANSWERS (jd, questions, pageUrl)
+  S->>ST: read resume, settings, learned defaults
+  S->>S: build deterministic answers from the profile
+  opt Gemini key saved and JD or questions present
+    S->>G: tailored answers (resume sanitized, demographics excluded)
+    G-->>S: answers, or error and warning fallback
+  end
+  S->>ST: save lastAnswers for review
+  S-->>C: answers
+  C->>C: map fields to answers and fill inputs
+  C->>S: LOG_APPLICATION (status filled, fill report)
+  C-->>P: filled count and unresolved fields
+  P-->>U: review answers, edit, then submit yourself

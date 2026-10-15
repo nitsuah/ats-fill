@@ -95,6 +95,13 @@ jobs:
             -v ${{ github.workspace }}/screenshots:/app/screenshots \
             ats-fill:e2e \
             sh -c "xvfb-run --server-args='-screen 0 1280x720x24' npx playwright test --config config/playwright.config.mjs tests/e2e/screenshots.spec.mjs"
+      - name: Render Mermaid diagrams
+        run: |
+          for f in docs/diagrams/*.mmd; do
+            [ -e "$f" ] || continue
+            name="$(basename "$f" .mmd)"
+            docker run --rm -v "$PWD/docs/diagrams:/data" minlag/mermaid-cli:11.4.2               -c /data/mermaid.config.json -b white -i "/data/$name.mmd" -o "/data/$name.svg"
+          done
       - name: Validate screenshot gallery
         run: node scripts/validate-screenshot-gallery.mjs
       - name: Upload screenshot gallery

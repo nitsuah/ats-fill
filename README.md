@@ -148,6 +148,20 @@ Dark mode follows your system theme:
 
 ![ats-fill interview prep](screenshots/interview-prep.png)
 
+## Architecture & flow diagrams
+
+<!-- visual-docs:start -->
+Rendered from the Mermaid sources in [`docs/diagrams/`](docs/diagrams/) by the screenshot-gallery job in CI.
+
+**Architecture** ([source](docs/diagrams/architecture.mmd))
+
+![ats-fill architecture: popup, content script, service worker, storage and optional services](docs/diagrams/architecture.svg)
+
+**Form fill flow** ([source](docs/diagrams/form-fill-flow.mmd))
+
+![ats-fill form fill flow from the Fill button to review](docs/diagrams/form-fill-flow.svg)
+<!-- visual-docs:end -->
+
 ---
 
 ## Job Search

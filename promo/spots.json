@@ -8,21 +8,28 @@
       "id": "resume-learning",
       "title": "Resume Learning",
       "category": "Candidate Profile Intelligence",
-      "screenshots": [],
+      "screenshots": [
+        "screenshots/profile-memory.png"
+      ],
       "spots": []
     },
     {
       "id": "profile-reuse",
       "title": "Profile Reuse",
       "category": "Candidate Profile Intelligence",
-      "screenshots": [],
+      "screenshots": [
+        "screenshots/main-dashboard.png",
+        "screenshots/profile-memory.png"
+      ],
       "spots": []
     },
     {
       "id": "memory-review-controls",
       "title": "Memory Review Controls",
       "category": "Candidate Profile Intelligence",
-      "screenshots": [],
+      "screenshots": [
+        "screenshots/profile-memory.png"
+      ],
       "spots": []
     },
     {
@@ -30,7 +37,8 @@
       "title": "JD Parsing",
       "category": "Job Matching and Response Generation",
       "screenshots": [],
-      "spots": []
+      "spots": [],
+      "visual": "none"
     },
     {
       "id": "tailored-answer-generation",
@@ -43,14 +51,19 @@
       "id": "form-fill-automation",
       "title": "Form Fill Automation",
       "category": "Application Automation",
-      "screenshots": [],
+      "screenshots": [
+        "screenshots/main-dashboard.png",
+        "screenshots/popup.png"
+      ],
       "spots": []
     },
     {
       "id": "supported-ats-platforms",
       "title": "Supported ATS Platforms",
       "category": "Application Automation",
-      "screenshots": [],
+      "screenshots": [
+        "screenshots/main-dashboard.png"
+      ],
       "spots": []
     },
     {
@@ -58,13 +71,16 @@
       "title": "Receiver Auto-Recovery",
       "category": "Application Automation",
       "screenshots": [],
-      "spots": []
+      "spots": [],
+      "visual": "none"
     },
     {
       "id": "resume-parsing",
       "title": "Resume Parsing",
       "category": "AI-Powered Writing Tools",
-      "screenshots": [],
+      "screenshots": [
+        "screenshots/profile-memory.png"
+      ],
       "spots": []
     },
     {
@@ -99,56 +115,72 @@
       "id": "auto-detect-best-model",
       "title": "Auto-detect Best Model",
       "category": "AI-Powered Writing Tools",
-      "screenshots": [],
+      "screenshots": [
+        "screenshots/ai-settings.png"
+      ],
       "spots": []
     },
     {
       "id": "local-first-storage",
       "title": "Local-First Storage",
       "category": "Privacy & Consent",
-      "screenshots": [],
+      "screenshots": [
+        "screenshots/help-privacy.png"
+      ],
       "spots": []
     },
     {
       "id": "consent-gate",
       "title": "Consent Gate",
       "category": "Privacy & Consent",
-      "screenshots": [],
+      "screenshots": [
+        "screenshots/help-privacy.png"
+      ],
       "spots": []
     },
     {
       "id": "sensitive-data-opt-in",
       "title": "Sensitive Data Opt-In",
       "category": "Privacy & Consent",
-      "screenshots": [],
+      "screenshots": [
+        "screenshots/profile-memory.png"
+      ],
       "spots": []
     },
     {
       "id": "byok-bring-your-own-key",
       "title": "BYOK (Bring Your Own Key)",
       "category": "Privacy & Consent",
-      "screenshots": [],
+      "screenshots": [
+        "screenshots/ai-settings.png"
+      ],
       "spots": []
     },
     {
       "id": "full-reset-controls",
       "title": "Full Reset Controls",
       "category": "Privacy & Consent",
-      "screenshots": [],
+      "screenshots": [
+        "screenshots/help-privacy.png"
+      ],
       "spots": []
     },
     {
       "id": "gdpr-ccpa-compliance",
       "title": "GDPR / CCPA Compliance",
       "category": "Privacy & Consent",
-      "screenshots": [],
+      "screenshots": [
+        "screenshots/help-privacy.png"
+      ],
       "spots": []
     },
     {
       "id": "linkedin-oauth-import",
       "title": "LinkedIn OAuth Import",
       "category": "Profile Import",
-      "screenshots": [],
+      "screenshots": [
+        "screenshots/ai-settings.png"
+      ],
       "spots": []
     },
     {
@@ -162,28 +194,36 @@
       "id": "resume-upload",
       "title": "Resume Upload",
       "category": "Profile Import",
-      "screenshots": [],
+      "screenshots": [
+        "screenshots/profile-memory.png"
+      ],
       "spots": []
     },
     {
       "id": "csv-tracker-import",
       "title": "CSV Tracker Import",
       "category": "Profile Import",
-      "screenshots": [],
+      "screenshots": [
+        "screenshots/tracker-workspace.png"
+      ],
       "spots": []
     },
     {
       "id": "linkedin-session-scraping",
       "title": "LinkedIn Session Scraping",
       "category": "Profile Import",
-      "screenshots": [],
+      "screenshots": [
+        "screenshots/job-search.png"
+      ],
       "spots": []
     },
     {
       "id": "16-built-in-job-sources",
       "title": "16 Built-in Job Sources",
       "category": "Multi-Source Job Search",
-      "screenshots": [],
+      "screenshots": [
+        "screenshots/job-search.png"
+      ],
       "spots": []
     },
     {
@@ -204,7 +244,9 @@
       "id": "per-source-filter-chips",
       "title": "Per-Source Filter Chips",
       "category": "Multi-Source Job Search",
-      "screenshots": [],
+      "screenshots": [
+        "screenshots/job-search.png"
+      ],
       "spots": []
     },
     {
@@ -225,7 +267,9 @@
       "id": "one-click-save-to-tracker",
       "title": "One-Click Save to Tracker",
       "category": "Multi-Source Job Search",
-      "screenshots": [],
+      "screenshots": [
+        "screenshots/job-search.png"
+      ],
       "spots": []
     },
     {
@@ -233,62 +277,79 @@
       "title": "Plug-and-Play Source Registry",
       "category": "Multi-Source Job Search",
       "screenshots": [],
-      "spots": []
+      "spots": [],
+      "visual": "none"
     },
     {
       "id": "response-rate-by-source",
       "title": "Response Rate by Source",
       "category": "Application Analytics",
-      "screenshots": [],
+      "screenshots": [
+        "screenshots/analytics.png"
+      ],
       "spots": []
     },
     {
       "id": "salary-band-effectiveness",
       "title": "Salary-Band Effectiveness",
       "category": "Application Analytics",
-      "screenshots": [],
+      "screenshots": [
+        "screenshots/analytics.png"
+      ],
       "spots": []
     },
     {
       "id": "time-to-first-response-distribution",
       "title": "Time-to-First-Response Distribution",
       "category": "Application Analytics",
-      "screenshots": [],
+      "screenshots": [
+        "screenshots/analytics.png"
+      ],
       "spots": []
     },
     {
       "id": "ai-interview-question-generation",
       "title": "AI Interview Question Generation",
       "category": "Interview Prep",
-      "screenshots": [],
+      "screenshots": [
+        "screenshots/interview-prep.png"
+      ],
       "spots": []
     },
     {
       "id": "answer-editing-and-saving",
       "title": "Answer Editing and Saving",
       "category": "Interview Prep",
-      "screenshots": [],
+      "screenshots": [
+        "screenshots/interview-prep.png"
+      ],
       "spots": []
     },
     {
       "id": "job-workspace-view",
       "title": "Job Workspace View",
       "category": "Job Tracker Workspace",
-      "screenshots": [],
+      "screenshots": [
+        "screenshots/tracker-workspace.png"
+      ],
       "spots": []
     },
     {
       "id": "verdicts-scorecards",
       "title": "Verdicts & Scorecards",
       "category": "Job Tracker Workspace",
-      "screenshots": [],
+      "screenshots": [
+        "screenshots/tracker-workspace.png"
+      ],
       "spots": []
     },
     {
       "id": "picker-style-jd-capture",
       "title": "Picker-Style JD Capture",
       "category": "Job Tracker Workspace",
-      "screenshots": [],
+      "screenshots": [
+        "screenshots/popup.png"
+      ],
       "spots": []
     },
     {
@@ -296,48 +357,57 @@
       "title": "axe Accessibility Audit",
       "category": "Accessibility Enhancements",
       "screenshots": [],
-      "spots": []
+      "spots": [],
+      "visual": "none"
     },
     {
       "id": "wcag-aa-contrast-audit",
       "title": "WCAG AA Contrast Audit",
       "category": "Accessibility Enhancements",
       "screenshots": [],
-      "spots": []
+      "spots": [],
+      "visual": "none"
     },
     {
       "id": "improved-keyboard-navigation",
       "title": "Improved Keyboard Navigation",
       "category": "Accessibility Enhancements",
       "screenshots": [],
-      "spots": []
+      "spots": [],
+      "visual": "none"
     },
     {
       "id": "accessible-form-elements",
       "title": "Accessible Form Elements",
       "category": "Accessibility Enhancements",
       "screenshots": [],
-      "spots": []
+      "spots": [],
+      "visual": "none"
     },
     {
       "id": "responsive-tracker-view",
       "title": "Responsive Tracker View",
       "category": "UI/UX Enhancements",
       "screenshots": [],
-      "spots": []
+      "spots": [],
+      "visual": "none"
     },
     {
       "id": "collapsible-header-nav",
       "title": "Collapsible Header Nav",
       "category": "UI/UX Enhancements",
-      "screenshots": [],
+      "screenshots": [
+        "screenshots/popup.png"
+      ],
       "spots": []
     },
     {
       "id": "auto-collapsing-settings-cards",
       "title": "Auto-Collapsing Settings Cards",
       "category": "UI/UX Enhancements",
-      "screenshots": [],
+      "screenshots": [
+        "screenshots/ai-settings.png"
+      ],
       "spots": []
     },
     {
@@ -345,14 +415,16 @@
       "title": "Chrome Mock for E2E Tests",
       "category": "UI/UX Enhancements",
       "screenshots": [],
-      "spots": []
+      "spots": [],
+      "visual": "none"
     },
     {
       "id": "dynamic-css-variable-mapping",
       "title": "Dynamic CSS Variable Mapping",
       "category": "UI/UX Enhancements",
       "screenshots": [],
-      "spots": []
+      "spots": [],
+      "visual": "none"
     }
   ],
   "spots": [
