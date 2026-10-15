@@ -296,7 +296,11 @@ async function handleBridgeToggle(event) {
     const status = await sendMessage({ type: 'NATIVE_BRIDGE_ENABLE' }, { timeout: 120_000 });
     if (!status?.enabled) {
       box.checked = false;
-      setStatus('ai-bridge-status', status?.error ? '❌ ' + status.error : 'Not turned on: Chrome\'s Allow prompt was closed.');
+      // null: no answer from the background (timeout or runtime error), not a closed prompt.
+      const message = !status ? 'Couldn\'t reach ats-fill\'s background. Try the switch again.'
+        : status.error ? '❌ ' + status.error
+          : 'Not turned on: Chrome\'s Allow prompt was closed.';
+      setStatus('ai-bridge-status', message);
       return;
     }
   } else {
