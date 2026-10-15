@@ -9,6 +9,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- **Nightly journeys** (`tests/journeys/`, `.github/workflows/journeys.yml`, `npm run test:journeys`): 8 journeys (home on a Greenhouse page, fill a fictional application, pipeline, analytics, interview prep, job search with filters, optional sources in Settings, phone) with 12 visual baselines, driven through the real extension on the demo state and tagged with the feature ids in `promo/spots.json`. Failures become deduplicated `bot:journey` issues through the shared `nitsuah/.github` harness with no AI. Replaces the artifact-only `playwright-nightly.yml`; `ci.yml` still runs the full e2e suite on every PR. The one-time review pass filed #142 (phone home masthead).
+
 ## [1.0.3] - 2026-10-14
 
 ### Added
