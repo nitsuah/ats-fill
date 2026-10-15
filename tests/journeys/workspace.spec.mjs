@@ -21,7 +21,7 @@ test('job seeker opens ats-fill on a Greenhouse page and sees what is ready', {
 });
 
 test('job seeker reviews the application pipeline', {
-  tag: ['@feature:job-workspace-view', '@feature:one-click-save-to-tracker'],
+  tag: ['@feature:job-workspace-view'],
 }, async () => {
   const page = await ext.openPopup(WIDE);
 
@@ -49,7 +49,7 @@ test('job seeker checks which sources and salary bands answer', {
 });
 
 test('job seeker prepares for the Quarry Robotics interview', {
-  tag: ['@feature:ai-interview-question-generation', '@feature:answer-editing-and-saving'],
+  tag: ['@feature:ai-interview-question-generation'],
 }, async () => {
   const page = await ext.openPopup(WIDE);
 
