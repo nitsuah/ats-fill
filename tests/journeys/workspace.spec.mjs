@@ -76,6 +76,12 @@ test('job seeker opens ats-fill on a phone', {
     const stats = await page.locator('.main-stats').boundingBox();
     expect(intro.width).toBeGreaterThan(250);
     expect(stats.y).toBeGreaterThanOrEqual(intro.y + intro.height);
+    const hero = await page.locator('.main-hero').boundingBox();
+    expect(Math.abs(stats.width - hero.width)).toBeLessThan(1);
+    const statWidths = await page.locator('.main-stat').evaluateAll((els) => els.map((el) => el.getBoundingClientRect().width));
+    expect(statWidths).toHaveLength(3);
+    // 1px allowance: the dashed divider border sits on the second and third stats.
+    expect(Math.max(...statWidths) - Math.min(...statWidths)).toBeLessThanOrEqual(1);
     const overflow = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
     expect(overflow).toBe(0);
   }, { screenshot: false });
