@@ -118,8 +118,7 @@ https://nitsuah.github.io/ats-fill/
 
 | Version | Date | Changes | Status |
 |---------|------|---------|--------|
-| 1.0.3 | 2026-10-14 | Optional "AI assistant access" setting: a local AI assistant can add and update tracker entries through a helper program on the user's computer (new `alarms` permission; optional `nativeMessaging`, requested only from that setting). |
-| 1.0.3 | 2026-10-14 | Tracker entries capture the real company name on Ashby, Workday and generic apply pages instead of the page title; "My Application –" prefixes are dropped from job titles. | Draft |
+| 1.0.3 | 2026-10-14 | Optional "AI assistant access" setting: a local AI assistant can add and update tracker entries through a helper program on the user's computer (new `alarms` permission; optional `nativeMessaging`, requested only from that setting). Tracker entries capture the real company name on Ashby, Workday and generic apply pages instead of the page title; "My Application –" prefixes are dropped from job titles. | In review |
 | 1.0.2 | 2026-10-05 | See [CHANGELOG](docs/CHANGELOG.md). | Published |
 
 ## Review Notes
