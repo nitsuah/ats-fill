@@ -12,6 +12,11 @@ _None._
 
 ## Todo
 
+- [ ] Fix the home masthead at phone width (journeys review, #142).
+  - Priority: P2
+  - Problem: at 390px the standalone home masthead (`popup/popup.css:894-902`) keeps its two-column grid, so the intro text is squeezed to one word per line and the stats bar overlaps it.
+  - Acceptance Criteria: the masthead stacks under ~640px; the `see-the-home-screen-on-a-phone` journey baseline is regenerated in Docker.
+
 - [ ] Rotate the Chrome Web Store OAuth refresh token and re-run the release.
   - Priority: P1
   - Type: Bug · Confidence: High

@@ -106,6 +106,7 @@ Turns saved applications into a reviewable job workspace rather than a flat list
 - **Collapsible Header Nav**: Header nav reorders to Search → Pipeline → Interview Prep → Settings → Profile → Help/Privacy, collapsing to a hamburger menu with the 3 primary buttons below a 700px breakpoint
 - **Auto-Collapsing Settings Cards**: Settings cards collapse into a "✅ Configured" summary once saved and reopen on click to edit; Pipeline stage columns and Help/Privacy sections default collapsed when empty
 - **Chrome Mock for E2E Tests**: Consolidated and reusable Chrome mock setup for consistent e2e testing.
+- **Nightly Journeys**: `tests/journeys/` drives the real extension like a job seeker (fictional demo state, frozen clock, 8 journeys, a visual baseline per step); `.github/workflows/journeys.yml` files and auto-closes `bot:journey` issues with no AI, replacing the artifact-only nightly
 - **Dynamic CSS Variable Mapping**: Custom CSS property values are now derived directly from `popup.css` for up-to-date contrast checks.
 
 <!--
