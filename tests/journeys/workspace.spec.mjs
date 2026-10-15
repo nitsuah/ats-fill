@@ -71,6 +71,15 @@ test('job seeker opens ats-fill on a phone', {
     await expect(page.locator('#stat-total')).toHaveText('12');
   });
 
+  await step(page, 'read the masthead without it squeezing or overlapping', async () => {
+    const intro = await page.locator('.main-hero .helper-text').boundingBox();
+    const stats = await page.locator('.main-stats').boundingBox();
+    expect(intro.width).toBeGreaterThan(250);
+    expect(stats.y).toBeGreaterThanOrEqual(intro.y + intro.height);
+    const overflow = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
+    expect(overflow).toBe(0);
+  }, { screenshot: false });
+
   await step(page, 'open the header menu', async () => {
     await page.locator('#header-menu-toggle').click();
     await expect(page.locator('#header-analytics-btn')).toBeVisible();
