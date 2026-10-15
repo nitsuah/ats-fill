@@ -39,8 +39,9 @@ async function scheduleCheckIn(minutes) {
 
 async function recordStatus(status) {
   const { nativeBridgeStatus: previous } = await chrome.storage.local.get('nativeBridgeStatus');
-  // Only write on a change, so a quiet minute doesn't touch storage.
-  if (previous?.connected === status.connected && previous?.error === status.error && !status.applied) return;
+  // Skip quiet connected minutes so they don't touch storage. Failures always
+  // write (at most every IDLE_MINUTES), so Settings shows when it last tried.
+  if (status.connected && previous?.connected && !status.applied) return;
   await chrome.storage.local.set({ nativeBridgeStatus: { ...status, at: new Date().toISOString() } });
 }
 
@@ -88,6 +89,18 @@ export async function checkInWithBridge() {
   const status = { enabled: true, connected: true, error: '', applied: results.length };
   await recordStatus(status);
   return status;
+}
+
+/**
+ * Turn the bridge on for a Settings click relayed from the popup. Asking from
+ * here rather than the popup keeps Chrome's Allow prompt up if the popup
+ * closes. The click only counts as a user gesture until the first await, so
+ * the message router must reach this without awaiting anything first.
+ * @returns {Promise<{enabled:boolean, connected?:boolean, error?:string}>}
+ */
+export function requestBridgeAccess() {
+  return chrome.permissions.request({ permissions: ['nativeMessaging'] })
+    .then((granted) => (granted ? checkInWithBridge() : { enabled: false }));
 }
 
 /**

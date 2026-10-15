@@ -235,8 +235,11 @@ async function main() {
 
   // The only commands that touch Chrome's helper registration, and only when asked.
   if (command === 'setup') {
-    const { changed, manifestPath } = installHost();
+    const { changed, manifestPath, registered } = installHost();
     console.log(changed ? `installed the ats-fill helper (${manifestPath})` : `the ats-fill helper is already installed (${manifestPath})`);
+    if (!registered) {
+      console.log('warning: couldn\'t confirm Chrome can see the helper. If ats-fill says "native messaging host not found", run setup once from a normal terminal.');
+    }
     const status = bridgeStatus();
     console.log(status.connected
       ? `ats-fill is connected (last check-in ${status.lastSeen}); tracker changes apply directly.`

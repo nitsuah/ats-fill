@@ -283,22 +283,33 @@ async function refreshBridgeUi({ checkNow = false } = {}) {
     ? await sendMessage({ type: 'NATIVE_BRIDGE_CHECK' }, { timeout: 15_000 })
     : (await chrome.storage.local.get('nativeBridgeStatus')).nativeBridgeStatus;
   if (status?.connected) setStatus('ai-bridge-status', '✅ Connected. Assistants on this computer can update your tracker.', 'success');
-  else setStatus('ai-bridge-status', BRIDGE_SETUP_HINT);
+  else if (status?.error) {
+    const when = status.at ? ` (last tried ${new Date(status.at).toLocaleTimeString()})` : '';
+    setStatus('ai-bridge-status', `On, but ats-fill can't reach the helper: ${status.error}${when} ${BRIDGE_SETUP_HINT.replace(/^On\. /, '')}`);
+  } else setStatus('ai-bridge-status', BRIDGE_SETUP_HINT);
 }
 
 async function handleBridgeToggle(event) {
   const box = event.currentTarget;
-  // permissions.request must run inside this click, before any other await.
   if (box.checked) {
-    const granted = await chrome.permissions.request({ permissions: ['nativeMessaging'] });
-    if (!granted) {
+    // The service worker asks for the permission, so Chrome's Allow prompt
+    // survives the popup closing when the prompt takes focus. Send before any
+    // other await: the click's user gesture ends there.
+    setStatus('ai-bridge-status', 'Chrome will ask you to allow this. Click Allow.');
+    const status = await sendMessage({ type: 'NATIVE_BRIDGE_ENABLE' }, { timeout: 120_000 });
+    if (!status?.enabled) {
       box.checked = false;
+      // null: no answer from the background (timeout or runtime error), not a closed prompt.
+      const message = !status ? 'Couldn\'t reach ats-fill\'s background. Try the switch again.'
+        : status.error ? '❌ ' + status.error
+          : 'Not turned on: Chrome\'s Allow prompt was closed.';
+      setStatus('ai-bridge-status', message);
       return;
     }
   } else {
     await chrome.permissions.remove({ permissions: ['nativeMessaging'] });
   }
-  await refreshBridgeUi({ checkNow: true });
+  await refreshBridgeUi();
 }
 
 export function initAiHandlers() {

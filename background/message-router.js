@@ -4,7 +4,7 @@
  * ./modules/handlers/. Extracted from service-worker.js.
  */
 
-import { checkInWithBridge } from './native-bridge.js';
+import { checkInWithBridge, requestBridgeAccess } from './native-bridge.js';
 import {
   handleSaveSetup,
   handleSaveSettingsOnly,
@@ -81,6 +81,8 @@ const MESSAGE_HANDLERS = {
   GENERATE_INTERVIEW_QUESTIONS: handleGenerateInterviewQuestions,
   GENERATE_INTERVIEW_ANSWER: handleGenerateInterviewAnswer,
   NATIVE_BRIDGE_CHECK: () => checkInWithBridge(),
+  // Runs inside the popup click's user gesture: see requestBridgeAccess.
+  NATIVE_BRIDGE_ENABLE: () => requestBridgeAccess(),
 };
 
 /**
@@ -117,6 +119,8 @@ export function setupMessageRouter() {
  * @throws {Error} If the message type is unknown.
  */
 export async function handleMessage(msg) {
+  // Keep everything before handler() synchronous: NATIVE_BRIDGE_ENABLE needs
+  // the user gesture, which ends at the first await.
   const type = msg?.type;
   const handler = Object.hasOwn(MESSAGE_HANDLERS, type) ? MESSAGE_HANDLERS[type] : undefined;
   if (typeof handler !== 'function') {

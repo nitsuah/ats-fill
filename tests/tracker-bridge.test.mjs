@@ -9,8 +9,8 @@ import { Buffer } from 'node:buffer';
 import process from 'node:process';
 
 import { handleHostMessage, encodeFrame, decodeFrame } from '../scripts/tracker/native-host.mjs';
-import { enqueue, waitForResults, bridgeStatus } from '../scripts/tracker/bridge.mjs';
-import { checkInWithBridge, setupNativeBridge, BRIDGE_ALLOWED_TYPES, BRIDGE_ALARM } from '../background/native-bridge.js';
+import { enqueue, waitForResults, bridgeStatus, registerViaExplorer } from '../scripts/tracker/bridge.mjs';
+import { checkInWithBridge, requestBridgeAccess, setupNativeBridge, BRIDGE_ALLOWED_TYPES, BRIDGE_ALARM } from '../background/native-bridge.js';
 
 const HOST = fileURLToPath(new URL('../scripts/tracker/native-host.mjs', import.meta.url));
 const tempDir = () => mkdtempSync(join(tmpdir(), 'ats-fill-bridge-'));
@@ -145,6 +145,25 @@ test('extension bridge backs off when the helper is not installed', async () => 
   assert.equal(storage.nativeBridgeStatus.connected, false);
 });
 
+test('enabling from Settings asks Chrome before any await, then checks in', async () => {
+  const { calls } = installChromeMock({ hostReply: { ops: [] } });
+  let asked = 0;
+  chrome.permissions.request = async (req) => { asked += 1; calls.request = req; return true; };
+  const pending = requestBridgeAccess();
+  assert.equal(asked, 1, 'permissions.request must run synchronously to keep the user gesture');
+  assert.deepEqual(calls.request, { permissions: ['nativeMessaging'] });
+  const status = await pending;
+  assert.equal(status.connected, true);
+  assert.equal(calls.native[0].msg.type, 'poll');
+});
+
+test('declining Chrome\'s prompt leaves the bridge off', async () => {
+  const { calls } = installChromeMock({ granted: false });
+  chrome.permissions.request = async () => false;
+  assert.deepEqual(await requestBridgeAccess(), { enabled: false });
+  assert.equal(calls.native.length, 0);
+});
+
 test('changes queued in the same millisecond keep their order', () => {
   const dir = tempDir();
   const env = { ATS_FILL_BRIDGE_DIR: dir };
@@ -152,4 +171,40 @@ test('changes queued in the same millisecond keep their order', () => {
   const reply = handleHostMessage({ type: 'poll' }, { dir });
   assert.deepEqual(reply.ops.map((op) => op.id), ids);
   assert.deepEqual(reply.ops.map((op) => op.payload.n), ids.map((_, i) => i));
+});
+
+test('Windows registration goes through Explorer and waits for its result file', () => {
+  const dir = mkdtempSync(join(tmpdir(), 'ats-fill-reg-'));
+  const calls = [];
+  const manifest = String.raw`C:\%USERNAME%\host.json`;
+  const ok = registerViaExplorer(manifest, dir, {
+    timeoutMs: 2000,
+    run: (cmd, args) => {
+      calls.push(cmd);
+      const script = readFileSync(args[0], 'utf8');
+      // A literal % in the path is doubled so the batch file doesn't expand it.
+      assert.ok(script.includes(String.raw`reg add "HKCU\Software\Google\Chrome\NativeMessagingHosts\com.nitsuah.ats_fill" /ve /t REG_SZ /d "C:\%%USERNAME%%\host.json" /f`), script);
+      assert.ok(script.includes('echo %errorlevel%'), script);
+      writeFileSync(join(dir, 'register.out'), '0 \r\n');
+    },
+  });
+  assert.equal(ok, true);
+  assert.deepEqual(calls, ['explorer.exe']);
+  assert.equal(existsSync(join(dir, 'register.cmd')), false, 'temporary script removed');
+});
+
+test('Windows registration fails fast on a non-zero reg exit code', () => {
+  const dir = mkdtempSync(join(tmpdir(), 'ats-fill-reg-'));
+  const started = Date.now();
+  const ok = registerViaExplorer(String.raw`C:\x\host.json`, dir, {
+    timeoutMs: 10_000,
+    run: () => writeFileSync(join(dir, 'register.out'), '1\r\n'),
+  });
+  assert.equal(ok, false);
+  assert.ok(Date.now() - started < 5000, 'stops waiting once reg reports');
+});
+
+test('Windows registration reports failure when Explorer never confirms', () => {
+  const dir = mkdtempSync(join(tmpdir(), 'ats-fill-reg-'));
+  assert.equal(registerViaExplorer(String.raw`C:\x\host.json`, dir, { timeoutMs: 500, run: () => { throw new Error('no explorer'); } }), false);
 });
