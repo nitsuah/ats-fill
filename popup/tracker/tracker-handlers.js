@@ -145,6 +145,10 @@ export function initTrackerHandlers() {
     setTrackerScreenStatus('✅ Exported the current tracker as CSV.', 'success');
   });
 
+  $('remove-duplicates-btn')?.addEventListener('click', () => {
+    removeDuplicateTrackerEntries().catch((err) => setTrackerScreenStatus(`❌ ${err.message}`, 'error'));
+  });
+
   // Drag & drop
   $('tracker-body')?.addEventListener('dragstart', handleTrackerDragStart);
   $('tracker-body')?.addEventListener('dragover', handleTrackerDragOver);
@@ -575,6 +579,39 @@ async function deleteTrackerCard(card) {
 
   expandedTrackerIds.delete(id);
   setTrackerScreenStatus('✅ Tracker entry deleted.', 'success');
+  await renderTracker();
+  await loadMainScreen({ showMain: false });
+  showScreen('tracker');
+}
+
+// Rows only count as duplicates when they point at the same job posting, or
+// share company and title and were logged within a week. The user sees every
+// merge before anything changes.
+async function removeDuplicateTrackerEntries() {
+  const preview = await sendMessage({ type: 'FIND_DUPLICATE_APPLICATIONS' });
+  if (!preview?.success) throw new Error(preview?.error || 'Could not check for duplicates.');
+
+  const groups = preview.groups || [];
+  if (!groups.length) {
+    setTrackerScreenStatus('✅ No duplicate applications found.', 'success');
+    return;
+  }
+
+  const lines = groups.map((group) =>
+    `• ${group.company || 'Unknown company'} — ${group.title || 'untitled'}: ${group.count} entries → 1 (${group.status || 'drafted'})`);
+  const removedTotal = groups.reduce((sum, group) => sum + group.removed, 0);
+  const confirmed = confirm([
+    `Merge ${groups.length} duplicate group(s)? ${removedTotal} extra entr${removedTotal === 1 ? 'y' : 'ies'} will be removed.`,
+    'Each merged entry keeps the furthest-along status, the earliest date, and any details the others had.',
+    '',
+    ...lines,
+  ].join('\n'));
+  if (!confirmed) return;
+
+  const resp = await sendMessage({ type: 'REMOVE_DUPLICATE_APPLICATIONS' });
+  if (!resp?.success) throw new Error(resp?.error || 'Could not remove duplicates.');
+
+  setTrackerScreenStatus(`✅ Merged ${resp.merged} duplicate group(s), removed ${resp.removed} entr${resp.removed === 1 ? 'y' : 'ies'}.`, 'success');
   await renderTracker();
   await loadMainScreen({ showMain: false });
   showScreen('tracker');
