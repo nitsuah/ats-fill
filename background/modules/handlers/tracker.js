@@ -7,7 +7,10 @@ import {
   addApplication,
   deleteApplication,
   deriveTrackerDetailsFromText,
+  findDuplicateGroups,
   importApplicationsFromCsv,
+  mergeDuplicateGroup,
+  removeDuplicateApplications,
   isTerminalApplicationStatus,
   updateApplication,
   updateApplicationStatus,
@@ -142,4 +145,23 @@ export async function handleMarkLastSubmitted() {
   });
 
   return { success: true };
+}
+
+/**
+ * Preview what "Remove duplicates" would merge, without changing anything.
+ * @returns {Promise<{success: true, groups: object[]}>}
+ */
+export async function handleFindDuplicateApplications() {
+  const data = await chrome.storage.local.get('applications');
+  const groups = findDuplicateGroups(data.applications || []).map((group) => {
+    const { keep, removeIds } = mergeDuplicateGroup(group);
+    return { company: keep.company || '', title: keep.title || '', status: keep.status, count: group.length, removed: removeIds.length };
+  });
+  return { success: true, groups };
+}
+
+/** Merge each duplicate group into one tracker row. */
+export async function handleRemoveDuplicateApplications() {
+  const result = await removeDuplicateApplications();
+  return { success: true, ...result };
 }
