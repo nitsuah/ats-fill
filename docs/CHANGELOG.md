@@ -11,6 +11,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- Tracker rows no longer keep a "<role> @ <company>" company name ("Staff Software Engineer - DevX @ Amplitude"): adding, editing and CSV import keep only the company.
 - An application form embedded in a career page iframe (Greenhouse on databricks.com, for example) is now the frame that answers Detect ATS and job capture, so the readiness card names Greenhouse; filling it logs one tracker entry with the company and title instead of a split pair.
 - Fill no longer puts profile values into long questions that merely use a field word: "…solutions to **address** recurring challenges?" got the street address, and "…located within the United **States**?" was treated as a standard field and never answered. Single words (address, state, name, available) now only match whole words in label-sized text.
 - Last names no longer include a middle name or initial ("Austin J. Hardy" filled Last Name as "J. Hardy").
