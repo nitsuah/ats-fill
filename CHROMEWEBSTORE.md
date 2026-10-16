@@ -16,7 +16,7 @@ Local-first ATS form-filling assistant. Save your profile once, review answers, 
 
 ats-fill fills job applications from a profile you save once, and you review every field before you submit.
 
-Fill Greenhouse, Lever, Ashby and LinkedIn Easy Apply forms in place, with partial support for Workday, iCIMS, Jobvite and other application forms. Preview every answer before it's used. Corrections you make on forms are remembered for next time, and you can review, edit or delete them.
+Fill Greenhouse, Lever, Ashby and LinkedIn Easy Apply forms in place, with partial support for Workday, iCIMS, Jobvite and other application forms. Fill also attaches your saved resume file to the form's resume upload (you can turn this off); like everything you fill in, it reaches the employer's application site only when you submit the form yourself. Preview every answer before it's used. Corrections you make on forms are remembered for next time, and you can review, edit or delete them.
 Search 16 job boards from one panel, and save any result to your pipeline with one click.
 Track every application on a board from draft to offer, import past applications from a spreadsheet, and see response analytics computed from your own history.
 Practice for interviews with questions generated for the specific job.
@@ -78,7 +78,7 @@ Built and validated from each release tag by the release workflow (see [docs/CHR
 
 | Data Type | Handled? | Transmitted Off-Device? | Purpose | Shared with Third Parties? |
 |-----------|-----------|------------------------|---------|---------------------------|
-| Personally identifiable info | Yes (profile, resume) | Only to Google Gemini when the user runs an AI action with their own key | Filling applications, drafting answers | Only that user-initiated request |
+| Personally identifiable info | Yes (profile, resume) | Only to Google Gemini when the user runs an AI action with their own key, and to the employer's application site (filled answers and the attached resume file) when the user submits that form themselves | Filling applications, drafting answers | Only that user-initiated request or submission |
 | Health info | Disability field, opt-in only | No; never sent to AI | Answering a form question when the user enables it | No |
 | Financial info | Desired pay range | Only within a user-run AI draft | Answering salary questions | Only that user-initiated request |
 | Authentication info | User's own API keys | Only to the service each key belongs to | Job search, AI | No |

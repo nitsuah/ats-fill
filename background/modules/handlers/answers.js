@@ -4,6 +4,7 @@
  */
 
 import { generateAnswers } from '../../../lib/gemini.js';
+import { splitFullName } from '../../../lib/utils.js';
 import { findLearnedAnswer, shouldPersistLearnedValue } from '../../../lib/form-filler.js';
 import {
   getProfileFromResume,
@@ -76,8 +77,8 @@ function buildDeterministicAnswers({ resume, settings, customQuestions = [], lea
   );
 
   const baseAnswers = {
-    first_name: fullName.split(' ')[0] || '',
-    last_name: fullName.split(' ').slice(1).join(' ') || '',
+    first_name: splitFullName(fullName).first,
+    last_name: splitFullName(fullName).last,
     full_name: fullName,
     name: fullName,
     email: profile.email,

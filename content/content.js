@@ -157,9 +157,13 @@ async function handleFillForm() {
     }
   }
 
-  // 5. Fill the form
+  // 5. Fill the form, then attach the saved resume file
   const fieldMap = await loadFieldMap();
   const report = fillForm(answers, fieldMap);
+  const combos = await fillComboboxes(answers, fieldMap).catch(() => ({ filled: 0, unresolved: [] }));
+  report.filled += combos.filled;
+  report.unresolved = dedupeUnresolvedFields([...report.unresolved, ...combos.unresolved]);
+  report.resume = await attachSavedResume().catch((err) => ({ attached: 0, reason: 'error', error: err?.message }));
 
   // 6. Log the application
   await chrome.runtime.sendMessage({
@@ -623,10 +627,12 @@ function collectCustomQuestions() {
   const questions = [];
 
   for (const label of document.querySelectorAll('label, legend, [data-label]')) {
-    const text = label.textContent?.trim();
+    // Required labels end in a marker ("…United States?*"); judge the question without it.
+    const text = label.textContent?.trim().replace(/\s*\*+$/, '');
     if (!text || text.length < 10 || text.length > 500) continue;
     const lower = text.toLowerCase();
-    if (STANDARD.some((s) => lower.includes(s))) continue;
+    const normalized = normalizeLookupText(text);
+    if (STANDARD.some((s) => labelContainsPattern(normalized, normalizeLookupText(s)))) continue;
     if (SENSITIVE.some((s) => lower.includes(s))) continue;
     if (text.endsWith('?') || QUESTION_STARTERS.some((s) => lower.startsWith(s))) {
       questions.push(text);
@@ -643,7 +649,13 @@ function getFillableInputs() {
   )).filter((el) => {
     if (el.disabled || el.readOnly) return false;
     const style = getComputedStyle(el);
-    return style.display !== 'none' && style.visibility !== 'hidden';
+    if (style.display === 'none' || style.visibility === 'hidden') return false;
+    // Helper inputs widgets hide from users (react-select's "required" stand-in).
+    if (el.getAttribute('aria-hidden') === 'true' && el.tabIndex < 0) return false;
+    // Yes/No button groups keep a hidden checkbox in sync; answer them by
+    // clicking the button instead (see fillYesNoButtonGroups). Type-ahead
+    // comboboxes need an option picked (see fillComboboxes).
+    return !el.closest(YES_NO_GROUP_SELECTOR) && !el.matches(COMBOBOX_SELECTOR);
   });
 }
 
@@ -655,6 +667,10 @@ function fillForm(answers, fieldMap) {
   const unresolved = [];
 
   for (const input of inputs) {
+    // "Other: please specify" boxes belong to an Other choice; the choice
+    // itself carries the answer, so never pour that answer into the box too.
+    if (isOtherSpecifyField(input)) continue;
+
     const key = resolveFieldKey(input, fieldMap, answers);
     if (!key) {
       unresolved.push(describeUnresolvedField(input, 'No matching saved answer yet'));
@@ -662,7 +678,7 @@ function fillForm(answers, fieldMap) {
     }
 
     const value = answers[key];
-    if (value === undefined || value === null || value === '') {
+    if (value === undefined || value === null || value === '' || isNonAnswer(value)) {
       unresolved.push(describeUnresolvedField(input, 'Answer still needs manual input'));
       continue;
     }
@@ -675,11 +691,17 @@ function fillForm(answers, fieldMap) {
     const didFill = setFieldValue(input, String(value));
     if (didFill) {
       filled++;
+      rememberAutofill(input);
       highlightField(input);
     } else {
       unresolved.push(describeUnresolvedField(input, 'Review the available choices manually'));
     }
   }
+
+  const yesNo = fillYesNoButtonGroups(answers, fieldMap);
+  filled += yesNo.filled;
+  preserved += yesNo.preserved;
+  unresolved.push(...yesNo.unresolved);
 
   const uniqueUnresolved = dedupeUnresolvedFields(unresolved);
   const skipped = preserved + uniqueUnresolved.length;
@@ -688,7 +710,7 @@ function fillForm(answers, fieldMap) {
   return { filled, preserved, skipped, unresolved: uniqueUnresolved };
 }
 
-function resolveFieldKey(el, fieldMap, answers = {}) {
+function resolveFieldKey(el, fieldMap, answers = {}, { includeContext = true } = {}) {
   const candidates = [
     el.name,
     el.id,
@@ -696,10 +718,23 @@ function resolveFieldKey(el, fieldMap, answers = {}) {
     el.getAttribute('aria-label'),
     el.getAttribute('data-label'),
     getAssociatedLabelText(el),
-    getFieldContextText(el),
+    // Section text can name a different field ("Location" a few rows up), so
+    // callers that act on a single widget use only the label it owns.
+    includeContext ? getFieldContextText(el) : getOwnFieldLabel(el),
   ].filter(Boolean);
 
   return resolveAnswerKeyFromCandidates(candidates, fieldMap, answers);
+}
+
+/** The label a widget owns: aria-labelledby, or the label heading its own field entry. */
+function getOwnFieldLabel(el) {
+  const labelledBy = (el.getAttribute('aria-labelledby') || '').split(/\s+/).filter(Boolean)
+    .map((id) => document.getElementById(id)?.textContent?.trim())
+    .filter(Boolean)
+    .join(' ');
+  if (labelledBy) return labelledBy;
+  const entry = el.closest('.ashby-application-form-field-entry, .field, .application-question');
+  return entry?.querySelector('label, legend')?.textContent?.trim() || '';
 }
 
 function resolveAnswerKeyFromCandidates(candidates, fieldMap = {}, answers = {}) {
@@ -722,7 +757,7 @@ function resolveAnswerKeyFromCandidates(candidates, fieldMap = {}, answers = {})
   for (const candidate of normalizedCandidates) {
     for (const [pattern, key] of sortedEntries) {
       if (pattern.startsWith('//')) continue;
-      if (candidate.includes(normalizeLookupText(pattern))) return key;
+      if (labelContainsPattern(candidate, normalizeLookupText(pattern))) return key;
     }
   }
 
@@ -730,7 +765,12 @@ function resolveAnswerKeyFromCandidates(candidates, fieldMap = {}, answers = {})
     for (const key of Object.keys(answers || {})) {
       const normalizedKey = normalizeLookupText(key);
       if (!normalizedKey || normalizedKey.length < 4) continue;
-      if (candidate.includes(normalizedKey) || normalizedKey.includes(candidate)) {
+      // Last resort: a saved answer whose question sits inside this label, or
+      // a label that is part of a saved question. Whole words only, and a
+      // one-word key only in label-sized text, so "share their name" doesn't
+      // take the "name" answer and "the United States" doesn't take "state".
+      if (containsWholeWords(candidate, normalizedKey)
+        || (candidate.split(' ').length >= 3 && containsWholeWords(normalizedKey, candidate))) {
         return key;
       }
     }
@@ -805,8 +845,13 @@ function setFieldValue(el, value) {
   // text / textarea / number / email / tel / url
   const proto = tag === 'textarea' ? window.HTMLTextAreaElement.prototype : window.HTMLInputElement.prototype;
   const setter = Object.getOwnPropertyDescriptor(proto, 'value')?.set;
+  // Bracket the change with focus events like a real click-in / tab-out: React
+  // runs onBlur on focusout (not blur), and some ATS forms (Ashby) only commit
+  // a typed value to their form model in onBlur, so without it a visibly
+  // filled field still fails "Missing entry for required field" on submit.
+  fireEvents(el, ['focus', 'focusin']);
   if (setter) setter.call(el, value); else el.value = value;
-  fireEvents(el, ['input', 'change', 'blur']);
+  fireEvents(el, ['input', 'change', 'blur', 'focusout']);
   return true;
 }
 
@@ -847,6 +892,20 @@ function describeField(el) {
 }
 
 function describeUnresolvedField(el, reason = '') {
+  // A radio/checkbox group is one question to review, not one item per option.
+  const type = (el.getAttribute('type') || '').toLowerCase();
+  const members = type === 'radio'
+    ? (el.name ? document.querySelectorAll(`input[type="radio"][name="${CSS.escape(el.name)}"]`) : [el])
+    : type === 'checkbox' ? getCheckboxGroupMembers(el) : [el];
+  const groupLabel = members.length > 1 ? getChoiceGroupLabel(el) : '';
+  if (groupLabel) {
+    return {
+      label: groupLabel,
+      draftKey: `group:${normalizeLookupText(groupLabel)}`,
+      type,
+      reason: String(reason || '').trim(),
+    };
+  }
   return {
     label: describeField(el),
     draftKey: getDraftFieldKey(el),
@@ -891,6 +950,434 @@ function matchesPositiveChoice(text) {
 
 function matchesNegativeChoice(text) {
   return /(no|false|not now|do not|don't|without|none|prefer not|on site|onsite|will not require|do not require)/.test(text);
+}
+
+/** The question a radio/checkbox group answers, or '' when the page doesn't say. */
+function getChoiceGroupLabel(el) {
+  const fieldset = el.closest('fieldset');
+  const legend = fieldset?.querySelector('legend')?.textContent;
+  if (legend?.trim()) return legend.trim();
+
+  const group = el.closest('[role="radiogroup"], [role="group"]');
+  const labelledBy = group?.getAttribute('aria-labelledby');
+  const groupLabel = group?.getAttribute('aria-label')
+    || (labelledBy && document.getElementById(labelledBy)?.textContent);
+  if (groupLabel?.trim()) return groupLabel.trim();
+
+  // Ashby/Greenhouse-style entries: a heading label above the options.
+  const entry = el.closest('.ashby-application-form-field-entry, .field, .application-question');
+  const heading = Array.from(entry?.querySelectorAll('label, legend') || [])
+    .find((node) => !node.contains(el) && !node.querySelector('input'));
+  return heading?.textContent?.trim() || '';
+}
+
+/**
+ * Placeholders an AI writes when it has no answer ("Not specified in the
+ * provided information.", "N/A"). They are not filled; the field is left for
+ * the user.
+ */
+function isNonAnswer(value) {
+  const text = normalizeLookupText(value);
+  return /^(not specified|not provided|not mentioned|not available|not applicable|no answer|unknown|tbd|to be determined)\b/.test(text)
+    || /^(n a|na|none)$/.test(text);
+}
+
+function isOtherSpecifyField(el) {
+  const type = (el.getAttribute('type') || '').toLowerCase();
+  if (type === 'radio' || type === 'checkbox' || el.tagName.toLowerCase() === 'select') return false;
+  const ownLabel = normalizeLookupText(getAssociatedLabelText(el) || el.getAttribute('aria-label') || el.getAttribute('placeholder') || '');
+  return /^(other|other please specify|please specify|if other please specify|specify)$/.test(ownLabel);
+}
+
+// ── Autofill provenance ───────────────────────────────────────────────────────
+// Values ats-fill typed (and the user has not changed since) are not the
+// user's answers: the next Fill regenerates them. Keeping them out of page
+// drafts and learned memory stops one bad fill from coming back on every
+// reload and from being "kept" or reused on other applications.
+
+const autofilledSignatures = new WeakMap();
+
+function rememberAutofill(el) {
+  autofilledSignatures.set(el, getFieldSignature(el));
+}
+
+function isUntouchedAutofill(el) {
+  return autofilledSignatures.has(el) && autofilledSignatures.get(el) === getFieldSignature(el);
+}
+
+function getFieldSignature(el) {
+  const type = (el.getAttribute('type') || '').toLowerCase();
+  if (type === 'radio') {
+    const radios = el.name
+      ? Array.from(document.querySelectorAll(`input[type="radio"][name="${CSS.escape(el.name)}"]`))
+      : [el];
+    const checked = radios.find((radio) => radio.checked);
+    return `radio:${checked ? getChoiceIdentity(checked) : ''}`;
+  }
+  if (type === 'checkbox') return `checkbox:${el.checked}`;
+  return `value:${el.value}`;
+}
+
+function isUntouchedAutofillGroup(members) {
+  return members.some((member) => isUntouchedAutofill(member));
+}
+
+// Single words that name a field in a short label ("Address", "State") but are
+// ordinary words inside a long question ("solutions to address recurring
+// challenges", "Are you located within the United States?"). Match them only
+// as whole words, and only in label-sized text.
+const AMBIGUOUS_LABEL_WORDS = new Set(['address', 'state', 'name', 'available']);
+const MAX_WORDS_FOR_AMBIGUOUS_LABEL = 8;
+
+/** Both arguments are already normalized with normalizeLookupText. */
+function containsWholeWords(text, phrase) {
+  if (!text || !phrase || !` ${text} `.includes(` ${phrase} `)) return false;
+  return phrase.includes(' ') || text.split(' ').length <= MAX_WORDS_FOR_AMBIGUOUS_LABEL;
+}
+
+/** Both arguments are already normalized with normalizeLookupText. */
+function labelContainsPattern(text, pattern) {
+  if (!text || !pattern) return false;
+  if (!AMBIGUOUS_LABEL_WORDS.has(pattern)) return text.includes(pattern);
+  return text.split(' ').length <= MAX_WORDS_FOR_AMBIGUOUS_LABEL
+    && ` ${text} `.includes(` ${pattern} `);
+}
+
+// ── Yes/No button groups (Ashby) ──────────────────────────────────────────────
+
+const YES_NO_GROUP_SELECTOR = '.ashby-application-form-input-yesno';
+
+function fillYesNoButtonGroups(answers = {}, fieldMap = {}) {
+  let filled = 0;
+  let preserved = 0;
+  const unresolved = [];
+
+  for (const group of document.querySelectorAll(YES_NO_GROUP_SELECTOR)) {
+    const buttons = Array.from(group.querySelectorAll('button'));
+    const label = getYesNoGroupLabel(group);
+    if (!buttons.length || !label) continue;
+
+    if (buttons.some((button) => button.getAttribute('aria-pressed') === 'true')) {
+      preserved++;
+      continue;
+    }
+
+    const key = resolveAnswerKeyFromCandidates([label], fieldMap, answers);
+    const value = key ? answers[key] : '';
+    if (!value || isNonAnswer(value)) {
+      unresolved.push({ label, reason: key ? 'Answer still needs manual input' : 'No matching saved answer yet', type: 'yesno' });
+      continue;
+    }
+
+    const choice = parseYesNoAnswer(value);
+    const button = choice && buttons.find((b) => getYesNoButtonOption(b) === choice);
+    if (!button) {
+      unresolved.push({ label, reason: 'Review the available choices manually', type: 'yesno' });
+      continue;
+    }
+
+    button.click();
+    highlightField(button);
+    filled++;
+  }
+
+  return { filled, preserved, unresolved };
+}
+
+function getYesNoGroupLabel(group) {
+  const entry = group.closest('.ashby-application-form-field-entry') || group.parentElement;
+  return (entry?.querySelector('label, legend')?.textContent || '').trim();
+}
+
+function getYesNoButtonOption(button) {
+  return String(button.dataset?.option || button.textContent || '').trim().toLowerCase();
+}
+
+/**
+ * Map an answer to 'yes' / 'no' only when it starts with an explicit yes or no.
+ * Anything else ("Not specified.", "It depends") returns null so the question
+ * is left for the user instead of guessing.
+ */
+function parseYesNoAnswer(value) {
+  if (isNonAnswer(value)) return null; // "No answer" is not a "no"
+  const text = String(value || '').trim().toLowerCase();
+  if (/^(yes|y|true)\b/.test(text)) return 'yes';
+  if (/^(no|n|false)\b/.test(text)) return 'no';
+  return null;
+}
+
+// ── Type-ahead comboboxes (react-select on Greenhouse, Ashby autocomplete) ───
+// These keep the chosen option in component state, not in the input's value,
+// so setting .value does nothing. Open the menu the way a pointer would,
+// type a search, wait for options, then click the one that matches.
+
+const COMBOBOX_SELECTOR = 'input[role="combobox"][aria-autocomplete="list"]';
+const COMBOBOX_OPTION_TIMEOUT_MS = 6000;
+
+const US_STATES = {
+  al: 'alabama', ak: 'alaska', az: 'arizona', ar: 'arkansas', ca: 'california', co: 'colorado', ct: 'connecticut',
+  de: 'delaware', dc: 'district of columbia', fl: 'florida', ga: 'georgia', hi: 'hawaii', id: 'idaho', il: 'illinois',
+  in: 'indiana', ia: 'iowa', ks: 'kansas', ky: 'kentucky', la: 'louisiana', me: 'maine', md: 'maryland',
+  ma: 'massachusetts', mi: 'michigan', mn: 'minnesota', ms: 'mississippi', mo: 'missouri', mt: 'montana',
+  ne: 'nebraska', nv: 'nevada', nh: 'new hampshire', nj: 'new jersey', nm: 'new mexico', ny: 'new york',
+  nc: 'north carolina', nd: 'north dakota', oh: 'ohio', ok: 'oklahoma', or: 'oregon', pa: 'pennsylvania',
+  ri: 'rhode island', sc: 'south carolina', sd: 'south dakota', tn: 'tennessee', tx: 'texas', ut: 'utah',
+  vt: 'vermont', va: 'virginia', wa: 'washington', wv: 'west virginia', wi: 'wisconsin', wy: 'wyoming',
+};
+
+async function fillComboboxes(answers = {}, fieldMap = {}) {
+  let filled = 0;
+  const unresolved = [];
+
+  for (const input of document.querySelectorAll(COMBOBOX_SELECTOR)) {
+    if (input.disabled || input.closest('.iti')) continue; // phone-number country pickers manage themselves
+    if (getComboboxSelectedText(input)) continue;
+
+    const key = resolveFieldKey(input, fieldMap, answers, { includeContext: false });
+    const value = key ? answers[key] : '';
+    if (!value || isNonAnswer(value)) {
+      if (input.required || input.getAttribute('aria-required') === 'true') {
+        unresolved.push({ label: describeField(input), reason: 'No matching saved answer yet', type: 'combobox' });
+      }
+      continue;
+    }
+
+    const option = await chooseComboboxOption(input, String(value), describeField(input));
+    if (option) {
+      filled++;
+      highlightField(input.closest('[class*="__control"]') || input);
+    } else {
+      unresolved.push({ label: describeField(input), reason: `No option matched "${value}"`, type: 'combobox' });
+    }
+  }
+
+  return { filled, unresolved };
+}
+
+async function chooseComboboxOption(input, value, label = '') {
+  openCombobox(input);
+  await delay(150);
+  // Short fixed lists (Yes/No, veteran status) are matched without typing,
+  // since a search for "US Citizen" would filter the right option away.
+  let options = getComboboxOptions(input);
+  let match = options.length && options.length <= 12
+    ? pickComboboxOption(options, value) || pickComboboxFallback(options, value, label)
+    : null;
+
+  if (!match) {
+    // Search by the most specific part ("Reston, VA" → "Reston"), match on all of it.
+    setComboboxQuery(input, value.split(',')[0].trim());
+    const deadline = Date.now() + COMBOBOX_OPTION_TIMEOUT_MS;
+    let lastCount = -1;
+    let stablePolls = 0;
+    while (Date.now() < deadline) {
+      await delay(250);
+      options = getComboboxOptions(input);
+      if (!options.length) {
+        // react-select shows "No options" once the search matched nothing.
+        if (document.querySelector('[class*="menu-notice--no-options"]')) break;
+        continue;
+      }
+      // Async sources (location search) can show a stale list first; keep
+      // polling until a match shows up or the list stops changing.
+      match = pickComboboxOption(options, value);
+      if (match) break;
+      stablePolls = options.length === lastCount ? stablePolls + 1 : 0;
+      lastCount = options.length;
+      if (stablePolls >= 3) {
+        match = pickComboboxFallback(options, value, label);
+        break;
+      }
+    }
+  }
+
+  if (match) {
+    match.scrollIntoView?.({ block: 'nearest' });
+    match.click();
+    await delay(150);
+    if (getComboboxSelectedText(input)) return match;
+  }
+
+  // Leave nothing half-typed behind.
+  setComboboxQuery(input, '');
+  input.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
+  return null;
+}
+
+function openCombobox(input) {
+  const control = input.closest('[class*="__control"]') || input.parentElement;
+  // react-select opens on mousedown over the control, but ignores it on the input itself.
+  const target = control?.querySelector('[class*="__indicators"], [class*="__value-container"]')
+    || input.closest('[class*="inputContainer"]')?.querySelector('button')
+    || control;
+  input.focus({ preventScroll: true });
+  for (const type of ['pointerdown', 'mousedown', 'pointerup', 'mouseup']) {
+    const EventType = type.startsWith('pointer') && typeof PointerEvent === 'function' ? PointerEvent : MouseEvent;
+    target?.dispatchEvent(new EventType(type, { bubbles: true, cancelable: true, button: 0 }));
+  }
+}
+
+function setComboboxQuery(input, query) {
+  const setter = Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, 'value')?.set;
+  if (setter) setter.call(input, query); else input.value = query;
+  input.dispatchEvent(new Event('input', { bubbles: true }));
+}
+
+function getComboboxOptions(input) {
+  const listIds = [input.getAttribute('aria-controls'), input.getAttribute('aria-owns')].filter(Boolean);
+  const scoped = listIds.flatMap((id) => Array.from(document.getElementById(id)?.querySelectorAll('[role="option"]') || []));
+  if (scoped.length) return scoped;
+  if (input.id) {
+    const reactSelect = Array.from(document.querySelectorAll(`[id^="react-select-${CSS.escape(input.id)}-option"]`));
+    if (reactSelect.length) return reactSelect;
+  }
+  return Array.from(document.querySelectorAll('[role="option"]'))
+    .filter((option) => !option.closest('.iti') && option.offsetParent !== null);
+}
+
+function getComboboxSelectedText(input) {
+  const control = input.closest('[class*="__control"]');
+  return control?.querySelector('[class*="single-value"], [class*="multi-value__label"]')?.textContent?.trim() || '';
+}
+
+/**
+ * The option containing every word of the answer (US states and countries
+ * spelled out) with the fewest extra words, or null when none contains them all.
+ */
+function pickComboboxOption(options, value) {
+  const wanted = expandPlaceWords(normalizeLookupText(value)).split(' ').filter(Boolean);
+  if (!wanted.length) return null;
+  let best = null;
+  let bestExtra = Infinity;
+  for (const option of options) {
+    const words = expandPlaceWords(normalizeLookupText(option.textContent)).split(' ').filter(Boolean);
+    const padded = ` ${words.join(' ')} `;
+    if (!wanted.every((word) => padded.includes(` ${word} `))) continue;
+    const extra = words.length - wanted.length;
+    if (extra < bestExtra) { best = option; bestExtra = extra; }
+  }
+  return best;
+}
+
+/**
+ * When no option contains the answer's words: Yes/No lists take an explicit
+ * yes/no (or "US citizen"-style answers to work-authorization questions),
+ * gender words map to the list's wording, and short answers ("No") fall back
+ * to the same scoring native <select> fills use. Anything else is left for
+ * the user.
+ */
+function pickComboboxFallback(options, value, label = '') {
+  const texts = options.map((option) => normalizeLookupText(option.textContent));
+
+  // "Prefer not to say" is worded differently on every form.
+  const declinePattern = /prefer not|decline|don t wish|do not wish|rather not|choose not/;
+  if (declinePattern.test(normalizeLookupText(value))) {
+    return options.find((option, index) => declinePattern.test(texts[index])) || null;
+  }
+
+  const isYesNoList = texts.every((text) => /^(yes|no|i don t wish to answer|prefer not to say|decline to answer)$/.test(text));
+  if (isYesNoList) {
+    let choice = parseYesNoAnswer(value);
+    const isWorkStatus = /\b(citizen|authori[sz]ed|permanent resident|green card)\b/i.test(value);
+    if (!choice && isWorkStatus && /sponsor/i.test(label)) choice = 'no';
+    else if (!choice && isWorkStatus && /authori[sz]ed|eligible|legally/i.test(label)) choice = 'yes';
+    return choice ? options[texts.indexOf(choice)] || null : null;
+  }
+
+  const genderWords = { male: 'man', female: 'woman', man: 'male', woman: 'female' };
+  const swapped = normalizeLookupText(value).split(' ').map((word) => genderWords[word] || word).join(' ');
+  const bySynonym = pickComboboxOption(options, swapped);
+  if (bySynonym) return bySynonym;
+
+  if (normalizeLookupText(value).split(' ').length > 3) return null;
+  const scored = findBestSelectOptionValue(
+    options.map((option) => ({ value: option.textContent, text: option.textContent, option })),
+    value,
+  );
+  return scored?.option || null;
+}
+
+function expandPlaceWords(text) {
+  return String(text || '').split(' ').map((word) => {
+    if (US_STATES[word]) return US_STATES[word];
+    if (word === 'us' || word === 'usa') return 'united states';
+    if (word === 'uk') return 'united kingdom';
+    return word;
+  }).join(' ');
+}
+
+function delay(ms) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+// ── Resume attachment ─────────────────────────────────────────────────────────
+
+const RESUME_INPUT_PATTERN = /\b(resume|cv|curriculum vitae)\b/i;
+const NOT_RESUME_INPUT_PATTERN = /\b(cover letter|transcript|portfolio|writing sample|autofill|auto-fill|parse)\b/i;
+
+/**
+ * Attach the saved resume file to upload fields labelled Resume/CV.
+ * Only real uploaded files are attached (never a text preview), only to empty
+ * inputs, and never to "autofill from resume" dropzones that would overwrite
+ * the answers ats-fill just filled.
+ */
+async function attachSavedResume() {
+  const settings = (await chrome.storage.local.get('settings')).settings || {};
+  if (settings.auto_attach_resume === false) return { attached: 0, reason: 'off' };
+
+  const inputs = Array.from(document.querySelectorAll('input[type="file"]'))
+    .filter((input) => !input.disabled && !(input.files && input.files.length) && isResumeFileInput(input));
+  if (!inputs.length) return { attached: 0, reason: 'no-field' };
+
+  const response = await chrome.runtime.sendMessage({ type: 'GET_RESUME_ATTACHMENT' }).catch(() => null);
+  const attachment = response?.attachment;
+  if (!attachment || attachment.downloadMode !== 'data-url' || !attachment.data) {
+    return { attached: 0, reason: 'no-file' };
+  }
+
+  const file = dataUrlToFile(attachment.data, attachment.name, attachment.mimeType);
+  let attached = 0;
+  for (const input of inputs) {
+    if (!fileMatchesAccept(file, input.accept)) continue;
+    const transfer = new DataTransfer();
+    transfer.items.add(file);
+    input.files = transfer.files;
+    input.dispatchEvent(new Event('input', { bubbles: true }));
+    input.dispatchEvent(new Event('change', { bubbles: true }));
+    attached++;
+  }
+  return { attached, name: file.name, reason: attached ? 'attached' : 'type-not-accepted' };
+}
+
+function isResumeFileInput(input) {
+  const text = [
+    input.name,
+    input.id,
+    input.getAttribute('aria-label'),
+    input.getAttribute('data-label'),
+    getAssociatedLabelText(input),
+    input.closest('.ashby-application-form-field-entry, .field, fieldset')?.querySelector('label, legend')?.textContent,
+  ].filter(Boolean).join(' ').replace(/[_-]+/g, ' ');
+  return RESUME_INPUT_PATTERN.test(text) && !NOT_RESUME_INPUT_PATTERN.test(text);
+}
+
+// Decoded locally rather than with fetch(dataUrl), which a strict page CSP can block.
+function dataUrlToFile(dataUrl, name, mimeType) {
+  const [header, base64 = ''] = String(dataUrl).split(',', 2);
+  const type = mimeType || header.match(/^data:([^;,]+)/)?.[1] || 'application/pdf';
+  const binary = atob(base64);
+  const bytes = new Uint8Array(binary.length);
+  for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+  return new File([bytes], name || 'resume.pdf', { type });
+}
+
+function fileMatchesAccept(file, accept = '') {
+  const rules = String(accept || '').split(',').map((rule) => rule.trim().toLowerCase()).filter(Boolean);
+  if (!rules.length) return true;
+  const name = file.name.toLowerCase();
+  const type = (file.type || '').toLowerCase();
+  return rules.some((rule) => (rule.startsWith('.') ? name.endsWith(rule)
+    : rule.endsWith('/*') ? type.startsWith(rule.slice(0, -1)) : type === rule));
 }
 
 function findBestSelectOptionValue(options = [], value = '') {
@@ -960,11 +1447,17 @@ function setSelectValue(el, value) {
 
   if (!match?.option) return false;
 
-  el.value = match.option.value; fireEvents(el, ['change']); return true;
+  el.value = match.option.value; fireEvents(el, ['focus', 'focusin', 'change', 'blur', 'focusout']); return true;
 }
 
+const FOCUS_EVENT_TYPES = new Set(['focus', 'blur', 'focusin', 'focusout']);
+
 function fireEvents(el, events) {
-  for (const type of events) el.dispatchEvent(new Event(type, { bubbles: true }));
+  for (const type of events) {
+    // focus/blur don't bubble in browsers; focusin/focusout do (React listens to those).
+    const bubbles = type !== 'focus' && type !== 'blur';
+    el.dispatchEvent(FOCUS_EVENT_TYPES.has(type) ? new FocusEvent(type, { bubbles }) : new Event(type, { bubbles }));
+  }
 }
 
 function highlightField(el) {
@@ -1115,7 +1608,12 @@ function getCheckboxGroupMembers(el) {
 }
 
 function collectDraftableFields() {
-  return Array.from(document.querySelectorAll('input, textarea, select')).filter(isDraftableField);
+  // Yes/No groups are restored by the page from its own button state; their
+  // hidden checkbox has no label and toggling it directly desyncs the buttons.
+  // A type-ahead's input holds the search text, not the chosen answer, so
+  // saving or learning it would replay a half-typed query on other forms.
+  return Array.from(document.querySelectorAll('input, textarea, select'))
+    .filter((el) => isDraftableField(el) && !el.closest(YES_NO_GROUP_SELECTOR) && !el.matches(COMBOBOX_SELECTOR));
 }
 
 function queueDraftSave() {
@@ -1145,13 +1643,14 @@ async function saveDraftNow() {
         ? Array.from(document.querySelectorAll(`input[type="radio"][name="${CSS.escape(el.name)}"]`))
         : [el];
       const checked = radios.find((radio) => radio.checked);
-      if (checked) fields[key] = getChoiceIdentity(checked);
+      if (checked && !isUntouchedAutofillGroup(radios)) fields[key] = getChoiceIdentity(checked);
       continue;
     }
 
     if (type === 'checkbox') {
       processedGroups.add(key);
       const members = getCheckboxGroupMembers(el);
+      if (isUntouchedAutofillGroup(members)) continue;
       if (members.length > 1) {
         const selected = members.filter((member) => member.checked).map(getChoiceIdentity).filter(Boolean);
         if (selected.length) fields[key] = selected;
@@ -1162,7 +1661,7 @@ async function saveDraftNow() {
     }
 
     const value = String(el.value || '');
-    if (value.trim()) {
+    if (value.trim() && !isUntouchedAutofill(el)) {
       fields[key] = value;
     }
   }
@@ -1199,26 +1698,26 @@ function collectLearnedAnswerEntries() {
   const processedGroups = new Set();
 
   for (const el of collectDraftableFields()) {
-    const label = describeField(el);
-    const key = getDraftFieldKey(el);
-    if (!label || label === 'unlabeled field' || !key || processedGroups.has(key)) continue;
-
     const type = (el.getAttribute('type') || '').toLowerCase();
+    const isChoice = type === 'radio' || type === 'checkbox';
+    const key = getDraftFieldKey(el);
+    if (!key || processedGroups.has(key)) continue;
 
-    if (type === 'radio') {
+    if (isChoice) {
       processedGroups.add(key);
-      const radios = el.name
-        ? Array.from(document.querySelectorAll(`input[type="radio"][name="${CSS.escape(el.name)}"]`))
-        : [el];
-      const checked = radios.find((radio) => radio.checked);
-      if (checked) entries[label] = getChoiceIdentity(checked);
-      continue;
-    }
+      const members = type === 'radio'
+        ? (el.name ? Array.from(document.querySelectorAll(`input[type="radio"][name="${CSS.escape(el.name)}"]`)) : [el])
+        : getCheckboxGroupMembers(el);
+      if (isUntouchedAutofillGroup(members)) continue;
+      // A group is learned under its question. A single checkbox's own label
+      // is the question; for a multi-option group the option label is not.
+      const label = type === 'radio' || members.length > 1 ? getChoiceGroupLabel(el) : describeField(el);
+      if (!label || label === 'unlabeled field') continue;
 
-    if (type === 'checkbox') {
-      processedGroups.add(key);
-      const members = getCheckboxGroupMembers(el);
-      if (members.length > 1) {
+      if (type === 'radio') {
+        const checked = members.find((radio) => radio.checked);
+        if (checked) entries[label] = getChoiceIdentity(checked);
+      } else if (members.length > 1) {
         const selected = members.filter((member) => member.checked).map(getChoiceIdentity).filter(Boolean);
         if (selected.length) entries[label] = selected.join(', ');
       } else if (el.checked) {
@@ -1227,6 +1726,8 @@ function collectLearnedAnswerEntries() {
       continue;
     }
 
+    const label = describeField(el);
+    if (!label || label === 'unlabeled field' || isUntouchedAutofill(el)) continue;
     const value = String(el.value || '').trim();
     if (value) entries[label] = value;
   }

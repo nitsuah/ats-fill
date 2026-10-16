@@ -42,6 +42,23 @@ _None._
   - Acceptance Criteria: a decision recorded here (or in `docs/release/chrome-web-store.md`); the release workflow publishes at most one pending review at a time, or only on the chosen schedule; a dispatch from `main` ships a release end to end without a review collision.
   - Found in the 2026-10-14 cross-repo auth audit.
 
+- [ ] Show the detected ATS when the application form is embedded in an iframe.
+  - Priority: P3
+  - Type: Bug · Confidence: High
+  - Problem: on company career pages that embed a Greenhouse form (e.g. databricks.com with `job-boards.greenhouse.io/embed/job_app`), Fill works in the iframe but the popup's readiness card says "DETECTED ATS: No job page", because `DETECT_ATS` is answered from the top frame.
+  - Same root cause in the tracker: filling the embedded form logged split rows ("Databricks — (no title)" from the iframe and "— Delivery Solutions Architect - Digital Native Business" from the parent page) instead of one entry, so the inbox sync could not tell which Databricks job a confirmation belongs to.
+  - Acceptance Criteria: the readiness card names the ATS from the frame that owns the form; an e2e fixture with an embedded Greenhouse iframe covers it, and filling it logs exactly one tracker entry with both company and title.
+  - Found 2026-10-16 while battle-testing fill on live forms.
+
+- [ ] Add an opt-in "Full auto" fill mode (attach, fill, then submit) behind its own toggle.
+  - Priority: P2
+  - Type: Feature · Confidence: Medium
+  - Problem: Fill now attaches the saved resume and answers Ashby Yes/No questions, but the user still has to review and press Submit on every application. The owner wants a separate, clearly labelled toggle, off by default, that submits once nothing needs review.
+  - Approach: build on the fill report. Submit only when `unresolved` is empty, the resume is attached, the page's required fields are all set, and no legal/attestation or demographic question was answered by ats-fill; otherwise stop and show what needs review. Log every auto-submit to the tracker with the filled answers so it can be audited.
+  - Also: keep more than one resume version (today one saved PDF is attached) and pick the version per application.
+  - Acceptance Criteria: toggle in Settings, off by default, with a plain warning; journeys cover a form that auto-submits and one that stops for review; the store listing and CHROMEWEBSTORE.md stop saying ats-fill never submits only once this ships.
+  - Found 2026-10-16 while battle-testing fill on live Ashby forms (Supabase, Deepgram).
+
 _Other planned work is in `docs/ROADMAP.md` 2027 Q1: OAuth/sign-in for personalized job search (blocked on
 a partner API), ID.me identity import, analytics-informed apply suggestions, and the response-time accuracy follow-up._
 

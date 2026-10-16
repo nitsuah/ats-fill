@@ -40,6 +40,8 @@ export function applyStateToSetupForm(state = {}) {
   set('work-auth', settings.work_authorization || '');
   const preferRemote = $('prefer-remote');
   if (preferRemote) preferRemote.checked = settings.preferred_remote !== false;
+  const autoAttachResume = $('auto-attach-resume');
+  if (autoAttachResume) autoAttachResume.checked = settings.auto_attach_resume !== false;
   set('adzuna-app-id', settings.adzuna_app_id || '');
   set('adzuna-app-key', settings.adzuna_app_key || '');
   if ($('adzuna-country')) $('adzuna-country').value = settings.adzuna_country || 'us';

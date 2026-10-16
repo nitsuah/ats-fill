@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { JSDOM } from 'jsdom';
 
-import { collectCustomQuestions, fillForm } from '../lib/form-filler.js';
+import { collectCustomQuestions, fillForm, parseYesNoAnswer } from '../lib/form-filler.js';
 
 function setupDom(html) {
   const dom = new JSDOM(html, { url: 'https://example.com/job' });
@@ -88,4 +88,172 @@ test('fillForm populates text/select/checkbox/radio fields and reports unresolve
   assert.equal(result.filled >= 3, true);
   assert.equal(result.preserved >= 1, true);
   assert.equal(result.unresolved.some((item) => item.label.toLowerCase().includes('portfolio')), true);
+});
+
+test('a long question that uses "address" as a verb is not filled with the street address', () => {
+  setupDom(`
+    <form>
+      <label for="addr">Address</label>
+      <input id="addr" />
+      <label for="q">Have you designed or implemented solutions to address recurring technical challenges for customers? If yes, briefly describe.</label>
+      <textarea id="q"></textarea>
+    </form>
+  `);
+
+  fillForm({ address_line1: '1 Main St' }, { address: 'address_line1' }, { highlight: false });
+
+  assert.equal(document.getElementById('addr').value, '1 Main St');
+  assert.equal(document.getElementById('q').value, '');
+});
+
+test('collectCustomQuestions keeps questions that only mention "United States" or "address" in passing', () => {
+  setupDom(`
+    <main>
+      <label>State</label>
+      <label>Are you located within the United States?</label>
+      <label>Have you designed solutions to address recurring technical challenges for customers?</label>
+    </main>
+  `);
+
+  assert.deepEqual(collectCustomQuestions(), [
+    'Are you located within the United States?',
+    'Have you designed solutions to address recurring technical challenges for customers?',
+  ]);
+});
+
+test('Ashby Yes/No button groups are answered by clicking the matching button', () => {
+  setupDom(`
+    <form>
+      <div class="ashby-application-form-field-entry">
+        <label>Are you located within the United States?</label>
+        <div class="ashby-application-form-input-yesno">
+          <button type="button" aria-pressed="false" data-option="yes">Yes</button>
+          <button type="button" aria-pressed="false" data-option="no">No</button>
+          <input type="checkbox" tabindex="-1" name="q1" />
+        </div>
+      </div>
+      <div class="ashby-application-form-field-entry">
+        <label>Will you now or in the future require visa sponsorship?</label>
+        <div class="ashby-application-form-input-yesno">
+          <button type="button" aria-pressed="false" data-option="yes">Yes</button>
+          <button type="button" aria-pressed="false" data-option="no">No</button>
+        </div>
+      </div>
+      <div class="ashby-application-form-field-entry">
+        <label>Have you worked with external clients?</label>
+        <div class="ashby-application-form-input-yesno">
+          <button type="button" aria-pressed="true" data-option="yes">Yes</button>
+          <button type="button" aria-pressed="false" data-option="no">No</button>
+        </div>
+      </div>
+    </form>
+  `);
+  const clicked = [];
+  for (const button of document.querySelectorAll('button')) {
+    button.addEventListener('click', () => clicked.push(`${button.closest('.ashby-application-form-field-entry').querySelector('label').textContent}=${button.dataset.option}`));
+  }
+
+  const result = fillForm(
+    { 'Are you located within the United States?': 'Yes', requires_sponsorship: 'No sponsorship required' },
+    { sponsorship: 'requires_sponsorship' },
+    { highlight: false },
+  );
+
+  assert.deepEqual(clicked, [
+    'Are you located within the United States?=yes',
+    'Will you now or in the future require visa sponsorship?=no',
+  ]);
+  assert.equal(document.querySelector('input[name="q1"]').checked, false, 'the hidden checkbox is left to the button handler');
+  assert.equal(result.filled, 2);
+  assert.equal(result.preserved, 1);
+});
+
+test('parseYesNoAnswer only commits to clear answers', () => {
+  assert.equal(parseYesNoAnswer('Yes, I am'), 'yes');
+  assert.equal(parseYesNoAnswer('No sponsorship required'), 'no');
+  assert.equal(parseYesNoAnswer('Not specified.'), null);
+  assert.equal(parseYesNoAnswer('I am authorized to work'), null);
+  assert.equal(parseYesNoAnswer('It depends'), null);
+  assert.equal(parseYesNoAnswer('No answer'), null);
+  assert.equal(parseYesNoAnswer('N/A'), null);
+});
+
+test('an "Other" companion box is never filled with the group answer', () => {
+  setupDom(`
+    <form>
+      <fieldset>
+        <legend>Race</legend>
+        <label><input type="radio" name="race" value="White" /> White</label>
+        <label><input type="radio" name="race" value="Other" /> Other</label>
+        <label for="race-other">Other</label>
+        <input id="race-other" />
+      </fieldset>
+    </form>
+  `);
+
+  fillForm({ race: 'White' }, { race: 'race' }, { highlight: false });
+
+  assert.equal(document.getElementById('race-other').value, '');
+});
+
+test('AI non-answers are left for the user instead of being filled', () => {
+  setupDom(`
+    <form>
+      <label for="hear">Where did you hear about this vacancy?</label>
+      <input id="hear" />
+    </form>
+  `);
+
+  const result = fillForm(
+    { 'Where did you hear about this vacancy?': 'Not specified in the provided information.' },
+    {},
+    { highlight: false },
+  );
+
+  assert.equal(document.getElementById('hear').value, '');
+  assert.equal(result.unresolved.some((item) => /hear about/i.test(item.label)), true);
+});
+
+test('a saved one-word answer key is not pulled into a long question that mentions it', () => {
+  setupDom(`
+    <form>
+      <label for="ref">Did someone from Acme refer you? If so, share their name and email.</label>
+      <input id="ref" />
+      <label for="us">Do you reside in the United States?</label>
+      <input id="us" />
+    </form>
+  `);
+
+  fillForm({ name: 'Austin J. Hardy', state: 'TN' }, {}, { highlight: false });
+
+  assert.equal(document.getElementById('ref').value, '');
+  assert.equal(document.getElementById('us').value, '');
+});
+
+test('required-marker labels still count as questions', () => {
+  setupDom(`
+    <main>
+      <label>Do you reside in the United States?*</label>
+      <label>Why do you want to work here? *</label>
+    </main>
+  `);
+
+  assert.deepEqual(collectCustomQuestions(), [
+    'Do you reside in the United States?',
+    'Why do you want to work here?',
+  ]);
+});
+
+test('hidden widget helper inputs are not reported as unlabeled fields', () => {
+  setupDom(`
+    <form>
+      <label for="q">Do you reside in the United States?</label>
+      <input id="q" />
+      <input tabindex="-1" aria-hidden="true" required value="" />
+    </form>
+  `);
+
+  const result = fillForm({}, {}, { highlight: false });
+
+  assert.equal(result.unresolved.some((item) => item.label === 'unlabeled field'), false);
 });
