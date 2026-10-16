@@ -46,7 +46,8 @@ _None._
   - Priority: P3
   - Type: Bug · Confidence: High
   - Problem: on company career pages that embed a Greenhouse form (e.g. databricks.com with `job-boards.greenhouse.io/embed/job_app`), Fill works in the iframe but the popup's readiness card says "DETECTED ATS: No job page", because `DETECT_ATS` is answered from the top frame.
-  - Acceptance Criteria: the readiness card names the ATS from the frame that owns the form; an e2e fixture with an embedded Greenhouse iframe covers it.
+  - Same root cause in the tracker: filling the embedded form logged split rows ("Databricks — (no title)" from the iframe and "— Delivery Solutions Architect - Digital Native Business" from the parent page) instead of one entry, so the inbox sync could not tell which Databricks job a confirmation belongs to.
+  - Acceptance Criteria: the readiness card names the ATS from the frame that owns the form; an e2e fixture with an embedded Greenhouse iframe covers it, and filling it logs exactly one tracker entry with both company and title.
   - Found 2026-10-16 while battle-testing fill on live forms.
 
 - [ ] Add an opt-in "Full auto" fill mode (attach, fill, then submit) behind its own toggle.
