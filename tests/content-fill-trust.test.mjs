@@ -133,3 +133,123 @@ test('a filled text field gets the click-in / tab-out events React forms commit 
   ]);
   window.close();
 });
+
+test('type-ahead options match on every word, with US states and countries spelled out', () => {
+  const window = load('');
+  const { document } = window;
+  const options = ['Sevierville, Arkansas, United States', 'Sevierville, Tennessee, United States', 'United States +1']
+    .map((text) => Object.assign(document.createElement('div'), { textContent: text }));
+
+  assert.equal(window.pickComboboxOption(options, 'Sevierville, TN, US')?.textContent, 'Sevierville, Tennessee, United States');
+  assert.equal(window.pickComboboxOption(options, 'United States')?.textContent, 'United States +1');
+  assert.equal(window.pickComboboxOption(options, 'Reston, VA'), null);
+  window.close();
+});
+
+test('a react-select style combobox is opened with mousedown, searched, and its option clicked', async () => {
+  const window = load(`
+    <form>
+      <label id="loc-label" for="loc">Location (City)</label>
+      <div class="select__control">
+        <div class="select__value-container">
+          <input id="loc" role="combobox" aria-autocomplete="list" aria-required="true" />
+        </div>
+        <div class="select__indicators"></div>
+      </div>
+    </form>
+  `);
+  const { document } = window;
+  const control = document.querySelector('.select__control');
+  const input = document.getElementById('loc');
+  let open = false;
+  const searches = [];
+  // Like Greenhouse: typing alone doesn't open the menu; a pointer press does.
+  control.addEventListener('mousedown', () => { open = true; });
+  input.addEventListener('input', () => {
+    searches.push(input.value);
+    document.querySelectorAll('[role="option"]').forEach((node) => node.remove());
+    if (!open || !input.value) return;
+    for (const text of [`${input.value}, Arkansas, United States`, `${input.value}, Tennessee, United States`]) {
+      const option = document.createElement('div');
+      option.setAttribute('role', 'option');
+      option.id = `react-select-loc-option-${text.length}`;
+      option.textContent = text;
+      option.addEventListener('click', () => {
+        const chosen = document.createElement('div');
+        chosen.className = 'select__single-value';
+        chosen.textContent = text;
+        control.querySelector('.select__value-container').prepend(chosen);
+        input.value = '';
+      });
+      document.body.append(option);
+    }
+  });
+
+  const result = await window.fillComboboxes({ location: 'Sevierville, TN, US' }, { location: 'location' });
+
+  assert.equal(result.filled, 1);
+  assert.deepEqual(searches, ['Sevierville']);
+  assert.equal(document.querySelector('.select__single-value')?.textContent, 'Sevierville, Tennessee, United States');
+  window.close();
+});
+
+test('splitFullName keeps middle initials out of the last name', async () => {
+  const { splitFullName } = await import('../lib/utils.js');
+  assert.deepEqual(splitFullName('Austin J. Hardy'), { first: 'Austin', last: 'Hardy' });
+  assert.deepEqual(splitFullName('Austin Hardy'), { first: 'Austin', last: 'Hardy' });
+  assert.deepEqual(splitFullName('Ann Lee Jr.'), { first: 'Ann', last: 'Lee Jr.' });
+  assert.deepEqual(splitFullName('Cher'), { first: 'Cher', last: '' });
+});
+
+test('short dropdown lists fall back to careful matches and never guess', () => {
+  const window = load('');
+  const { document } = window;
+  const list = (...texts) => texts.map((text) => Object.assign(document.createElement('div'), { textContent: text }));
+  const yesNo = list('Yes', 'No');
+
+  const authorized = 'Are you legally authorized to work in the United States?';
+  assert.equal(window.pickComboboxFallback(yesNo, 'US Citizen', authorized)?.textContent, 'Yes');
+  assert.equal(window.pickComboboxFallback(yesNo, 'No sponsorship required', 'Will you require sponsorship?')?.textContent, 'No');
+  assert.equal(window.pickComboboxFallback(yesNo, 'US Citizen', 'Do you require visa sponsorship now or in the future?')?.textContent, 'No');
+  assert.equal(window.pickComboboxFallback(yesNo, 'US Citizen', 'Are you currently located in the US?'), null);
+  assert.equal(window.pickComboboxFallback(list('Man', 'Woman', 'Non-binary'), 'Male')?.textContent, 'Man');
+  assert.equal(
+    window.pickComboboxFallback(list('I am not a protected veteran', 'I identify as a protected veteran', "I don't wish to answer"), 'No')?.textContent,
+    'I am not a protected veteran',
+  );
+  window.close();
+});
+
+test('type-ahead search text is not saved to drafts or learned memory', () => {
+  const window = load(`
+    <label for="country">Country</label>
+    <div class="select__control"><input id="country" role="combobox" aria-autocomplete="list" /></div>
+  `);
+  window.document.getElementById('country').value = 'United St';
+  assert.deepEqual({ ...window.collectLearnedAnswerEntries() }, {});
+  window.close();
+});
+
+test('a checkbox group needing review is one item named after its question', () => {
+  const window = load(`
+    <fieldset>
+      <legend>Which of the following applies to you?</legend>
+      <label><input type="checkbox" name="export[]" value="a" /> U.S. citizen</label>
+      <label><input type="checkbox" name="export[]" value="b" /> U.S. permanent resident</label>
+      <label><input type="checkbox" name="export[]" value="c" /> None of these apply to me</label>
+    </fieldset>
+  `);
+
+  const report = window.fillForm({}, {});
+
+  assert.deepEqual(Array.from(report.unresolved, (item) => item.label), ['Which of the following applies to you?']);
+  window.close();
+});
+
+test('decline answers match each form\'s own wording', () => {
+  const window = load('');
+  const { document } = window;
+  const options = ['Yes', 'No', "I don't wish to answer"].map((text) => Object.assign(document.createElement('div'), { textContent: text }));
+  assert.equal(window.pickComboboxFallback(options, 'Prefer not to say.', 'Are you Hispanic/Latino?')?.textContent, "I don't wish to answer");
+  window.close();
+});

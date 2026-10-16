@@ -211,3 +211,47 @@ test('AI non-answers are left for the user instead of being filled', () => {
   assert.equal(document.getElementById('hear').value, '');
   assert.equal(result.unresolved.some((item) => /hear about/i.test(item.label)), true);
 });
+
+test('a saved one-word answer key is not pulled into a long question that mentions it', () => {
+  setupDom(`
+    <form>
+      <label for="ref">Did someone from Acme refer you? If so, share their name and email.</label>
+      <input id="ref" />
+      <label for="us">Do you reside in the United States?</label>
+      <input id="us" />
+    </form>
+  `);
+
+  fillForm({ name: 'Austin J. Hardy', state: 'TN' }, {}, { highlight: false });
+
+  assert.equal(document.getElementById('ref').value, '');
+  assert.equal(document.getElementById('us').value, '');
+});
+
+test('required-marker labels still count as questions', () => {
+  setupDom(`
+    <main>
+      <label>Do you reside in the United States?*</label>
+      <label>Why do you want to work here? *</label>
+    </main>
+  `);
+
+  assert.deepEqual(collectCustomQuestions(), [
+    'Do you reside in the United States?',
+    'Why do you want to work here?',
+  ]);
+});
+
+test('hidden widget helper inputs are not reported as unlabeled fields', () => {
+  setupDom(`
+    <form>
+      <label for="q">Do you reside in the United States?</label>
+      <input id="q" />
+      <input tabindex="-1" aria-hidden="true" required value="" />
+    </form>
+  `);
+
+  const result = fillForm({}, {}, { highlight: false });
+
+  assert.equal(result.unresolved.some((item) => item.label === 'unlabeled field'), false);
+});

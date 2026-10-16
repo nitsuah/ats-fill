@@ -160,6 +160,9 @@ async function handleFillForm() {
   // 5. Fill the form, then attach the saved resume file
   const fieldMap = await loadFieldMap();
   const report = fillForm(answers, fieldMap);
+  const combos = await fillComboboxes(answers, fieldMap).catch(() => ({ filled: 0, unresolved: [] }));
+  report.filled += combos.filled;
+  report.unresolved = dedupeUnresolvedFields([...report.unresolved, ...combos.unresolved]);
   report.resume = await attachSavedResume().catch((err) => ({ attached: 0, reason: 'error', error: err?.message }));
 
   // 6. Log the application
@@ -624,7 +627,8 @@ function collectCustomQuestions() {
   const questions = [];
 
   for (const label of document.querySelectorAll('label, legend, [data-label]')) {
-    const text = label.textContent?.trim();
+    // Required labels end in a marker ("…United States?*"); judge the question without it.
+    const text = label.textContent?.trim().replace(/\s*\*+$/, '');
     if (!text || text.length < 10 || text.length > 500) continue;
     const lower = text.toLowerCase();
     const normalized = normalizeLookupText(text);
@@ -646,9 +650,12 @@ function getFillableInputs() {
     if (el.disabled || el.readOnly) return false;
     const style = getComputedStyle(el);
     if (style.display === 'none' || style.visibility === 'hidden') return false;
+    // Helper inputs widgets hide from users (react-select's "required" stand-in).
+    if (el.getAttribute('aria-hidden') === 'true' && el.tabIndex < 0) return false;
     // Yes/No button groups keep a hidden checkbox in sync; answer them by
-    // clicking the button instead (see fillYesNoButtonGroups).
-    return !el.closest(YES_NO_GROUP_SELECTOR);
+    // clicking the button instead (see fillYesNoButtonGroups). Type-ahead
+    // comboboxes need an option picked (see fillComboboxes).
+    return !el.closest(YES_NO_GROUP_SELECTOR) && !el.matches(COMBOBOX_SELECTOR);
   });
 }
 
@@ -745,7 +752,12 @@ function resolveAnswerKeyFromCandidates(candidates, fieldMap = {}, answers = {})
     for (const key of Object.keys(answers || {})) {
       const normalizedKey = normalizeLookupText(key);
       if (!normalizedKey || normalizedKey.length < 4) continue;
-      if (candidate.includes(normalizedKey) || normalizedKey.includes(candidate)) {
+      // Last resort: a saved answer whose question sits inside this label, or
+      // a label that is part of a saved question. Whole words only, and a
+      // one-word key only in label-sized text, so "share their name" doesn't
+      // take the "name" answer and "the United States" doesn't take "state".
+      if (containsWholeWords(candidate, normalizedKey)
+        || (candidate.split(' ').length >= 3 && containsWholeWords(normalizedKey, candidate))) {
         return key;
       }
     }
@@ -867,6 +879,20 @@ function describeField(el) {
 }
 
 function describeUnresolvedField(el, reason = '') {
+  // A radio/checkbox group is one question to review, not one item per option.
+  const type = (el.getAttribute('type') || '').toLowerCase();
+  const members = type === 'radio'
+    ? (el.name ? document.querySelectorAll(`input[type="radio"][name="${CSS.escape(el.name)}"]`) : [el])
+    : type === 'checkbox' ? getCheckboxGroupMembers(el) : [el];
+  const groupLabel = members.length > 1 ? getChoiceGroupLabel(el) : '';
+  if (groupLabel) {
+    return {
+      label: groupLabel,
+      draftKey: `group:${normalizeLookupText(groupLabel)}`,
+      type,
+      reason: String(reason || '').trim(),
+    };
+  }
   return {
     label: describeField(el),
     draftKey: getDraftFieldKey(el),
@@ -991,6 +1017,12 @@ const AMBIGUOUS_LABEL_WORDS = new Set(['address', 'state', 'name', 'available'])
 const MAX_WORDS_FOR_AMBIGUOUS_LABEL = 8;
 
 /** Both arguments are already normalized with normalizeLookupText. */
+function containsWholeWords(text, phrase) {
+  if (!text || !phrase || !` ${text} `.includes(` ${phrase} `)) return false;
+  return phrase.includes(' ') || text.split(' ').length <= MAX_WORDS_FOR_AMBIGUOUS_LABEL;
+}
+
+/** Both arguments are already normalized with normalizeLookupText. */
 function labelContainsPattern(text, pattern) {
   if (!text || !pattern) return false;
   if (!AMBIGUOUS_LABEL_WORDS.has(pattern)) return text.includes(pattern);
@@ -1058,6 +1090,210 @@ function parseYesNoAnswer(value) {
   if (/^(yes|y|true)\b/.test(text)) return 'yes';
   if (/^(no|n|false)\b/.test(text)) return 'no';
   return null;
+}
+
+// ── Type-ahead comboboxes (react-select on Greenhouse, Ashby autocomplete) ───
+// These keep the chosen option in component state, not in the input's value,
+// so setting .value does nothing. Open the menu the way a pointer would,
+// type a search, wait for options, then click the one that matches.
+
+const COMBOBOX_SELECTOR = 'input[role="combobox"][aria-autocomplete="list"]';
+const COMBOBOX_OPTION_TIMEOUT_MS = 6000;
+
+const US_STATES = {
+  al: 'alabama', ak: 'alaska', az: 'arizona', ar: 'arkansas', ca: 'california', co: 'colorado', ct: 'connecticut',
+  de: 'delaware', dc: 'district of columbia', fl: 'florida', ga: 'georgia', hi: 'hawaii', id: 'idaho', il: 'illinois',
+  in: 'indiana', ia: 'iowa', ks: 'kansas', ky: 'kentucky', la: 'louisiana', me: 'maine', md: 'maryland',
+  ma: 'massachusetts', mi: 'michigan', mn: 'minnesota', ms: 'mississippi', mo: 'missouri', mt: 'montana',
+  ne: 'nebraska', nv: 'nevada', nh: 'new hampshire', nj: 'new jersey', nm: 'new mexico', ny: 'new york',
+  nc: 'north carolina', nd: 'north dakota', oh: 'ohio', ok: 'oklahoma', or: 'oregon', pa: 'pennsylvania',
+  ri: 'rhode island', sc: 'south carolina', sd: 'south dakota', tn: 'tennessee', tx: 'texas', ut: 'utah',
+  vt: 'vermont', va: 'virginia', wa: 'washington', wv: 'west virginia', wi: 'wisconsin', wy: 'wyoming',
+};
+
+async function fillComboboxes(answers = {}, fieldMap = {}) {
+  let filled = 0;
+  const unresolved = [];
+
+  for (const input of document.querySelectorAll(COMBOBOX_SELECTOR)) {
+    if (input.disabled || input.closest('.iti')) continue; // phone-number country pickers manage themselves
+    if (getComboboxSelectedText(input)) continue;
+
+    const key = resolveFieldKey(input, fieldMap, answers);
+    const value = key ? answers[key] : '';
+    if (!value || isNonAnswer(value)) {
+      if (input.required || input.getAttribute('aria-required') === 'true') {
+        unresolved.push({ label: describeField(input), reason: 'No matching saved answer yet', type: 'combobox' });
+      }
+      continue;
+    }
+
+    const option = await chooseComboboxOption(input, String(value), describeField(input));
+    if (option) {
+      filled++;
+      highlightField(input.closest('[class*="__control"]') || input);
+    } else {
+      unresolved.push({ label: describeField(input), reason: `No option matched "${value}"`, type: 'combobox' });
+    }
+  }
+
+  return { filled, unresolved };
+}
+
+async function chooseComboboxOption(input, value, label = '') {
+  openCombobox(input);
+  await delay(150);
+  // Short fixed lists (Yes/No, veteran status) are matched without typing,
+  // since a search for "US Citizen" would filter the right option away.
+  let options = getComboboxOptions(input);
+  let match = options.length && options.length <= 12
+    ? pickComboboxOption(options, value) || pickComboboxFallback(options, value, label)
+    : null;
+
+  if (!match) {
+    // Search by the most specific part ("Reston, VA" → "Reston"), match on all of it.
+    setComboboxQuery(input, value.split(',')[0].trim());
+    const deadline = Date.now() + COMBOBOX_OPTION_TIMEOUT_MS;
+    let lastCount = -1;
+    let stablePolls = 0;
+    while (Date.now() < deadline) {
+      await delay(250);
+      options = getComboboxOptions(input);
+      if (!options.length) {
+        // react-select shows "No options" once the search matched nothing.
+        if (document.querySelector('[class*="menu-notice--no-options"]')) break;
+        continue;
+      }
+      // Async sources (location search) can show a stale list first; keep
+      // polling until a match shows up or the list stops changing.
+      match = pickComboboxOption(options, value);
+      if (match) break;
+      stablePolls = options.length === lastCount ? stablePolls + 1 : 0;
+      lastCount = options.length;
+      if (stablePolls >= 3) {
+        match = pickComboboxFallback(options, value, label);
+        break;
+      }
+    }
+  }
+
+  if (match) {
+    match.scrollIntoView?.({ block: 'nearest' });
+    match.click();
+    await delay(150);
+    if (getComboboxSelectedText(input)) return match;
+  }
+
+  // Leave nothing half-typed behind.
+  setComboboxQuery(input, '');
+  input.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
+  return null;
+}
+
+function openCombobox(input) {
+  const control = input.closest('[class*="__control"]') || input.parentElement;
+  // react-select opens on mousedown over the control, but ignores it on the input itself.
+  const target = control?.querySelector('[class*="__indicators"], [class*="__value-container"]')
+    || input.closest('[class*="inputContainer"]')?.querySelector('button')
+    || control;
+  input.focus({ preventScroll: true });
+  for (const type of ['pointerdown', 'mousedown', 'pointerup', 'mouseup']) {
+    const EventType = type.startsWith('pointer') && typeof PointerEvent === 'function' ? PointerEvent : MouseEvent;
+    target?.dispatchEvent(new EventType(type, { bubbles: true, cancelable: true, button: 0 }));
+  }
+}
+
+function setComboboxQuery(input, query) {
+  const setter = Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, 'value')?.set;
+  if (setter) setter.call(input, query); else input.value = query;
+  input.dispatchEvent(new Event('input', { bubbles: true }));
+}
+
+function getComboboxOptions(input) {
+  const listIds = [input.getAttribute('aria-controls'), input.getAttribute('aria-owns')].filter(Boolean);
+  const scoped = listIds.flatMap((id) => Array.from(document.getElementById(id)?.querySelectorAll('[role="option"]') || []));
+  if (scoped.length) return scoped;
+  if (input.id) {
+    const reactSelect = Array.from(document.querySelectorAll(`[id^="react-select-${CSS.escape(input.id)}-option"]`));
+    if (reactSelect.length) return reactSelect;
+  }
+  return Array.from(document.querySelectorAll('[role="option"]'))
+    .filter((option) => !option.closest('.iti') && option.offsetParent !== null);
+}
+
+function getComboboxSelectedText(input) {
+  const control = input.closest('[class*="__control"]');
+  return control?.querySelector('[class*="single-value"], [class*="multi-value__label"]')?.textContent?.trim() || '';
+}
+
+/**
+ * The option containing every word of the answer (US states and countries
+ * spelled out) with the fewest extra words, or null when none contains them all.
+ */
+function pickComboboxOption(options, value) {
+  const wanted = expandPlaceWords(normalizeLookupText(value)).split(' ').filter(Boolean);
+  if (!wanted.length) return null;
+  let best = null;
+  let bestExtra = Infinity;
+  for (const option of options) {
+    const words = expandPlaceWords(normalizeLookupText(option.textContent)).split(' ').filter(Boolean);
+    const padded = ` ${words.join(' ')} `;
+    if (!wanted.every((word) => padded.includes(` ${word} `))) continue;
+    const extra = words.length - wanted.length;
+    if (extra < bestExtra) { best = option; bestExtra = extra; }
+  }
+  return best;
+}
+
+/**
+ * When no option contains the answer's words: Yes/No lists take an explicit
+ * yes/no (or "US citizen"-style answers to work-authorization questions),
+ * gender words map to the list's wording, and short answers ("No") fall back
+ * to the same scoring native <select> fills use. Anything else is left for
+ * the user.
+ */
+function pickComboboxFallback(options, value, label = '') {
+  const texts = options.map((option) => normalizeLookupText(option.textContent));
+
+  // "Prefer not to say" is worded differently on every form.
+  const declinePattern = /prefer not|decline|don t wish|do not wish|rather not|choose not/;
+  if (declinePattern.test(normalizeLookupText(value))) {
+    return options.find((option, index) => declinePattern.test(texts[index])) || null;
+  }
+
+  const isYesNoList = texts.every((text) => /^(yes|no|i don t wish to answer|prefer not to say|decline to answer)$/.test(text));
+  if (isYesNoList) {
+    let choice = parseYesNoAnswer(value);
+    const isWorkStatus = /\b(citizen|authori[sz]ed|permanent resident|green card)\b/i.test(value);
+    if (!choice && isWorkStatus && /sponsor/i.test(label)) choice = 'no';
+    else if (!choice && isWorkStatus && /authori[sz]ed|eligible|legally/i.test(label)) choice = 'yes';
+    return choice ? options[texts.indexOf(choice)] || null : null;
+  }
+
+  const genderWords = { male: 'man', female: 'woman', man: 'male', woman: 'female' };
+  const swapped = normalizeLookupText(value).split(' ').map((word) => genderWords[word] || word).join(' ');
+  const bySynonym = pickComboboxOption(options, swapped);
+  if (bySynonym) return bySynonym;
+
+  if (normalizeLookupText(value).split(' ').length > 3) return null;
+  const scored = findBestSelectOptionValue(
+    options.map((option) => ({ value: option.textContent, text: option.textContent, option })),
+    value,
+  );
+  return scored?.option || null;
+}
+
+function expandPlaceWords(text) {
+  return String(text || '').split(' ').map((word) => {
+    if (US_STATES[word]) return US_STATES[word];
+    if (word === 'us' || word === 'usa') return 'united states';
+    if (word === 'uk') return 'united kingdom';
+    return word;
+  }).join(' ');
+}
+
+function delay(ms) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
 // ── Resume attachment ─────────────────────────────────────────────────────────
@@ -1360,8 +1596,10 @@ function getCheckboxGroupMembers(el) {
 function collectDraftableFields() {
   // Yes/No groups are restored by the page from its own button state; their
   // hidden checkbox has no label and toggling it directly desyncs the buttons.
+  // A type-ahead's input holds the search text, not the chosen answer, so
+  // saving or learning it would replay a half-typed query on other forms.
   return Array.from(document.querySelectorAll('input, textarea, select'))
-    .filter((el) => isDraftableField(el) && !el.closest(YES_NO_GROUP_SELECTOR));
+    .filter((el) => isDraftableField(el) && !el.closest(YES_NO_GROUP_SELECTOR) && !el.matches(COMBOBOX_SELECTOR));
 }
 
 function queueDraftSave() {
