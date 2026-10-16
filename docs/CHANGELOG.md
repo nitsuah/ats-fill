@@ -22,6 +22,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - AI non-answers ("Not specified in the provided information.", "N/A") are no longer filled or remembered; the field is flagged for review instead.
 - "Other: please specify" boxes are no longer filled with the group's answer (it put the race answer into the race "Other" box).
 - Twitter / X fields are no longer filled with the portfolio URL.
+- Job search: Remotive results now match the query. Remotive ignores its `search` parameter and returned the same listings for every search, so the query is applied to its results locally.
 - Values ats-fill typed and the user never changed are kept out of page drafts and learned memory, so one bad fill no longer comes back on reload, gets counted as "kept" by the next fill, or is reused on other applications. Radio groups are learned under their question instead of an option label.
 
 - Standalone home masthead stacks under 640px, so the intro no longer squeezes to one word per line and the stats bar no longer overlaps it; the standalone page no longer overflows sideways by the scrollbar width (#142).
