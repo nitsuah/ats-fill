@@ -174,6 +174,8 @@ test('parseYesNoAnswer only commits to clear answers', () => {
   assert.equal(parseYesNoAnswer('Not specified.'), null);
   assert.equal(parseYesNoAnswer('I am authorized to work'), null);
   assert.equal(parseYesNoAnswer('It depends'), null);
+  assert.equal(parseYesNoAnswer('No answer'), null);
+  assert.equal(parseYesNoAnswer('N/A'), null);
 });
 
 test('an "Other" companion box is never filled with the group answer', () => {

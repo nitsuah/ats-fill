@@ -245,6 +245,9 @@ export async function initMainHandlers() {
             ? `${report.unresolved.length} to review`
             : '',
           report.resume?.attached ? `📎 ${report.resume.name} attached` : '',
+          ['no-file', 'type-not-accepted', 'error'].includes(report.resume?.reason)
+            ? '⚠️ resume not attached, upload it yourself'
+            : '',
         ].filter(Boolean).join(' • ');
 
         const message = resp?.warning

@@ -1051,7 +1051,7 @@ function fillYesNoButtonGroups(answers = {}, fieldMap = {}) {
 
     const key = resolveAnswerKeyFromCandidates([label], fieldMap, answers);
     const value = key ? answers[key] : '';
-    if (!value) {
+    if (!value || isNonAnswer(value)) {
       unresolved.push({ label, reason: key ? 'Answer still needs manual input' : 'No matching saved answer yet', type: 'yesno' });
       continue;
     }
@@ -1086,6 +1086,7 @@ function getYesNoButtonOption(button) {
  * is left for the user instead of guessing.
  */
 function parseYesNoAnswer(value) {
+  if (isNonAnswer(value)) return null; // "No answer" is not a "no"
   const text = String(value || '').trim().toLowerCase();
   if (/^(yes|y|true)\b/.test(text)) return 'yes';
   if (/^(no|n|false)\b/.test(text)) return 'no';
