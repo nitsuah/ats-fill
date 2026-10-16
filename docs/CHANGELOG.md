@@ -9,6 +9,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.0.4] - 2026-10-16
+
 ### Fixed
 
 - Fill no longer puts profile values into long questions that merely use a field word: "…solutions to **address** recurring challenges?" got the street address, and "…located within the United **States**?" was treated as a standard field and never answered. Single words (address, state, name, available) now only match whole words in label-sized text.
