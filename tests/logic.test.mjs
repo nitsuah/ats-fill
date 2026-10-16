@@ -251,3 +251,11 @@ test('filterApplicationsForQuery is case-insensitive for titles', () => {
   assert.equal(filterApplicationsForQuery(apps, 'it systems engineer').length, 1);
   assert.equal(filterApplicationsForQuery(apps, 'IT SYSTEMS ENGINEER').length, 1);
 });
+
+test('learned memory skips placeholder non-answers', async () => {
+  const { shouldPersistLearnedValue } = await import('../lib/form-filler.js');
+  assert.equal(shouldPersistLearnedValue('Where did you hear about this vacancy?', 'Not specified.'), false);
+  assert.equal(shouldPersistLearnedValue('Preferred pronouns', 'N/A'), false);
+  assert.equal(shouldPersistLearnedValue('Where did you hear about this vacancy?', 'Not specified in the provided information.'), false);
+  assert.equal(shouldPersistLearnedValue('Where did you hear about this vacancy?', 'Jobicy'), true);
+});

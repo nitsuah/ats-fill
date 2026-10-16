@@ -42,6 +42,15 @@ _None._
   - Acceptance Criteria: a decision recorded here (or in `docs/release/chrome-web-store.md`); the release workflow publishes at most one pending review at a time, or only on the chosen schedule; a dispatch from `main` ships a release end to end without a review collision.
   - Found in the 2026-10-14 cross-repo auth audit.
 
+- [ ] Add an opt-in "Full auto" fill mode (attach, fill, then submit) behind its own toggle.
+  - Priority: P2
+  - Type: Feature · Confidence: Medium
+  - Problem: Fill now attaches the saved resume and answers Ashby Yes/No questions, but the user still has to review and press Submit on every application. The owner wants a separate, clearly labelled toggle, off by default, that submits once nothing needs review.
+  - Approach: build on the fill report. Submit only when `unresolved` is empty, the resume is attached, the page's required fields are all set, and no legal/attestation or demographic question was answered by ats-fill; otherwise stop and show what needs review. Log every auto-submit to the tracker with the filled answers so it can be audited.
+  - Also: keep more than one resume version (today one saved PDF is attached) and pick the version per application.
+  - Acceptance Criteria: toggle in Settings, off by default, with a plain warning; journeys cover a form that auto-submits and one that stops for review; the store listing and CHROMEWEBSTORE.md stop saying ats-fill never submits only once this ships.
+  - Found 2026-10-16 while battle-testing fill on live Ashby forms (Supabase, Deepgram).
+
 _Other planned work is in `docs/ROADMAP.md` 2027 Q1: OAuth/sign-in for personalized job search (blocked on
 a partner API), ID.me identity import, analytics-informed apply suggestions, and the response-time accuracy follow-up._
 

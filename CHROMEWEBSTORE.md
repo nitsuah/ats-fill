@@ -16,7 +16,7 @@ Local-first ATS form-filling assistant. Save your profile once, review answers, 
 
 ats-fill fills job applications from a profile you save once, and you review every field before you submit.
 
-Fill Greenhouse, Lever, Ashby and LinkedIn Easy Apply forms in place, with partial support for Workday, iCIMS, Jobvite and other application forms. Preview every answer before it's used. Corrections you make on forms are remembered for next time, and you can review, edit or delete them.
+Fill Greenhouse, Lever, Ashby and LinkedIn Easy Apply forms in place, with partial support for Workday, iCIMS, Jobvite and other application forms. Fill also attaches your saved resume file to the form's resume upload (you can turn this off). Preview every answer before it's used. Corrections you make on forms are remembered for next time, and you can review, edit or delete them.
 Search 16 job boards from one panel, and save any result to your pipeline with one click.
 Track every application on a board from draft to offer, import past applications from a spreadsheet, and see response analytics computed from your own history.
 Practice for interviews with questions generated for the specific job.

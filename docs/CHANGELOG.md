@@ -11,10 +11,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- Fill no longer puts profile values into long questions that merely use a field word: "…solutions to **address** recurring challenges?" got the street address, and "…located within the United **States**?" was treated as a standard field and never answered. Single words (address, state, name, available) now only match whole words in label-sized text.
+- Ashby Yes/No questions are answered by clicking the Yes or No button (only for an explicit yes/no answer; anything else is left for review).
+- AI non-answers ("Not specified in the provided information.", "N/A") are no longer filled or remembered; the field is flagged for review instead.
+- "Other: please specify" boxes are no longer filled with the group's answer (it put the race answer into the race "Other" box).
+- Twitter / X fields are no longer filled with the portfolio URL.
+- Values ats-fill typed and the user never changed are kept out of page drafts and learned memory, so one bad fill no longer comes back on reload, gets counted as "kept" by the next fill, or is reused on other applications. Radio groups are learned under their question instead of an option label.
+
 - Standalone home masthead stacks under 640px, so the intro no longer squeezes to one word per line and the stats bar no longer overlaps it; the standalone page no longer overflows sideways by the scrollbar width (#142).
 
 ### Added
 
+- **Resume attach on fill**: Fill attaches the saved resume PDF to Resume/CV upload fields (never to cover-letter or "autofill from resume" inputs, never over a file already chosen), and the fill summary says so. A checkbox under Profile → Saved local copy turns it off.
 - **Nightly journeys** (`tests/journeys/`, `.github/workflows/journeys.yml`, `npm run test:journeys`): 8 journeys (home on a Greenhouse page, fill a fictional application, pipeline, analytics, interview prep, job search with filters, optional sources in Settings, phone) with 12 visual baselines, driven through the real extension on the demo state and tagged with the feature ids in `promo/spots.json`. Failures become deduplicated `bot:journey` issues through the shared `nitsuah/.github` harness with no AI. Replaces the artifact-only `playwright-nightly.yml`; `ci.yml` still runs the full e2e suite on every PR. The one-time review pass filed #142 (phone home masthead).
 - Mermaid architecture and form-fill-flow diagrams in `docs/diagrams/`, embedded in the README. The `screenshot-gallery` CI job renders them (pinned `minlag/mermaid-cli`) and the rolling "docs: refresh UI screenshots" PR now carries the `.svg` renders too.
 - `promo/spots.json`: existing gallery screenshots linked to the features they show, and non-visual features marked `"visual": "none"`. No spot, reel or video changed.

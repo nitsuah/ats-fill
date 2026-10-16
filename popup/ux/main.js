@@ -244,6 +244,7 @@ export async function initMainHandlers() {
           Array.isArray(report.unresolved) && report.unresolved.length
             ? `${report.unresolved.length} to review`
             : '',
+          report.resume?.attached ? `📎 ${report.resume.name} attached` : '',
         ].filter(Boolean).join(' • ');
 
         const message = resp?.warning

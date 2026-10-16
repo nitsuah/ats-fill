@@ -11,6 +11,7 @@ Learns from your resume and saved profile data so future applications can be com
 - **Resume Learning**: Extracts and reuses experience, education, skills, and personal details from your resume
 - **Profile Reuse**: Applies previously captured candidate information across multiple job applications
 - **Memory Review Controls**: Lets you edit, ignore, restore, and remove remembered answers directly from Profile
+- **Your Answers Only**: Memory and page drafts keep what you typed or changed, not values ats-fill filled that you never touched, and skip placeholder non-answers
 
 ### 🎯 Job Matching and Response Generation
 
@@ -25,6 +26,8 @@ Focuses on reducing manual effort during the application process.
 
 - **Form Fill Automation**: Automatically fills supported application forms with candidate and job-specific data
 - **Supported ATS Platforms**: Works with supported applicant tracking systems used by common job portals and employer sites
+- **Resume Attach**: Attaches your saved resume PDF to Resume/CV upload fields when you fill (toggle under Profile → Saved local copy)
+- **Yes/No Button Questions**: Answers Ashby-style Yes/No button questions when the answer is an explicit yes or no; anything else is left for review
 - **Receiver Auto-Recovery**: Retries content-script injection automatically when a supported page initially has no active receiver
 
 ### 🤖 AI-Powered Writing Tools

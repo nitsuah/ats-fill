@@ -157,9 +157,10 @@ async function handleFillForm() {
     }
   }
 
-  // 5. Fill the form
+  // 5. Fill the form, then attach the saved resume file
   const fieldMap = await loadFieldMap();
   const report = fillForm(answers, fieldMap);
+  report.resume = await attachSavedResume().catch((err) => ({ attached: 0, reason: 'error', error: err?.message }));
 
   // 6. Log the application
   await chrome.runtime.sendMessage({
@@ -626,7 +627,8 @@ function collectCustomQuestions() {
     const text = label.textContent?.trim();
     if (!text || text.length < 10 || text.length > 500) continue;
     const lower = text.toLowerCase();
-    if (STANDARD.some((s) => lower.includes(s))) continue;
+    const normalized = normalizeLookupText(text);
+    if (STANDARD.some((s) => labelContainsPattern(normalized, normalizeLookupText(s)))) continue;
     if (SENSITIVE.some((s) => lower.includes(s))) continue;
     if (text.endsWith('?') || QUESTION_STARTERS.some((s) => lower.startsWith(s))) {
       questions.push(text);
@@ -643,7 +645,10 @@ function getFillableInputs() {
   )).filter((el) => {
     if (el.disabled || el.readOnly) return false;
     const style = getComputedStyle(el);
-    return style.display !== 'none' && style.visibility !== 'hidden';
+    if (style.display === 'none' || style.visibility === 'hidden') return false;
+    // Yes/No button groups keep a hidden checkbox in sync; answer them by
+    // clicking the button instead (see fillYesNoButtonGroups).
+    return !el.closest(YES_NO_GROUP_SELECTOR);
   });
 }
 
@@ -655,6 +660,10 @@ function fillForm(answers, fieldMap) {
   const unresolved = [];
 
   for (const input of inputs) {
+    // "Other: please specify" boxes belong to an Other choice; the choice
+    // itself carries the answer, so never pour that answer into the box too.
+    if (isOtherSpecifyField(input)) continue;
+
     const key = resolveFieldKey(input, fieldMap, answers);
     if (!key) {
       unresolved.push(describeUnresolvedField(input, 'No matching saved answer yet'));
@@ -662,7 +671,7 @@ function fillForm(answers, fieldMap) {
     }
 
     const value = answers[key];
-    if (value === undefined || value === null || value === '') {
+    if (value === undefined || value === null || value === '' || isNonAnswer(value)) {
       unresolved.push(describeUnresolvedField(input, 'Answer still needs manual input'));
       continue;
     }
@@ -675,11 +684,17 @@ function fillForm(answers, fieldMap) {
     const didFill = setFieldValue(input, String(value));
     if (didFill) {
       filled++;
+      rememberAutofill(input);
       highlightField(input);
     } else {
       unresolved.push(describeUnresolvedField(input, 'Review the available choices manually'));
     }
   }
+
+  const yesNo = fillYesNoButtonGroups(answers, fieldMap);
+  filled += yesNo.filled;
+  preserved += yesNo.preserved;
+  unresolved.push(...yesNo.unresolved);
 
   const uniqueUnresolved = dedupeUnresolvedFields(unresolved);
   const skipped = preserved + uniqueUnresolved.length;
@@ -722,7 +737,7 @@ function resolveAnswerKeyFromCandidates(candidates, fieldMap = {}, answers = {})
   for (const candidate of normalizedCandidates) {
     for (const [pattern, key] of sortedEntries) {
       if (pattern.startsWith('//')) continue;
-      if (candidate.includes(normalizeLookupText(pattern))) return key;
+      if (labelContainsPattern(candidate, normalizeLookupText(pattern))) return key;
     }
   }
 
@@ -891,6 +906,223 @@ function matchesPositiveChoice(text) {
 
 function matchesNegativeChoice(text) {
   return /(no|false|not now|do not|don't|without|none|prefer not|on site|onsite|will not require|do not require)/.test(text);
+}
+
+/** The question a radio/checkbox group answers, or '' when the page doesn't say. */
+function getChoiceGroupLabel(el) {
+  const fieldset = el.closest('fieldset');
+  const legend = fieldset?.querySelector('legend')?.textContent;
+  if (legend?.trim()) return legend.trim();
+
+  const group = el.closest('[role="radiogroup"], [role="group"]');
+  const labelledBy = group?.getAttribute('aria-labelledby');
+  const groupLabel = group?.getAttribute('aria-label')
+    || (labelledBy && document.getElementById(labelledBy)?.textContent);
+  if (groupLabel?.trim()) return groupLabel.trim();
+
+  // Ashby/Greenhouse-style entries: a heading label above the options.
+  const entry = el.closest('.ashby-application-form-field-entry, .field, .application-question');
+  const heading = Array.from(entry?.querySelectorAll('label, legend') || [])
+    .find((node) => !node.contains(el) && !node.querySelector('input'));
+  return heading?.textContent?.trim() || '';
+}
+
+/**
+ * Placeholders an AI writes when it has no answer ("Not specified in the
+ * provided information.", "N/A"). They are not filled; the field is left for
+ * the user.
+ */
+function isNonAnswer(value) {
+  const text = normalizeLookupText(value);
+  return /^(not specified|not provided|not mentioned|not available|not applicable|no answer|unknown|tbd|to be determined)\b/.test(text)
+    || /^(n a|na|none)$/.test(text);
+}
+
+function isOtherSpecifyField(el) {
+  const type = (el.getAttribute('type') || '').toLowerCase();
+  if (type === 'radio' || type === 'checkbox' || el.tagName.toLowerCase() === 'select') return false;
+  const ownLabel = normalizeLookupText(getAssociatedLabelText(el) || el.getAttribute('aria-label') || el.getAttribute('placeholder') || '');
+  return /^(other|other please specify|please specify|if other please specify|specify)$/.test(ownLabel);
+}
+
+// ── Autofill provenance ───────────────────────────────────────────────────────
+// Values ats-fill typed (and the user has not changed since) are not the
+// user's answers: the next Fill regenerates them. Keeping them out of page
+// drafts and learned memory stops one bad fill from coming back on every
+// reload and from being "kept" or reused on other applications.
+
+const autofilledSignatures = new WeakMap();
+
+function rememberAutofill(el) {
+  autofilledSignatures.set(el, getFieldSignature(el));
+}
+
+function isUntouchedAutofill(el) {
+  return autofilledSignatures.has(el) && autofilledSignatures.get(el) === getFieldSignature(el);
+}
+
+function getFieldSignature(el) {
+  const type = (el.getAttribute('type') || '').toLowerCase();
+  if (type === 'radio') {
+    const radios = el.name
+      ? Array.from(document.querySelectorAll(`input[type="radio"][name="${CSS.escape(el.name)}"]`))
+      : [el];
+    const checked = radios.find((radio) => radio.checked);
+    return `radio:${checked ? getChoiceIdentity(checked) : ''}`;
+  }
+  if (type === 'checkbox') return `checkbox:${el.checked}`;
+  return `value:${el.value}`;
+}
+
+function isUntouchedAutofillGroup(members) {
+  return members.some((member) => isUntouchedAutofill(member));
+}
+
+// Single words that name a field in a short label ("Address", "State") but are
+// ordinary words inside a long question ("solutions to address recurring
+// challenges", "Are you located within the United States?"). Match them only
+// as whole words, and only in label-sized text.
+const AMBIGUOUS_LABEL_WORDS = new Set(['address', 'state', 'name', 'available']);
+const MAX_WORDS_FOR_AMBIGUOUS_LABEL = 8;
+
+/** Both arguments are already normalized with normalizeLookupText. */
+function labelContainsPattern(text, pattern) {
+  if (!text || !pattern) return false;
+  if (!AMBIGUOUS_LABEL_WORDS.has(pattern)) return text.includes(pattern);
+  return text.split(' ').length <= MAX_WORDS_FOR_AMBIGUOUS_LABEL
+    && ` ${text} `.includes(` ${pattern} `);
+}
+
+// ── Yes/No button groups (Ashby) ──────────────────────────────────────────────
+
+const YES_NO_GROUP_SELECTOR = '.ashby-application-form-input-yesno';
+
+function fillYesNoButtonGroups(answers = {}, fieldMap = {}) {
+  let filled = 0;
+  let preserved = 0;
+  const unresolved = [];
+
+  for (const group of document.querySelectorAll(YES_NO_GROUP_SELECTOR)) {
+    const buttons = Array.from(group.querySelectorAll('button'));
+    const label = getYesNoGroupLabel(group);
+    if (!buttons.length || !label) continue;
+
+    if (buttons.some((button) => button.getAttribute('aria-pressed') === 'true')) {
+      preserved++;
+      continue;
+    }
+
+    const key = resolveAnswerKeyFromCandidates([label], fieldMap, answers);
+    const value = key ? answers[key] : '';
+    if (!value) {
+      unresolved.push({ label, reason: key ? 'Answer still needs manual input' : 'No matching saved answer yet', type: 'yesno' });
+      continue;
+    }
+
+    const choice = parseYesNoAnswer(value);
+    const button = choice && buttons.find((b) => getYesNoButtonOption(b) === choice);
+    if (!button) {
+      unresolved.push({ label, reason: 'Review the available choices manually', type: 'yesno' });
+      continue;
+    }
+
+    button.click();
+    highlightField(button);
+    filled++;
+  }
+
+  return { filled, preserved, unresolved };
+}
+
+function getYesNoGroupLabel(group) {
+  const entry = group.closest('.ashby-application-form-field-entry') || group.parentElement;
+  return (entry?.querySelector('label, legend')?.textContent || '').trim();
+}
+
+function getYesNoButtonOption(button) {
+  return String(button.dataset?.option || button.textContent || '').trim().toLowerCase();
+}
+
+/**
+ * Map an answer to 'yes' / 'no' only when it starts with an explicit yes or no.
+ * Anything else ("Not specified.", "It depends") returns null so the question
+ * is left for the user instead of guessing.
+ */
+function parseYesNoAnswer(value) {
+  const text = String(value || '').trim().toLowerCase();
+  if (/^(yes|y|true)\b/.test(text)) return 'yes';
+  if (/^(no|n|false)\b/.test(text)) return 'no';
+  return null;
+}
+
+// ── Resume attachment ─────────────────────────────────────────────────────────
+
+const RESUME_INPUT_PATTERN = /\b(resume|cv|curriculum vitae)\b/i;
+const NOT_RESUME_INPUT_PATTERN = /\b(cover letter|transcript|portfolio|writing sample|autofill|auto-fill|parse)\b/i;
+
+/**
+ * Attach the saved resume file to upload fields labelled Resume/CV.
+ * Only real uploaded files are attached (never a text preview), only to empty
+ * inputs, and never to "autofill from resume" dropzones that would overwrite
+ * the answers ats-fill just filled.
+ */
+async function attachSavedResume() {
+  const settings = (await chrome.storage.local.get('settings')).settings || {};
+  if (settings.auto_attach_resume === false) return { attached: 0, reason: 'off' };
+
+  const inputs = Array.from(document.querySelectorAll('input[type="file"]'))
+    .filter((input) => !input.disabled && !(input.files && input.files.length) && isResumeFileInput(input));
+  if (!inputs.length) return { attached: 0, reason: 'no-field' };
+
+  const response = await chrome.runtime.sendMessage({ type: 'GET_RESUME_ATTACHMENT' }).catch(() => null);
+  const attachment = response?.attachment;
+  if (!attachment || attachment.downloadMode !== 'data-url' || !attachment.data) {
+    return { attached: 0, reason: 'no-file' };
+  }
+
+  const file = dataUrlToFile(attachment.data, attachment.name, attachment.mimeType);
+  let attached = 0;
+  for (const input of inputs) {
+    if (!fileMatchesAccept(file, input.accept)) continue;
+    const transfer = new DataTransfer();
+    transfer.items.add(file);
+    input.files = transfer.files;
+    input.dispatchEvent(new Event('input', { bubbles: true }));
+    input.dispatchEvent(new Event('change', { bubbles: true }));
+    attached++;
+  }
+  return { attached, name: file.name, reason: attached ? 'attached' : 'type-not-accepted' };
+}
+
+function isResumeFileInput(input) {
+  const text = [
+    input.name,
+    input.id,
+    input.getAttribute('aria-label'),
+    input.getAttribute('data-label'),
+    getAssociatedLabelText(input),
+    input.closest('.ashby-application-form-field-entry, .field, fieldset')?.querySelector('label, legend')?.textContent,
+  ].filter(Boolean).join(' ').replace(/[_-]+/g, ' ');
+  return RESUME_INPUT_PATTERN.test(text) && !NOT_RESUME_INPUT_PATTERN.test(text);
+}
+
+// Decoded locally rather than with fetch(dataUrl), which a strict page CSP can block.
+function dataUrlToFile(dataUrl, name, mimeType) {
+  const [header, base64 = ''] = String(dataUrl).split(',', 2);
+  const type = mimeType || header.match(/^data:([^;,]+)/)?.[1] || 'application/pdf';
+  const binary = atob(base64);
+  const bytes = new Uint8Array(binary.length);
+  for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+  return new File([bytes], name || 'resume.pdf', { type });
+}
+
+function fileMatchesAccept(file, accept = '') {
+  const rules = String(accept || '').split(',').map((rule) => rule.trim().toLowerCase()).filter(Boolean);
+  if (!rules.length) return true;
+  const name = file.name.toLowerCase();
+  const type = (file.type || '').toLowerCase();
+  return rules.some((rule) => (rule.startsWith('.') ? name.endsWith(rule)
+    : rule.endsWith('/*') ? type.startsWith(rule.slice(0, -1)) : type === rule));
 }
 
 function findBestSelectOptionValue(options = [], value = '') {
@@ -1115,7 +1347,10 @@ function getCheckboxGroupMembers(el) {
 }
 
 function collectDraftableFields() {
-  return Array.from(document.querySelectorAll('input, textarea, select')).filter(isDraftableField);
+  // Yes/No groups are restored by the page from its own button state; their
+  // hidden checkbox has no label and toggling it directly desyncs the buttons.
+  return Array.from(document.querySelectorAll('input, textarea, select'))
+    .filter((el) => isDraftableField(el) && !el.closest(YES_NO_GROUP_SELECTOR));
 }
 
 function queueDraftSave() {
@@ -1145,13 +1380,14 @@ async function saveDraftNow() {
         ? Array.from(document.querySelectorAll(`input[type="radio"][name="${CSS.escape(el.name)}"]`))
         : [el];
       const checked = radios.find((radio) => radio.checked);
-      if (checked) fields[key] = getChoiceIdentity(checked);
+      if (checked && !isUntouchedAutofillGroup(radios)) fields[key] = getChoiceIdentity(checked);
       continue;
     }
 
     if (type === 'checkbox') {
       processedGroups.add(key);
       const members = getCheckboxGroupMembers(el);
+      if (isUntouchedAutofillGroup(members)) continue;
       if (members.length > 1) {
         const selected = members.filter((member) => member.checked).map(getChoiceIdentity).filter(Boolean);
         if (selected.length) fields[key] = selected;
@@ -1162,7 +1398,7 @@ async function saveDraftNow() {
     }
 
     const value = String(el.value || '');
-    if (value.trim()) {
+    if (value.trim() && !isUntouchedAutofill(el)) {
       fields[key] = value;
     }
   }
@@ -1199,26 +1435,26 @@ function collectLearnedAnswerEntries() {
   const processedGroups = new Set();
 
   for (const el of collectDraftableFields()) {
-    const label = describeField(el);
-    const key = getDraftFieldKey(el);
-    if (!label || label === 'unlabeled field' || !key || processedGroups.has(key)) continue;
-
     const type = (el.getAttribute('type') || '').toLowerCase();
+    const isChoice = type === 'radio' || type === 'checkbox';
+    const key = getDraftFieldKey(el);
+    if (!key || processedGroups.has(key)) continue;
 
-    if (type === 'radio') {
+    if (isChoice) {
       processedGroups.add(key);
-      const radios = el.name
-        ? Array.from(document.querySelectorAll(`input[type="radio"][name="${CSS.escape(el.name)}"]`))
-        : [el];
-      const checked = radios.find((radio) => radio.checked);
-      if (checked) entries[label] = getChoiceIdentity(checked);
-      continue;
-    }
+      const members = type === 'radio'
+        ? (el.name ? Array.from(document.querySelectorAll(`input[type="radio"][name="${CSS.escape(el.name)}"]`)) : [el])
+        : getCheckboxGroupMembers(el);
+      if (isUntouchedAutofillGroup(members)) continue;
+      // A group is learned under its question. A single checkbox's own label
+      // is the question; for a multi-option group the option label is not.
+      const label = type === 'radio' || members.length > 1 ? getChoiceGroupLabel(el) : describeField(el);
+      if (!label || label === 'unlabeled field') continue;
 
-    if (type === 'checkbox') {
-      processedGroups.add(key);
-      const members = getCheckboxGroupMembers(el);
-      if (members.length > 1) {
+      if (type === 'radio') {
+        const checked = members.find((radio) => radio.checked);
+        if (checked) entries[label] = getChoiceIdentity(checked);
+      } else if (members.length > 1) {
         const selected = members.filter((member) => member.checked).map(getChoiceIdentity).filter(Boolean);
         if (selected.length) entries[label] = selected.join(', ');
       } else if (el.checked) {
@@ -1227,6 +1463,8 @@ function collectLearnedAnswerEntries() {
       continue;
     }
 
+    const label = describeField(el);
+    if (!label || label === 'unlabeled field' || isUntouchedAutofill(el)) continue;
     const value = String(el.value || '').trim();
     if (value) entries[label] = value;
   }
