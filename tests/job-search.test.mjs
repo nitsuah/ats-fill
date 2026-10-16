@@ -193,6 +193,30 @@ test('searchJobs merges sources, dedupes, sorts by recency, and reports source s
   assert.equal(sources.find((s) => s.name === 'Arbeitnow').count, 2);
 });
 
+test('searchJobs applies the query to Remotive results, which ignore the search parameter', async () => {
+  let remotiveUrl = '';
+  const fetchImpl = async (url) => {
+    if (url.includes('remotive.com')) {
+      remotiveUrl = url;
+      // Remotive returns the same listings whatever `search` says.
+      return {
+        ok: true,
+        json: async () => ({ jobs: [
+          { id: 1, url: 'https://remotive.com/1', title: 'Office Assistant', company_name: 'Coalition', publication_date: '2026-05-20T00:00:00' },
+          { id: 2, url: 'https://remotive.com/2', title: 'Platform Engineer', company_name: 'Acme', publication_date: '2026-05-19T00:00:00' },
+        ] }),
+      };
+    }
+    return { ok: true, json: async () => ({ data: [] }) };
+  };
+
+  const { jobs, sources } = await searchJobs('platform engineer', { fetchImpl, sources: ['remotive'] });
+
+  assert.match(remotiveUrl, /[?&]search=platform%20engineer(&|$)/);
+  assert.deepEqual(jobs.map((job) => job.title), ['Platform Engineer']);
+  assert.equal(sources.find((s) => s.name === 'Remotive').count, 1);
+});
+
 test('searchJobs includes Adzuna only when credentials are supplied', async () => {
   let adzunaCalled = false;
   const fetchImpl = async (url) => {
