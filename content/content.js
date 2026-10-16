@@ -61,18 +61,38 @@ function frameOwnsMessage(msg) {
   switch (msg?.type) {
     case 'FILL_FORM':
     case 'INJECT_ANSWERS':
-      // The frame that actually contains the application fields fills them.
-      return getFillableInputs().length > 0;
+      // The frame that actually contains the application fields fills them. A
+      // host page that embeds an ATS form defers to that iframe, so the fill
+      // (and its tracker entry) comes from one frame only.
+      return getFillableInputs().length > 0 && (!IS_TOP_FRAME || !pageEmbedsAtsFrame());
     case 'FOCUS_FIELD':
       return !!findFieldForReviewTarget(msg.payload || {});
     case 'GET_JOB_INFO':
     case 'DETECT_ATS':
+      // The embedded ATS form knows its own job; the host page only answers when
+      // it has no embedded form.
+      return IS_TOP_FRAME ? !pageEmbedsAtsFrame() : isEmbeddedAtsFormFrame();
     case 'FETCH_LINKEDIN_JOBS':
-      // JD/meta extraction belongs to the host page, not embedded form iframes.
       return IS_TOP_FRAME;
     default:
       return IS_TOP_FRAME;
   }
+}
+
+// Hosts whose application form is commonly embedded in a career page's iframe.
+const ATS_EMBED_HOST_RE = /greenhouse\.io|ashbyhq\.com|lever\.co|myworkdayjobs|icims\.com|jobvite\.com|phenompeople|phenom\.com/i;
+
+/** True when this page shows a third-party ATS form inside one of its iframes. */
+function pageEmbedsAtsFrame() {
+  // An ATS's own page is never the host of an embed, even if it frames itself.
+  if (ATS_EMBED_HOST_RE.test(location.hostname)) return false;
+  return Array.from(document.querySelectorAll('iframe[src]'))
+    .some((frame) => ATS_EMBED_HOST_RE.test(frame.getAttribute('src') || ''));
+}
+
+/** True for an embedded iframe that is an ATS page with fields to fill. */
+function isEmbeddedAtsFormFrame() {
+  return !IS_TOP_FRAME && detectAts() !== 'Generic' && getFillableInputs().length > 0;
 }
 
 chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
@@ -171,7 +191,7 @@ async function handleFillForm() {
     payload: {
       company,
       title,
-      url: location.href,
+      url: jobPageUrl(),
       status: 'filled',
       jd_snippet: jd.slice(0, 300),
       description: jd.slice(0, 6000),
@@ -200,7 +220,7 @@ async function handleGetJobInfo() {
     success: true,
     job: {
       ...info,
-      url: location.href,
+      url: jobPageUrl(),
     },
   };
 }
@@ -255,7 +275,52 @@ function extractJobInfo() {
   return enrichJobInfo(info);
 }
 
+function isGreenhouseEmbed() {
+  return matchesDomain(location.hostname, 'greenhouse.io') && /^\/embed\/job_app\/?$/.test(location.pathname);
+}
+
+/**
+ * Greenhouse's embedded application (job-boards.greenhouse.io/embed/job_app)
+ * has no job header; the job sits in the page's Remix data as `jobPost`.
+ */
+function greenhouseEmbedJob() {
+  for (const script of document.scripts) {
+    const text = script.textContent || '';
+    const start = text.indexOf('"jobPost":{');
+    if (start === -1) continue;
+    const post = text.slice(start);
+    const field = (name) => {
+      const match = post.match(new RegExp(`"${name}":"((?:[^"\\\\]|\\\\.)*)"`));
+      try { return match ? JSON.parse(`"${match[1]}"`) : ''; } catch { return ''; }
+    };
+    return { title: field('title'), publicUrl: field('public_url') };
+  }
+  return { title: '', publicUrl: '' };
+}
+
+/**
+ * URL to record for a job. The embed's own URL is a one-time token link, so an
+ * embedded Greenhouse form records the company's job page: the referrer when it
+ * names a page, otherwise the embed's public_url (the same job page, with gh_jid).
+ */
+function jobPageUrl() {
+  if (!isGreenhouseEmbed()) return location.href;
+  try {
+    const referrer = new URL(document.referrer);
+    if ((referrer.protocol === 'https:' || referrer.protocol === 'http:') && (referrer.pathname !== '/' || referrer.search)) {
+      return document.referrer;
+    }
+  } catch { /* no referrer */ }
+  return greenhouseEmbedJob().publicUrl || location.href;
+}
+
 function extractGreenhouse() {
+  if (isGreenhouseEmbed()) {
+    return {
+      title: greenhouseEmbedJob().title || qs('#header h1, .app-title, h1')?.textContent?.trim() || '',
+      jd: qs('#content, #app_body, .content')?.innerText?.trim() || extractGenericText(),
+    };
+  }
   return {
     title: qs('#header h1, .app-title, h1')?.textContent?.trim() || '',
     company: qs('#header .company-name, .company')?.textContent?.trim() || '',
