@@ -710,7 +710,7 @@ function fillForm(answers, fieldMap) {
   return { filled, preserved, skipped, unresolved: uniqueUnresolved };
 }
 
-function resolveFieldKey(el, fieldMap, answers = {}) {
+function resolveFieldKey(el, fieldMap, answers = {}, { includeContext = true } = {}) {
   const candidates = [
     el.name,
     el.id,
@@ -718,10 +718,23 @@ function resolveFieldKey(el, fieldMap, answers = {}) {
     el.getAttribute('aria-label'),
     el.getAttribute('data-label'),
     getAssociatedLabelText(el),
-    getFieldContextText(el),
+    // Section text can name a different field ("Location" a few rows up), so
+    // callers that act on a single widget use only the label it owns.
+    includeContext ? getFieldContextText(el) : getOwnFieldLabel(el),
   ].filter(Boolean);
 
   return resolveAnswerKeyFromCandidates(candidates, fieldMap, answers);
+}
+
+/** The label a widget owns: aria-labelledby, or the label heading its own field entry. */
+function getOwnFieldLabel(el) {
+  const labelledBy = (el.getAttribute('aria-labelledby') || '').split(/\s+/).filter(Boolean)
+    .map((id) => document.getElementById(id)?.textContent?.trim())
+    .filter(Boolean)
+    .join(' ');
+  if (labelledBy) return labelledBy;
+  const entry = el.closest('.ashby-application-form-field-entry, .field, .application-question');
+  return entry?.querySelector('label, legend')?.textContent?.trim() || '';
 }
 
 function resolveAnswerKeyFromCandidates(candidates, fieldMap = {}, answers = {}) {
@@ -1120,7 +1133,7 @@ async function fillComboboxes(answers = {}, fieldMap = {}) {
     if (input.disabled || input.closest('.iti')) continue; // phone-number country pickers manage themselves
     if (getComboboxSelectedText(input)) continue;
 
-    const key = resolveFieldKey(input, fieldMap, answers);
+    const key = resolveFieldKey(input, fieldMap, answers, { includeContext: false });
     const value = key ? answers[key] : '';
     if (!value || isNonAnswer(value)) {
       if (input.required || input.getAttribute('aria-required') === 'true') {

@@ -253,3 +253,28 @@ test('decline answers match each form\'s own wording', () => {
   assert.equal(window.pickComboboxFallback(options, 'Prefer not to say.', 'Are you Hispanic/Latino?')?.textContent, "I don't wish to answer");
   window.close();
 });
+
+test('a type-ahead takes its answer from its own label, not nearby section text', async () => {
+  const window = load(`
+    <section>
+      <p>Location: we hire across the US.</p>
+      <div class="ashby-application-form-field-entry">
+        <label for="_systemfield_team">Preferred team</label>
+        <div class="select__control"><input role="combobox" aria-autocomplete="list" /></div>
+      </div>
+      <div class="ashby-application-form-field-entry">
+        <label for="_systemfield_location">Location</label>
+        <div class="select__control"><input role="combobox" aria-autocomplete="list" /></div>
+      </div>
+    </section>
+  `);
+  const [team, location] = window.document.querySelectorAll('input');
+  const answers = { location: 'Sevierville, TN, US' };
+  const fieldMap = { location: 'location' };
+
+  // The section mentions "Location", but the team picker's own label doesn't.
+  assert.equal(window.resolveFieldKey(team, fieldMap, answers, { includeContext: false }), null);
+  // Ashby's label targets an id the input lacks; its own entry label still resolves it.
+  assert.equal(window.resolveFieldKey(location, fieldMap, answers, { includeContext: false }), 'location');
+  window.close();
+});
