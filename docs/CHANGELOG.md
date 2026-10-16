@@ -9,6 +9,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.0.4] - 2026-10-16
+
 ### Fixed
 
 - Tracker rows no longer keep a "<role> @ <company>" company name ("Staff Software Engineer - DevX @ Amplitude"): adding, editing and CSV import keep only the company.
