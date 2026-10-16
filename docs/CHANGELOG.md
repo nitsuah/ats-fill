@@ -12,6 +12,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fixed
 
 - Fill no longer puts profile values into long questions that merely use a field word: "…solutions to **address** recurring challenges?" got the street address, and "…located within the United **States**?" was treated as a standard field and never answered. Single words (address, state, name, available) now only match whole words in label-sized text.
+- Filled fields now get the focus-in / focus-out events a real click-in and tab-out would send. Ashby only commits a typed value to its form model on blur (React onBlur runs on focusout), so filled fields looked complete but failed "Missing entry for required field" on submit.
 - Ashby Yes/No questions are answered by clicking the Yes or No button (only for an explicit yes/no answer; anything else is left for review).
 - AI non-answers ("Not specified in the provided information.", "N/A") are no longer filled or remembered; the field is flagged for review instead.
 - "Other: please specify" boxes are no longer filled with the group's answer (it put the race answer into the race "Other" box).

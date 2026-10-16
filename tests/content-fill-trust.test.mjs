@@ -106,3 +106,30 @@ test('the saved resume is decoded locally and respects the field accept list', (
   assert.equal(window.fileMatchesAccept(file, ''), true);
   window.close();
 });
+
+test('a filled text field gets the click-in / tab-out events React forms commit on', () => {
+  const window = load(`
+    <form>
+      <label for="gh">Github Profile</label>
+      <input id="gh" />
+    </form>
+  `);
+  const { document } = window;
+  const seen = [];
+  for (const type of ['focusin', 'input', 'change', 'focusout']) {
+    // Listen on the document, the way React's root listener does.
+    document.addEventListener(type, (event) => {
+      if (event.target.id === 'gh') seen.push(`${type}:${document.getElementById('gh').value}`);
+    });
+  }
+
+  window.fillForm({ github: 'github.com/example' }, { github: 'github' });
+
+  assert.deepEqual(seen, [
+    'focusin:',
+    'input:github.com/example',
+    'change:github.com/example',
+    'focusout:github.com/example',
+  ]);
+  window.close();
+});

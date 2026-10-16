@@ -820,8 +820,13 @@ function setFieldValue(el, value) {
   // text / textarea / number / email / tel / url
   const proto = tag === 'textarea' ? window.HTMLTextAreaElement.prototype : window.HTMLInputElement.prototype;
   const setter = Object.getOwnPropertyDescriptor(proto, 'value')?.set;
+  // Bracket the change with focus events like a real click-in / tab-out: React
+  // runs onBlur on focusout (not blur), and some ATS forms (Ashby) only commit
+  // a typed value to their form model in onBlur, so without it a visibly
+  // filled field still fails "Missing entry for required field" on submit.
+  fireEvents(el, ['focus', 'focusin']);
   if (setter) setter.call(el, value); else el.value = value;
-  fireEvents(el, ['input', 'change', 'blur']);
+  fireEvents(el, ['input', 'change', 'blur', 'focusout']);
   return true;
 }
 
@@ -1192,11 +1197,17 @@ function setSelectValue(el, value) {
 
   if (!match?.option) return false;
 
-  el.value = match.option.value; fireEvents(el, ['change']); return true;
+  el.value = match.option.value; fireEvents(el, ['focus', 'focusin', 'change', 'blur', 'focusout']); return true;
 }
 
+const FOCUS_EVENT_TYPES = new Set(['focus', 'blur', 'focusin', 'focusout']);
+
 function fireEvents(el, events) {
-  for (const type of events) el.dispatchEvent(new Event(type, { bubbles: true }));
+  for (const type of events) {
+    // focus/blur don't bubble in browsers; focusin/focusout do (React listens to those).
+    const bubbles = type !== 'focus' && type !== 'blur';
+    el.dispatchEvent(FOCUS_EVENT_TYPES.has(type) ? new FocusEvent(type, { bubbles }) : new Event(type, { bubbles }));
+  }
 }
 
 function highlightField(el) {
