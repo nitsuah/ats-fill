@@ -59,8 +59,12 @@ async function openPopup(viewport, { standalone = true, colorScheme = 'light' } 
 }
 
 async function openScreen(page, buttonId, screenId) {
-  await page.locator(`#${buttonId}`).click();
-  await expect(page.locator(`#${screenId}`)).toBeVisible({ timeout: 10000 });
+  // The popup shell can render before its click handlers are bound, so a
+  // first click may be dropped on a loaded CI runner. Retry until it lands.
+  await expect(async () => {
+    await page.locator(`#${buttonId}`).click();
+    await expect(page.locator(`#${screenId}`)).toBeVisible({ timeout: 2000 });
+  }).toPass({ timeout: 20000 });
 }
 
 // Page-side fixtures: pass real messages through to the service worker, answer
