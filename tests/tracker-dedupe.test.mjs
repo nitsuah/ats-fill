@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 
-import { canonicalJobKey, findDuplicateGroups, mergeDuplicateGroup } from '../lib/tracker.js';
+import { canonicalJobKey, findDuplicateGroups, mergeDuplicateGroup, normalizeTrackerCompany } from '../lib/tracker.js';
 
 test('canonicalJobKey names the posting, not the apply step or tracking params', () => {
   assert.equal(canonicalJobKey('https://job-boards.greenhouse.io/discord/jobs/8700605002'), 'greenhouse:8700605002');
@@ -73,4 +73,12 @@ test('a rejection outranks an interview for the same application', () => {
     { id: 'b', status: 'rejected', company: 'Acme', title: 'SRE', date: '2026-10-02' },
   ]);
   assert.equal(keep.status, 'rejected');
+});
+
+test('normalizeTrackerCompany keeps only the company from a "<role> @ <company>" name', () => {
+  assert.equal(normalizeTrackerCompany('Staff Software Engineer - DevX @ Amplitude'), 'Amplitude');
+  assert.equal(normalizeTrackerCompany('AI Solutions Architect @ Tribe AI'), 'Tribe AI');
+  assert.equal(normalizeTrackerCompany('  Databricks '), 'Databricks');
+  assert.equal(normalizeTrackerCompany('AT&T'), 'AT&T');
+  assert.equal(normalizeTrackerCompany(undefined), '');
 });

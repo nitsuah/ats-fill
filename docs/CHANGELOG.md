@@ -11,6 +11,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- Tracker rows no longer keep a "<role> @ <company>" company name ("Staff Software Engineer - DevX @ Amplitude"): adding, editing and CSV import keep only the company.
 - Fill no longer puts profile values into long questions that merely use a field word: "…solutions to **address** recurring challenges?" got the street address, and "…located within the United **States**?" was treated as a standard field and never answered. Single words (address, state, name, available) now only match whole words in label-sized text.
 - Last names no longer include a middle name or initial ("Austin J. Hardy" filled Last Name as "J. Hardy").
 - The last-resort label matcher uses whole words, and a one-word saved answer only matches a label-sized prompt. "Did someone refer you? …share their name" was getting the applicant's own name, and "Do you reside in the United States?" was getting the state abbreviation.
