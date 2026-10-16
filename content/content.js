@@ -84,6 +84,8 @@ const ATS_EMBED_HOST_RE = /greenhouse\.io|ashbyhq\.com|lever\.co|myworkdayjobs|i
 
 /** True when this page shows a third-party ATS form inside one of its iframes. */
 function pageEmbedsAtsFrame() {
+  // An ATS's own page is never the host of an embed, even if it frames itself.
+  if (ATS_EMBED_HOST_RE.test(location.hostname)) return false;
   return Array.from(document.querySelectorAll('iframe[src]'))
     .some((frame) => ATS_EMBED_HOST_RE.test(frame.getAttribute('src') || ''));
 }

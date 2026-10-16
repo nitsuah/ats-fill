@@ -93,6 +93,17 @@ test('the host page defers FILL_FORM, INJECT_ANSWERS, DETECT_ATS and GET_JOB_INF
   window.close();
 });
 
+test('a hosted ATS page keeps the fill even when it frames its own domain', () => {
+  const { window, api } = load({
+    url: 'https://job-boards.greenhouse.io/acme/jobs/123',
+    body: `<h1>Engineer</h1><input id="first_name" />
+      <iframe src="https://job-boards.greenhouse.io/embed/widget"></iframe>`,
+  });
+  assert.equal(api.frameOwnsMessage({ type: 'FILL_FORM' }), true);
+  assert.equal(api.frameOwnsMessage({ type: 'DETECT_ATS' }), true);
+  window.close();
+});
+
 test('the host page answers when it has no embedded ATS form', () => {
   const { window, api } = load({
     url: 'https://www.example.com/careers/engineer',
