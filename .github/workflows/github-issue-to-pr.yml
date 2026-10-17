@@ -1,0 +1,80 @@
+name: github-issue-to-pr
+
+# This workflow triggers the github-issue-to-pr skill when new issues are created
+# in the repository. It handles the full issue-to-PR lifecycle automatically.
+
+on:
+  issues:
+    types: [opened, reopened]
+  workflow_dispatch:
+    inputs:
+      issue-number:
+        description: 'GitHub issue number to process'
+        required: false
+        default: ''
+      branch-name:
+        description: 'Custom branch name (defaults to auto-generated)'
+        required: false
+
+jobs:
+  process-issue:
+    name: Process GitHub Issue to PR
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    defaults:
+      run:
+        shell: pwsh
+
+    env:
+      GITHUB_REPOSITORY: '${{ github.repository }}'
+      GITHUB_TOKEN: '${{ secrets.GITHUB_TOKEN }}'
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install skills and deps
+        run: |
+          npm ci
+          npx -y skills@1.7.0 add "https://github.com/GoogleChrome/modern-web-guidance.git#84ae7251ee919239d5ea85aef25897983f26601e" --skill modern-web-guidance --skill chrome-extensions -a claude-code -y
+
+      - name: Run github-issue-to-pr skill
+        env:
+          GITHUB_REPOSITORY: '${{ github.repository }}'
+          GITHUB_TOKEN: '${{ secrets.GITHUB_TOKEN }}'
+          GITHUB_ISSUE_NUMBER: '${{ github.event.issue.number }}'
+        run: |
+          $issueNumber = $env:GITHUB_ISSUE_NUMBER -as [int]
+          if ($issueNumber -eq 0) {
+            Write-Error 'No issue number provided. Exiting.'
+            exit 1
+          }
+          $branchName = git rev-parse --abbrev-ref HEAD
+          node skills/github-issue-to-pr/index.js review `
+            $env:GITHUB_RUN_NUMBER `
+            $issueNumber `
+            $branchName
+
+      - name: Post-run verification
+        if: always()
+        run: |
+          $diffStat = git diff origin/main...HEAD --stat
+          Write-Host "Diff stat output: $diffStat"
+          if ($diffStat -match 'docs/TASKS.md' -or $diffStat -match 'docs/CHANGELOG.md' -or $diffStat -match 'docs/FEATURES.md') {
+            Write-Host "Tracking docs changes detected in diff"
+          } else {
+            Write-Host "No tracking docs changes in diff (may be fine if no tracked work)"
+          }
+
+      - name: Cleanup and summarize
+        if: always()
+        run: |
+          echo "=== Summary ==="
+          echo "Job completed at: $(date -u)"
+          echo "Issue #${{ github.event.issue.number }} handled"
