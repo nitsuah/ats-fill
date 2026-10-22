@@ -50,6 +50,25 @@ export async function handleSearchJobs({ query, sources } = {}) {
   return { success: true, jobs: result.jobs, sources: result.sources };
 }
 
+/**
+ * Open a job's application page in a new background-free tab so the candidate
+ * can review it and submit it themselves. Only http(s) URLs; never clicks,
+ * fills or submits anything on the page.
+ */
+export async function handleOpenApplicationTab({ url } = {}) {
+  let parsed;
+  try {
+    parsed = new URL(String(url || ''));
+  } catch {
+    throw new Error('OPEN_APPLICATION_TAB needs a valid URL.');
+  }
+  if (parsed.protocol !== 'https:' && parsed.protocol !== 'http:') {
+    throw new Error('OPEN_APPLICATION_TAB only opens http(s) URLs.');
+  }
+  const tab = await chrome.tabs.create({ url: parsed.href, active: true });
+  return { success: true, tabId: tab.id };
+}
+
 export async function handleGetJobSources() {
   const data = await chrome.storage.local.get('settings');
   const config = await buildJobSearchConfig(data.settings || {});
