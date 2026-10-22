@@ -3,7 +3,7 @@
 > 🧭 [ats-fill](../README.md) · [Features](./FEATURES.md) · [Roadmap](./ROADMAP.md) · [Tasks](./TASKS.md) · [Changelog](./CHANGELOG.md) · [Metrics](./METRICS.md) <!-- nav -->
 
 **Document version:** 1.3
-**Last updated:** October 14, 2026
+**Last updated:** October 21, 2026
 **Applies to:** the ats-fill browser extension ("the extension") in this repository.
 
 This is the canonical, public statement of the extension's Terms of Use (EULA),
