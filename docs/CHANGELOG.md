@@ -11,7 +11,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
-- Privacy disclosures (Chrome Web Store listing and `docs/PRIVACY.md`) now state that answers and the resume reach the employer's site when you submit an application yourself, including opt-in disability, salary and location answers.
+- Privacy disclosures (Chrome Web Store listing and `docs/PRIVACY.md`) now state that answers and any attached resume reach the employer's site when you submit an application yourself, including opt-in disability, salary and location answers. The in-app Help & privacy panel says the same.
 
 ## [1.0.4] - 2026-10-16
 
