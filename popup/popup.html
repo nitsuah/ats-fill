@@ -337,7 +337,7 @@
                     </div>
                   </div>
                 </details>
-                <p class="helper-text">Strictly local. These values are never sent to Gemini or any external service. You can clear them at any time.</p>
+                <p class="helper-text">Stored locally. These values are never sent to Gemini. If you enable them and they are filled into an application, they reach the employer only when you submit it. You can clear them at any time.</p>
                 </div>
               </details>
             </div>
@@ -810,7 +810,7 @@
       <div class="help-card help-grid" id="help-legal-section">
         <div class="legal-meta">
           <span class="legal-version">ats-fill · Terms &amp; Privacy v1.0</span>
-          <span class="legal-updated">Last updated May 31, 2026</span>
+          <span class="legal-updated">Last updated October 21, 2026</span>
           <a class="hint-link legal-canonical-link" href="https://github.com/nitsuah/ats-fill/blob/main/docs/PRIVACY.md" target="_blank" rel="noopener">Full policy →</a>
           <span id="consent-signed-date" class="legal-signed">Consent not recorded yet.</span>
         </div>
@@ -836,7 +836,7 @@
           <p class="help-lead"><strong>We run no servers and operate no backend.</strong> There is no ats-fill account, and your data is never sent to us — we have no way to receive, store, or see it.</p>
           <ul class="legal-list">
             <li><strong>What is stored, and where.</strong> Your profile, resume preview, saved answer defaults ("memory"), application tracker, settings, and any keys/credentials you add are stored only in your browser's local extension storage (<code>chrome.storage.local</code>) on this device/profile. Nothing syncs to the cloud.</li>
-            <li><strong>What leaves your device.</strong> Data leaves only when you trigger an optional network action: AI help (resume parsing, answer drafting, JD summarize/clean-up) sends the relevant text <em>directly from your browser</em> to Google's Gemini API using your own key; Job Search sends your search query to whichever sources you have enabled (keyless boards, your keyed sources, or any custom RSS source you've added); LinkedIn/Google profile import sends an OAuth handshake to that provider using your own app credentials. Without a Gemini key, autofill is fully on-device and sends nothing.</li>
+            <li><strong>What leaves your device.</strong> Data leaves only when you trigger an optional network action: AI help (resume parsing, answer drafting, JD summarize/clean-up) sends the relevant text <em>directly from your browser</em> to Google's Gemini API using your own key; Job Search sends your search query to whichever sources you have enabled (keyless boards, your keyed sources, or any custom RSS source you've added); LinkedIn/Google profile import sends an OAuth handshake to that provider using your own app credentials. When you submit an application yourself, the employer's application site receives the answers ats-fill filled in and any resume attached. Without a Gemini key, autofill is fully on-device and sends nothing.</li>
             <li><strong>Sensitive / demographic fields</strong> (race, gender, veteran, disability) are opt-in, stored locally only, and are never included in AI requests.</li>
             <li><strong>Third parties.</strong> Only the services above can receive your data, and only for requests you explicitly initiate with your own credentials.</li>
             <li><strong>No tracking.</strong> No analytics, advertising, tracking, or telemetry of any kind.</li>
