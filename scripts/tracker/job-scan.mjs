@@ -23,6 +23,10 @@ const flag = (name, fallback) => {
   return i >= 0 && args[i + 1] ? args[i + 1] : fallback;
 };
 const MIN_SALARY = Number(flag('min', 150000));
+if (!Number.isFinite(MIN_SALARY) || MIN_SALARY < 0) {
+  console.error(`--min must be a non-negative number, got "${flag('min', '')}"`);
+  process.exit(2);
+}
 const OUT_DIR = flag('out', join(homedir(), '.ats-fill', 'job-scan'));
 
 const ROLE_RE = /atlassian|jira|confluence|solutions? (architect|engineer)|platform engineer|ai (platform|solutions?|engineer)|itsm|service management|devops|site reliability|sre\b/i;
@@ -60,24 +64,19 @@ async function fromRemoteOk() {
 }
 
 async function fromRemotive() {
-  const queries = ['atlassian', 'jira', 'solutions engineer', 'solutions architect', 'platform engineer'];
-  const out = [];
-  for (const q of queries) {
-    const data = await getJson(`https://remotive.com/api/remote-jobs?search=${encodeURIComponent(q)}&limit=50`);
-    for (const j of data.jobs || []) {
-      out.push({
-        source: 'Remotive',
-        title: j.title,
-        company: j.company_name,
-        url: j.url,
-        posted: j.publication_date || '',
-        salaryText: j.salary || '',
-        salary: parseSalary(j.salary),
-        text: `${j.title} ${j.company_name} ${j.category || ''} ${(j.tags || []).join(' ')} ${j.description || ''}`,
-      });
-    }
-  }
-  return out;
+  // One unfiltered request: Remotive rate-limits repeated calls, and filtering
+  // locally with ROLE_RE keeps every matching role (devops, itsm, sre, ...).
+  const data = await getJson('https://remotive.com/api/remote-jobs?limit=200');
+  return (data.jobs || []).map((j) => ({
+    source: 'Remotive',
+    title: j.title,
+    company: j.company_name,
+    url: j.url,
+    posted: j.publication_date || '',
+    salaryText: j.salary || '',
+    salary: parseSalary(j.salary),
+    text: `${j.title} ${j.company_name} ${j.category || ''} ${(j.tags || []).join(' ')} ${j.description || ''}`,
+  }));
 }
 
 function classify(job) {
@@ -96,15 +95,21 @@ async function main() {
     if (s.status === 'fulfilled') jobs.push(...s.value);
     else errors.push(`${i === 0 ? 'RemoteOK' : 'Remotive'}: ${s.reason?.message || s.reason}`);
   }
+  // Never write an empty report that looks like a successful scan.
+  if (sources.every((s) => s.status === 'rejected')) {
+    throw new Error(`All sources failed: ${errors.join('; ')}`);
+  }
 
-  const seen = new Set();
-  const buckets = { match: [], 'no-salary': [], clearance: [], 'low-salary': [], 'off-role': [] };
+  // Same company and title on two boards: keep the posting with a salary, so a
+  // qualifying listing isn't dropped for a salary-less duplicate that came first.
+  const byKey = new Map();
   for (const job of jobs) {
     const key = `${job.company}|${job.title}`.toLowerCase();
-    if (seen.has(key)) continue;
-    seen.add(key);
-    buckets[classify(job)].push(job);
+    const prev = byKey.get(key);
+    if (!prev || (!prev.salary && job.salary)) byKey.set(key, job);
   }
+  const buckets = { match: [], 'no-salary': [], clearance: [], 'low-salary': [], 'off-role': [] };
+  for (const job of byKey.values()) buckets[classify(job)].push(job);
 
   const today = new Date().toISOString().slice(0, 10);
   const byTop = (a, b) => (b.salary?.max || 0) - (a.salary?.max || 0);
@@ -133,7 +138,8 @@ async function main() {
 }
 
 // Exported for tests; only run when executed directly.
-if (import.meta.url === `file://${process.argv[1].replace(/\\/g, '/')}` || process.argv[1]?.endsWith('job-scan.mjs')) {
+const entry = process.argv[1] || '';
+if (entry && (import.meta.url === `file://${entry.replace(/\\/g, '/')}` || entry.endsWith('job-scan.mjs'))) {
   main().catch((err) => {
     console.error(err.message);
     process.exitCode = 1;
