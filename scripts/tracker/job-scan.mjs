@@ -15,7 +15,8 @@
 import process from 'node:process';
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { homedir } from 'node:os';
-import { join } from 'node:path';
+import { join, resolve } from 'node:path';
+import { fileURLToPath } from 'node:url';
 
 const args = process.argv.slice(2);
 const flag = (name, fallback) => {
@@ -66,7 +67,7 @@ async function fromRemoteOk() {
 async function fromRemotive() {
   // One unfiltered request: Remotive rate-limits repeated calls, and filtering
   // locally with ROLE_RE keeps every matching role (devops, itsm, sre, ...).
-  const data = await getJson('https://remotive.com/api/remote-jobs?limit=200');
+  const data = await getJson('https://remotive.com/api/remote-jobs');
   return (data.jobs || []).map((j) => ({
     source: 'Remotive',
     title: j.title,
@@ -138,8 +139,8 @@ async function main() {
 }
 
 // Exported for tests; only run when executed directly.
-const entry = process.argv[1] || '';
-if (entry && (import.meta.url === `file://${entry.replace(/\\/g, '/')}` || entry.endsWith('job-scan.mjs'))) {
+const entry = process.argv[1] ? resolve(process.argv[1]) : '';
+if (entry && fileURLToPath(import.meta.url) === entry) {
   main().catch((err) => {
     console.error(err.message);
     process.exitCode = 1;
