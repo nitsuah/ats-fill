@@ -125,6 +125,12 @@ test('extension bridge applies only allowed tracker changes and reports back', a
   const status = await checkInWithBridge();
   assert.deepEqual(dispatched, ['UPDATE_APPLICATION', 'LOG_APPLICATION']);
   assert.equal(BRIDGE_ALLOWED_TYPES.has('RESET_ALL_DATA'), false);
+  // Search and open-tab are allowed; delete and submit-style actions never are.
+  assert.equal(BRIDGE_ALLOWED_TYPES.has('SEARCH_JOBS'), true);
+  assert.equal(BRIDGE_ALLOWED_TYPES.has('OPEN_APPLICATION_TAB'), true);
+  for (const banned of ['DELETE_APPLICATION', 'DELETE_LEARNED_DEFAULT', 'RESET_ALL_DATA', 'SUBMIT_APPLICATION', 'FILL_AND_SUBMIT']) {
+    assert.equal(BRIDGE_ALLOWED_TYPES.has(banned), false, `${banned} must stay refused`);
+  }
   const report = calls.native.find((c) => c.msg.type === 'results').msg.results;
   assert.deepEqual(report.map((r) => [r.id, r.ok]), [['1', true], ['2', false], ['3', false]]);
   assert.match(report[1].error, /doesn't accept "RESET_ALL_DATA"/);

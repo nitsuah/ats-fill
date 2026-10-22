@@ -16,8 +16,16 @@ const ACTIVE_MINUTES = 1;
 // No helper installed yet: check rarely so Chrome isn't asked every minute.
 const IDLE_MINUTES = 30;
 
-// Add and update only: nothing here can delete data or read other settings.
-export const BRIDGE_ALLOWED_TYPES = new Set(['LOG_APPLICATION', 'UPDATE_APPLICATION', 'IMPORT_APPLICATIONS_CSV']);
+// Add, update, import, search and open-tab only. Nothing here can delete data,
+// read other settings, or submit an application. OPEN_APPLICATION_TAB only
+// opens a tab; it never clicks or submits anything on the page.
+export const BRIDGE_ALLOWED_TYPES = new Set([
+  'LOG_APPLICATION',
+  'UPDATE_APPLICATION',
+  'IMPORT_APPLICATIONS_CSV',
+  'SEARCH_JOBS',
+  'OPEN_APPLICATION_TAB',
+]);
 
 let dispatch = null;
 
