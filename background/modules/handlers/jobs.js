@@ -86,10 +86,11 @@ export async function handleFillApplicationTab({ url } = {}) {
     throw new Error('FILL_APPLICATION_TAB only fills http(s) pages.');
   }
   const tabs = await chrome.tabs.query({ url: `${parsed.origin}/*` });
+  // Exact match on the whole URL, query and fragment included: the query can
+  // be what identifies the job, so a different job must never be filled.
   const tab = tabs.find((t) => {
     try {
-      const u = new URL(t.url);
-      return u.origin === parsed.origin && u.pathname === parsed.pathname;
+      return new URL(t.url).href === parsed.href;
     } catch {
       return false;
     }
