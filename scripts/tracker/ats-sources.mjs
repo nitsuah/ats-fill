@@ -11,8 +11,8 @@
 
 /** Board slugs verified to return 200 from each public API. */
 export const ATS_BOARDS = {
-  greenhouse: ['stripe', 'cloudflare', 'datadog', 'elastic', 'gitlab', 'twilio', 'databricks', 'okta', 'duolingo', 'dropbox', 'asana', 'zscaler', 'pagerduty', 'figma', 'airtable', 'brex', 'coinbase', 'robinhood', 'instacart', 'samsara', 'anthropic', 'vercel', 'gusto', 'lattice'],
-  ashby: ['ramp', 'linear', 'supabase', 'notion', 'mercury', 'replit', 'vanta', 'deel', 'benchling', 'openai', 'cursor', 'perplexity', 'writer', 'harvey'],
+  greenhouse: ['stripe', 'cloudflare', 'datadog', 'elastic', 'gitlab', 'twilio', 'databricks', 'okta', 'duolingo', 'dropbox', 'asana', 'zscaler', 'pagerduty', 'figma', 'airtable', 'brex', 'coinbase', 'robinhood', 'instacart', 'samsara', 'anthropic', 'vercel', 'gusto', 'lattice', 'calendly', 'smartsheet', 'wrike'],
+  ashby: ['ramp', 'linear', 'supabase', 'notion', 'mercury', 'replit', 'vanta', 'deel', 'benchling', 'openai', 'cursor', 'perplexity', 'writer', 'harvey', 'clickup', 'hightouch', 'airbyte', 'posthog', 'plain', 'attio'],
   lever: ['palantir', 'spotify', 'neon'],
 };
 

@@ -34,7 +34,7 @@ if (!Number.isFinite(MIN_SALARY) || MIN_SALARY < 0) {
 const OUT_DIR = flag('out', join(homedir(), '.ats-fill', 'job-scan'));
 
 // Whole-word matches: a substring like "sre" inside another word must not count.
-export const ROLE_RE = /\b(atlassian|jira|confluence|itsm|service management|devops|site reliability|sre)\b|\bsolutions? (architect|engineer)\b|\bplatform engineer\b|\bai (platform|solutions?|engineer)\b/i;
+export const ROLE_RE = /\b(atlassian|jira|confluence|itsm|service management|devops|site reliability|sre|saas|systems? administrator|business systems|it systems)\b|\bsolutions? (architect|engineer)\b|\bplatform engineer\b|\bai (platform|solutions?|engineer)\b/i;
 export const CLEARANCE_RE = /\bclearance\b|\btop secret\b|\bts\/sci\b|\bsecret\b|\bpublic trust\b|\bpolygraph\b/i;
 const UA = 'Mozilla/5.0 (ats-fill job-scan; read-only)';
 

@@ -48,3 +48,9 @@ test('CLEARANCE_RE flags clearance terms without matching inside other words', (
 test('htmlToText decodes Greenhouse entities and strips tags', () => {
   assert.equal(htmlToText('&lt;p&gt;Pay &amp; benefits&lt;/p&gt;'), 'Pay & benefits');
 });
+
+test('ROLE_RE covers SaaS admin and IT systems titles', () => {
+  assert.ok(ROLE_RE.test('SaaS Administrator'));
+  assert.ok(ROLE_RE.test('Senior Systems Administrator, Atlassian Cloud'));
+  assert.ok(ROLE_RE.test('IT Systems Engineer'));
+});
