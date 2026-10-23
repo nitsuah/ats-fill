@@ -69,6 +69,37 @@ export async function handleOpenApplicationTab({ url } = {}) {
   return { success: true, tabId: tab.id };
 }
 
+/**
+ * Fill an application tab that is already open, with the candidate's saved
+ * answers. Runs the same content-script fill as the popup's Fill button. The
+ * fill only sets fields and never submits; the candidate reviews and submits.
+ * Only a tab already open on this exact page is filled.
+ */
+export async function handleFillApplicationTab({ url } = {}) {
+  let parsed;
+  try {
+    parsed = new URL(String(url || ''));
+  } catch {
+    throw new Error('FILL_APPLICATION_TAB needs a valid URL.');
+  }
+  if (parsed.protocol !== 'https:' && parsed.protocol !== 'http:') {
+    throw new Error('FILL_APPLICATION_TAB only fills http(s) pages.');
+  }
+  const tabs = await chrome.tabs.query({ url: `${parsed.origin}/*` });
+  const tab = tabs.find((t) => {
+    try {
+      const u = new URL(t.url);
+      return u.origin === parsed.origin && u.pathname === parsed.pathname;
+    } catch {
+      return false;
+    }
+  });
+  if (!tab) throw new Error('No open tab on that application page. Open it with OPEN_APPLICATION_TAB first.');
+  const resp = await chrome.tabs.sendMessage(tab.id, { type: 'FILL_FORM' });
+  if (!resp?.success) throw new Error(resp?.error || 'The page could not be filled.');
+  return { success: true, tabId: tab.id, filled: resp.filled?.length ?? 0, warning: resp.warning || null };
+}
+
 export async function handleGetJobSources() {
   const data = await chrome.storage.local.get('settings');
   const config = await buildJobSearchConfig(data.settings || {});

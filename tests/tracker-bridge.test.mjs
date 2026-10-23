@@ -128,6 +128,7 @@ test('extension bridge applies only allowed tracker changes and reports back', a
   // Search and open-tab are allowed; delete and submit-style actions never are.
   assert.equal(BRIDGE_ALLOWED_TYPES.has('SEARCH_JOBS'), true);
   assert.equal(BRIDGE_ALLOWED_TYPES.has('OPEN_APPLICATION_TAB'), true);
+  assert.equal(BRIDGE_ALLOWED_TYPES.has('FILL_APPLICATION_TAB'), true);
   for (const banned of ['DELETE_APPLICATION', 'DELETE_LEARNED_DEFAULT', 'RESET_ALL_DATA', 'SUBMIT_APPLICATION', 'FILL_AND_SUBMIT']) {
     assert.equal(BRIDGE_ALLOWED_TYPES.has(banned), false, `${banned} must stay refused`);
   }
