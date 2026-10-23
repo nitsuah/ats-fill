@@ -97,8 +97,14 @@ export async function handleFillApplicationTab({ url } = {}) {
   });
   if (!tab) throw new Error('No open tab on that application page. Open it with OPEN_APPLICATION_TAB first.');
   const resp = await chrome.tabs.sendMessage(tab.id, { type: 'FILL_FORM' });
-  if (!resp?.success) throw new Error(resp?.error || 'The page could not be filled.');
-  return { success: true, tabId: tab.id, filled: resp.filled?.length ?? 0, warning: resp.warning || null };
+  // No response means no frame on the page owns an application form (for
+  // example, an overview page). Say so instead of reporting a silent success.
+  if (!resp) throw new Error('No application form on that page. Open the application tab (the /application URL) and try again.');
+  if (!resp.success) throw new Error(resp.error || 'The page could not be filled.');
+  const filled = resp.filled?.length ?? 0;
+  // Zero fields means nothing was set; usually the profile or saved answers are empty.
+  if (filled === 0) throw new Error('Filled 0 fields. Check the ats-fill profile and saved answers, then try the popup Fill on this tab.');
+  return { success: true, tabId: tab.id, filled, warning: resp.warning || null };
 }
 
 export async function handleGetJobSources() {
