@@ -1,22 +1,25 @@
 #!/usr/bin/env node
 /**
  * ats-fill — scripts/tracker/job-scan.mjs
- * Read-only job scan from public job APIs (RemoteOK, Remotive). Needs no
- * browser, no Chrome profile and no bridge, so a scheduled routine can run it
- * while the candidate is away. Writes a Markdown report and a JSON file to
- * ~/.ats-fill/job-scan/ and never touches the tracker.
+ * Read-only job scan. Reads company career boards (Greenhouse, Ashby, Lever)
+ * and public job boards (RemoteOK, Remotive). Needs no browser, no Chrome
+ * profile and no bridge, so a scheduled routine can run it while the candidate
+ * is away. Writes a Markdown report and a JSON file to ~/.ats-fill/job-scan/
+ * and never touches the tracker.
  *
  *   node scripts/tracker/job-scan.mjs [--min 150000] [--out <dir>]
  *
- * Keeps postings that are remote, list a salary whose top end is at least
- * --min (default 150000), match a role keyword, and don't mention a security
- * clearance. Salary-less postings are listed separately, not dropped silently.
+ * Keeps postings that name a US or remote location, list a salary whose top
+ * end is at least --min (default 150000), match a role keyword, and don't
+ * mention a security clearance. Salary-less postings are listed separately,
+ * not dropped silently.
  */
 import process from 'node:process';
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { homedir } from 'node:os';
 import { join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { fetchAllBoards, locationKind, parseSalary } from './ats-sources.mjs';
 
 const args = process.argv.slice(2);
 const flag = (name, fallback) => {
@@ -30,19 +33,10 @@ if (!Number.isFinite(MIN_SALARY) || MIN_SALARY < 0) {
 }
 const OUT_DIR = flag('out', join(homedir(), '.ats-fill', 'job-scan'));
 
-const ROLE_RE = /atlassian|jira|confluence|solutions? (architect|engineer)|platform engineer|ai (platform|solutions?|engineer)|itsm|service management|devops|site reliability|sre\b/i;
-const CLEARANCE_RE = /clearance|top secret|\bts\/sci\b|\bsecret\b|public trust|polygraph|security clearance/i;
+// Whole-word matches: a substring like "sre" inside another word must not count.
+export const ROLE_RE = /\b(atlassian|jira|confluence|itsm|service management|devops|site reliability|sre)\b|\bsolutions? (architect|engineer)\b|\bplatform engineer\b|\bai (platform|solutions?|engineer)\b/i;
+export const CLEARANCE_RE = /\bclearance\b|\btop secret\b|\bts\/sci\b|\bsecret\b|\bpublic trust\b|\bpolygraph\b/i;
 const UA = 'Mozilla/5.0 (ats-fill job-scan; read-only)';
-
-/** "$120k - $150k", "120000-150000", "$150,000" → {min, max} in dollars, or null. */
-export function parseSalary(text) {
-  if (!text) return null;
-  const nums = [...String(text).matchAll(/(\d[\d,]*(?:\.\d+)?)\s*(k)?/gi)]
-    .map((m) => Number(m[1].replace(/,/g, '')) * (m[2] ? 1000 : 1))
-    .filter((n) => Number.isFinite(n) && n >= 1000);
-  if (!nums.length) return null;
-  return { min: Math.min(...nums), max: Math.max(...nums) };
-}
 
 async function getJson(url) {
   const res = await fetch(url, { headers: { 'user-agent': UA, accept: 'application/json' }, signal: AbortSignal.timeout(20000) });
@@ -57,6 +51,7 @@ async function fromRemoteOk() {
     title: r.position,
     company: r.company,
     url: r.url || (r.slug ? `https://remoteok.com/remote-jobs/${r.slug}` : ''),
+    location: r.location || 'Remote',
     posted: r.date || '',
     salaryText: r.salary_min || r.salary_max ? `${r.salary_min || ''}-${r.salary_max || ''}` : '',
     salary: r.salary_min || r.salary_max ? { min: Number(r.salary_min) || 0, max: Number(r.salary_max) || Number(r.salary_min) || 0 } : null,
@@ -73,6 +68,7 @@ async function fromRemotive() {
     title: j.title,
     company: j.company_name,
     url: j.url,
+    location: j.candidate_required_location || 'Remote',
     posted: j.publication_date || '',
     salaryText: j.salary || '',
     salary: parseSalary(j.salary),
@@ -81,20 +77,32 @@ async function fromRemotive() {
 }
 
 function classify(job) {
-  if (!ROLE_RE.test(`${job.title} ${job.text}`)) return 'off-role';
+  // Title only: descriptions name other roles in passing ("works with our
+  // platform engineers"), which made generic engineering postings match.
+  if (!ROLE_RE.test(job.title || '')) return 'off-role';
   if (CLEARANCE_RE.test(job.text)) return 'clearance';
+  // Remote only: a US office with no remote option is not what the candidate wants.
+  const loc = job.location || '';
+  const remote = /\bremote\b|anywhere|worldwide/i.test(loc) && !/hybrid|on-?site|in[- ]office/i.test(loc);
+  if (locationKind(loc) === 'other' || !remote) return 'off-location';
   if (!job.salary) return 'no-salary';
   if (job.salary.max < MIN_SALARY) return 'low-salary';
   return 'match';
 }
 
 async function main() {
-  const sources = await Promise.allSettled([fromRemoteOk(), fromRemotive()]);
+  const sources = await Promise.allSettled([fromRemoteOk(), fromRemotive(), fetchAllBoards()]);
+  const names = ['RemoteOK', 'Remotive', 'company boards'];
   const errors = [];
   const jobs = [];
   for (const [i, s] of sources.entries()) {
-    if (s.status === 'fulfilled') jobs.push(...s.value);
-    else errors.push(`${i === 0 ? 'RemoteOK' : 'Remotive'}: ${s.reason?.message || s.reason}`);
+    if (s.status === 'fulfilled') {
+      if (Array.isArray(s.value)) jobs.push(...s.value);
+      else {
+        jobs.push(...s.value.jobs);
+        errors.push(...s.value.errors);
+      }
+    } else errors.push(`${names[i]}: ${s.reason?.message || s.reason}`);
   }
   // Never write an empty report that looks like a successful scan.
   if (sources.every((s) => s.status === 'rejected')) {
@@ -109,27 +117,28 @@ async function main() {
     const prev = byKey.get(key);
     if (!prev || (!prev.salary && job.salary)) byKey.set(key, job);
   }
-  const buckets = { match: [], 'no-salary': [], clearance: [], 'low-salary': [], 'off-role': [] };
+  const buckets = { match: [], 'no-salary': [], clearance: [], 'low-salary': [], 'off-role': [], 'off-location': [] };
   for (const job of byKey.values()) buckets[classify(job)].push(job);
 
   const today = new Date().toISOString().slice(0, 10);
   const byTop = (a, b) => (b.salary?.max || 0) - (a.salary?.max || 0);
   buckets.match.sort(byTop);
-  const line = (j) => `- [${j.title} — ${j.company}](${j.url}) · ${j.salaryText || 'no salary'} · ${j.source}${j.posted ? ` · ${String(j.posted).slice(0, 10)}` : ''}`;
+  const pay = (j) => j.salaryText || (j.salary ? `$${j.salary.min.toLocaleString('en-US')} - $${j.salary.max.toLocaleString('en-US')}` : 'no salary');
+  const line = (j) => `- [${j.title} — ${j.company}](${j.url}) · ${j.location || '?'} · ${pay(j)} · ${j.source}${j.posted ? ` · ${String(j.posted).slice(0, 10)}` : ''}`;
 
   const md = [
     `# Job scan ${today}`,
-    `Min top salary: $${MIN_SALARY.toLocaleString('en-US')} · remote only (both sources are remote boards) · no clearance terms`,
-    `Found ${buckets.match.length} match(es), ${buckets['no-salary'].length} without salary, ${buckets.clearance.length} excluded for clearance, ${buckets['low-salary'].length} below the threshold.`,
-    errors.length ? `Source errors: ${errors.join('; ')}` : '',
+    `Min top salary: $${MIN_SALARY.toLocaleString('en-US')} · US or remote locations · no clearance terms`,
+    `Found ${buckets.match.length} match(es), ${buckets['no-salary'].length} without salary, ${buckets.clearance.length} excluded for clearance, ${buckets['low-salary'].length} below the threshold, ${buckets['off-location'].length} outside the US.`,
+    errors.length ? `Source errors (${errors.length}): ${errors.join('; ')}` : '',
     '',
     '## Matches',
     ...(buckets.match.length ? buckets.match.map(line) : ['_None this run._']),
     '',
     '## Listed without salary (check manually)',
-    ...(buckets['no-salary'].slice(0, 30).map(line).length ? buckets['no-salary'].slice(0, 30).map(line) : ['_None._']),
+    ...(buckets['no-salary'].length ? buckets['no-salary'].slice(0, 30).map(line) : ['_None._']),
     '',
-  ].filter((l) => l !== undefined).join('\n');
+  ].join('\n');
 
   mkdirSync(OUT_DIR, { recursive: true });
   writeFileSync(join(OUT_DIR, `${today}.md`), md);
@@ -138,7 +147,7 @@ async function main() {
   console.log(`\nwrote ${join(OUT_DIR, `${today}.md`)}`);
 }
 
-// Exported for tests; only run when executed directly.
+// Only run when this file is the entry point, so tests can import the helpers.
 const entry = process.argv[1] ? resolve(process.argv[1]) : '';
 if (entry && fileURLToPath(import.meta.url) === entry) {
   main().catch((err) => {
