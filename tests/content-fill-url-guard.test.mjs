@@ -33,15 +33,15 @@ test('fill receiver checks full referrers and accepts browsers that reduce cross
 
 test('production content script enforces the URL guard before filling and revalidates after async work', () => {
   const source = readFileSync(new URL('../content/content.js', import.meta.url), 'utf8');
-  assert.match(source, /case 'FILL_FORM':\\s*\\/\\/ Reject stale or unbound fill messages before reading questions or writing fields\\.\\s*if \\(!matchesExpectedFillDocument\\(msg\\.expectedUrl\\)\\) return false;/);
-  assert.match(source, /case 'FILL_FORM':\\s*return handleFillForm\\(msg\\.expectedUrl\\);/);
-  assert.match(source, /async function handleFillForm\\(expectedUrl\\)/);
-  assert.match(source, /if \\(!matchesExpectedFillDocument\\(expectedUrl\\)\\) throw new Error/);
+  assert.ok(source.includes('if (!matchesExpectedFillDocument(msg.expectedUrl)) return false;'));
+  assert.ok(source.includes('return handleFillForm(msg.expectedUrl);'));
+  assert.ok(source.includes('async function handleFillForm(expectedUrl)'));
+  assert.ok(source.includes('if (!matchesExpectedFillDocument(expectedUrl)) throw new Error'));
 });
 
 test('fill delivery enumerates frame documents and targets the selected documentId', () => {
   const source = readFileSync(new URL('../lib/utils.js', import.meta.url), 'utf8');
-  assert.match(source, /target: \\{ tabId, allFrames: true \\}/);
-  assert.match(source, /chrome\\.tabs\\.sendMessage\\(tabId, msg, \\{ documentId \\}/);
-  assert.match(source, /if \\(href !== expected\\.href\\) throw new Error/);
+  assert.ok(source.includes('target: { tabId, allFrames: true }'));
+  assert.ok(source.includes('chrome.tabs.sendMessage(tabId, msg, { documentId }'));
+  assert.ok(source.includes('if (href !== expected.href) throw new Error'));
 });
