@@ -21,5 +21,7 @@ test('fill receiver checks the parent page for embedded application frames', () 
   assert.equal(matchesExpectedFillDocument({ type: 'FILL_FORM', expectedUrl: 'https://jobs.example/application?id=1' }), true);
   globalThis.document.referrer = 'https://jobs.example/application?id=2';
   assert.equal(matchesExpectedFillDocument({ type: 'FILL_FORM', expectedUrl: 'https://jobs.example/application?id=1' }), false);
+  globalThis.document.referrer = 'https://jobs.example/application?id=1';
+  assert.equal(matchesExpectedFillDocument({ type: 'FILL_FORM', expectedUrl: 'https://jobs.example/application?id=1#step-2' }), false);
   globalThis.window = top;
 });
