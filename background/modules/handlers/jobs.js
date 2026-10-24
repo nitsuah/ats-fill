@@ -5,6 +5,7 @@
 
 import { transformJobText } from '../../../lib/gemini.js';
 import { searchJobs, listJobSources } from '../../../lib/job-search.js';
+import { sendFillFormToVerifiedTab } from '../../../lib/utils.js';
 
 async function buildJobSearchConfig(settings = {}) {
   const config = {};
@@ -104,7 +105,7 @@ export async function handleFillApplicationTab({ url } = {}) {
   if (currentUrl !== parsed.href) {
     throw new Error('The application page navigated or changed. Reopen the intended application tab and try again.');
   }
-  const resp = await chrome.tabs.sendMessage(tab.id, { type: 'FILL_FORM', expectedUrl: parsed.href });
+  const resp = await sendFillFormToVerifiedTab(tab.id, parsed.href);
   // No response means no frame on the page owns an application form (for
   // example, an overview page). Say so instead of reporting a silent success.
   if (!resp) throw new Error('No application form on that page. Open the application tab (the /application URL) and try again.');
