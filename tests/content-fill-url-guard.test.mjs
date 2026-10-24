@@ -118,3 +118,55 @@ test('sender aborts if the top-level URL changes before document-targeted delive
     else globalThis.chrome = priorChrome;
   }
 });
+
+test('sender lazily injects only into the selected document when no receiver exists', async () => {
+  const priorChrome = globalThis.chrome;
+  const expectedUrl = 'https://jobs.example/application?id=1';
+  const injectionTargets = [];
+  let lastError = null;
+  let formMessages = 0;
+  globalThis.chrome = {
+    runtime: { get lastError() { return lastError; } },
+    tabs: {
+      async get() { return { url: expectedUrl }; },
+      sendMessage(_tabId, _message, options, callback) {
+        if (options.documentId === 'top-doc') {
+          lastError = { message: 'The message port closed before a response was received.' };
+          callback(undefined);
+          lastError = null;
+          return;
+        }
+        formMessages += 1;
+        if (formMessages === 1) {
+          lastError = { message: 'Receiving end does not exist.' };
+          callback(undefined);
+          lastError = null;
+          return;
+        }
+        callback({ success: true, filled: 2 });
+      },
+    },
+    scripting: {
+      async executeScript({ target }) {
+        if (target.allFrames) {
+          return [
+            { frameId: 0, documentId: 'top-doc', result: { href: expectedUrl } },
+            { frameId: 4, documentId: 'form-doc', result: { href: 'https://forms.example/application' } },
+          ];
+        }
+        injectionTargets.push(...target.documentIds);
+        return [];
+      },
+    },
+  };
+  try {
+    const { sendFillFormToVerifiedTab } = await import('../lib/utils.js');
+    const result = await sendFillFormToVerifiedTab(7, expectedUrl);
+    assert.deepEqual(injectionTargets, ['form-doc']);
+    assert.equal(result.success, true);
+    assert.equal(result.filled, 2);
+  } finally {
+    if (priorChrome === undefined) delete globalThis.chrome;
+    else globalThis.chrome = priorChrome;
+  }
+});
