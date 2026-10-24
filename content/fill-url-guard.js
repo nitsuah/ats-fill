@@ -7,7 +7,12 @@ export function matchesExpectedFillDocument(msg) {
   try {
     if (window.top === window) return window.location.href === expected.href;
     const referrer = new URL(document.referrer);
-    // Referrers omit fragments, so an embedded frame cannot prove a hash-bearing top-level URL.
-    return !expected.hash && referrer.origin === expected.origin && referrer.pathname === expected.pathname && referrer.search === expected.search;
+    // Referrer-Policy: strict-origin-when-cross-origin strips path, query, and
+    // fragment from cross-origin iframe referrers. The extension sender verifies
+    // the exact top-level tab URL before delivery; the iframe can independently
+    // verify the parent origin, and verifies path/query when the browser exposes them.
+    if (referrer.origin !== expected.origin || expected.hash) return false;
+    const referrerIsOriginOnly = referrer.pathname === '/' && referrer.search === '';
+    return referrerIsOriginOnly || (referrer.pathname === expected.pathname && referrer.search === expected.search);
   } catch { return false; }
 }
