@@ -53,4 +53,5 @@ test('ROLE_RE covers SaaS admin and IT systems titles', () => {
   assert.ok(ROLE_RE.test('SaaS Administrator'));
   assert.ok(ROLE_RE.test('Senior Systems Administrator, Atlassian Cloud'));
   assert.ok(ROLE_RE.test('IT Systems Engineer'));
+  assert.ok(ROLE_RE.test('Senior Business Systems Analyst'));
 });
