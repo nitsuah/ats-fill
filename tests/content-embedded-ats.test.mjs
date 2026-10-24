@@ -10,6 +10,7 @@ const CONTENT_JS = readFileSync(new URL('../content/content.js', import.meta.url
 
 const EMBED_URL = 'https://job-boards.greenhouse.io/embed/job_app?for=databricks&token=8548986002';
 const PARENT_JOB_URL = 'https://databricks.com/company/careers/open-positions/job?gh_jid=8548986002';
+const MISMATCHED_URL = 'https://databricks.com/company/careers/open-positions/another-job?gh_jid=999999';
 const EMBED_SCRIPT = `window.__remixContext = {"state":{"loaderData":{"routes/embed.job_app":{"jobPost":{"post_type":"job_post","title":"Delivery Solutions Architect - Digital Native Business","content":"\\u003cp\\u003eAt Databricks\\u003c/p\\u003e","public_url":"${PARENT_JOB_URL}","company_name":"Databricks"}}}}};`;
 const EMBED_BODY = `<script>${EMBED_SCRIPT}</script><form id="application-form"><input id="first_name" /></form>`;
 
@@ -81,6 +82,83 @@ test('top-level pages keep their own URL as the tracker URL', () => {
   window.close();
 });
 
+test('embedded FILL_FORM rejects an expected URL that does not match the parent page', () => {
+  const { window, api } = load({
+    url: EMBED_URL,
+    body: EMBED_BODY,
+    referrer: PARENT_JOB_URL,
+    framed: true,
+  });
+  assert.equal(api.frameOwnsMessage({ type: 'FILL_FORM', expectedUrl: MISMATCHED_URL }), false);
+  window.close();
+});
+
+test('handleFillForm rejects a mismatched URL before requesting generated answers', async () => {
+  const { window, api } = load({
+    url: EMBED_URL,
+    body: EMBED_BODY,
+    referrer: PARENT_JOB_URL,
+    framed: true,
+  });
+  const messages = [];
+  window.chrome.runtime.sendMessage = (message) => {
+    messages.push(message.type);
+    return Promise.resolve({ success: true, answers: { first_name: 'Jane' } });
+  };
+  await assert.rejects(api.handleFillForm(MISMATCHED_URL), /application page navigated or changed/);
+  assert.deepEqual(messages, []);
+  assert.equal(window.document.querySelector('#first_name').value, '');
+  window.close();
+});
+
+test('handleFillForm stops if the parent URL changes while answers are being generated', async () => {
+  const { window, api } = load({
+    url: EMBED_URL,
+    body: EMBED_BODY,
+    referrer: PARENT_JOB_URL,
+    framed: true,
+  });
+  const messages = [];
+  window.chrome.runtime.sendMessage = (message) => {
+    messages.push(message.type);
+    if (message.type === 'GENERATE_ANSWERS') {
+      Object.defineProperty(window.document, 'referrer', { configurable: true, value: MISMATCHED_URL });
+      return Promise.resolve({ success: true, answers: { first_name: 'Jane' } });
+    }
+    return Promise.resolve({});
+  };
+  await assert.rejects(api.handleFillForm(PARENT_JOB_URL), /application page navigated or changed/);
+  assert.deepEqual(messages, ['GENERATE_ANSWERS']);
+  assert.equal(window.document.querySelector('#first_name').value, '');
+  window.close();
+});
+
+test('handleFillForm stops if the parent URL changes while loading the field map', async () => {
+  const { window, api } = load({
+    url: EMBED_URL,
+    body: EMBED_BODY,
+    referrer: PARENT_JOB_URL,
+    framed: true,
+  });
+  const messages = [];
+  window.chrome.runtime.sendMessage = (message) => {
+    messages.push(message.type);
+    if (message.type === 'GENERATE_ANSWERS') {
+      return Promise.resolve({ success: true, answers: { first_name: 'Jane' } });
+    }
+    if (message.type === 'GET_FIELD_MAP') {
+      Object.defineProperty(window.document, 'referrer', { configurable: true, value: MISMATCHED_URL });
+      return Promise.resolve({});
+    }
+    return Promise.resolve({});
+  };
+  await assert.rejects(api.handleFillForm(PARENT_JOB_URL), /application page navigated or changed/);
+  assert.deepEqual(messages, ['GENERATE_ANSWERS', 'GET_FIELD_MAP']);
+  assert.equal(window.document.querySelector('#first_name').value, '');
+  assert.ok(!messages.includes('LOG_APPLICATION'));
+  window.close();
+});
+
 test('the host page defers FILL_FORM, INJECT_ANSWERS, DETECT_ATS and GET_JOB_INFO to an embedded ATS form', () => {
   const { window, api } = load({
     url: PARENT_JOB_URL,
@@ -88,7 +166,7 @@ test('the host page defers FILL_FORM, INJECT_ANSWERS, DETECT_ATS and GET_JOB_INF
       <iframe src="${EMBED_URL}"></iframe>`,
   });
   for (const type of ['FILL_FORM', 'INJECT_ANSWERS', 'DETECT_ATS', 'GET_JOB_INFO']) {
-    assert.equal(api.frameOwnsMessage({ type }), false, `${type} should be left to the iframe`);
+    assert.equal(api.frameOwnsMessage(type === 'FILL_FORM' ? { type, expectedUrl: PARENT_JOB_URL } : { type }), false, `${type} should be left to the iframe`);
   }
   window.close();
 });
@@ -99,7 +177,7 @@ test('a hosted ATS page keeps the fill even when it frames its own domain', () =
     body: `<h1>Engineer</h1><input id="first_name" />
       <iframe src="https://job-boards.greenhouse.io/embed/widget"></iframe>`,
   });
-  assert.equal(api.frameOwnsMessage({ type: 'FILL_FORM' }), true);
+  assert.equal(api.frameOwnsMessage({ type: 'FILL_FORM', expectedUrl: 'https://job-boards.greenhouse.io/acme/jobs/123' }), true);
   assert.equal(api.frameOwnsMessage({ type: 'DETECT_ATS' }), true);
   window.close();
 });
@@ -109,17 +187,28 @@ test('the host page answers when it has no embedded ATS form', () => {
     url: 'https://www.example.com/careers/engineer',
     body: '<h1>Engineer</h1><input id="q" /><iframe src="https://www.youtube.com/embed/abc"></iframe>',
   });
-  assert.equal(api.frameOwnsMessage({ type: 'FILL_FORM' }), true);
+  assert.equal(api.frameOwnsMessage({ type: 'FILL_FORM', expectedUrl: 'https://www.example.com/careers/engineer' }), true);
   assert.equal(api.frameOwnsMessage({ type: 'DETECT_ATS' }), true);
   assert.equal(api.frameOwnsMessage({ type: 'GET_JOB_INFO' }), true);
   window.close();
 });
 
 test('the embedded Greenhouse form owns the messages once it has fields', () => {
-  const { window, api } = load({ url: EMBED_URL, body: EMBED_BODY, framed: true });
-  assert.equal(api.frameOwnsMessage({ type: 'FILL_FORM' }), true);
+  const { window, api } = load({ url: EMBED_URL, body: EMBED_BODY, referrer: PARENT_JOB_URL, framed: true });
+  assert.equal(api.frameOwnsMessage({ type: 'FILL_FORM', expectedUrl: PARENT_JOB_URL }), true);
   assert.equal(api.frameOwnsMessage({ type: 'DETECT_ATS' }), true);
   assert.equal(api.frameOwnsMessage({ type: 'GET_JOB_INFO' }), true);
+  window.close();
+});
+
+test('embedded fill accepts an origin-only referrer while binding to the exact parent URL', () => {
+  const { window, api } = load({
+    url: EMBED_URL,
+    body: EMBED_BODY,
+    referrer: 'https://databricks.com/',
+    framed: true,
+  });
+  assert.equal(api.frameOwnsMessage({ type: 'FILL_FORM', expectedUrl: PARENT_JOB_URL }), true);
   window.close();
 });
 
@@ -146,7 +235,7 @@ test('filling an embedded Greenhouse form logs one tracker entry with company an
     if (msg.type === 'GENERATE_ANSWERS') return Promise.resolve({ success: true, answers: {} });
     return Promise.resolve({});
   };
-  await api.handleFillForm();
+  await api.handleFillForm(PARENT_JOB_URL);
   assert.equal(logged.length, 1);
   assert.equal(logged[0].company, 'Databricks');
   assert.equal(logged[0].title, 'Delivery Solutions Architect - Digital Native Business');

@@ -5,6 +5,7 @@
 
 import { transformJobText } from '../../../lib/gemini.js';
 import { searchJobs, listJobSources } from '../../../lib/job-search.js';
+import { sendFillFormToVerifiedTab } from '../../../lib/utils.js';
 
 async function buildJobSearchConfig(settings = {}) {
   const config = {};
@@ -67,6 +68,52 @@ export async function handleOpenApplicationTab({ url } = {}) {
   }
   const tab = await chrome.tabs.create({ url: parsed.href, active: true });
   return { success: true, tabId: tab.id };
+}
+
+/**
+ * Fill an application tab that is already open, with the candidate's saved
+ * answers. Runs the same content-script fill as the popup's Fill button. The
+ * fill only sets fields and never submits; the candidate reviews and submits.
+ * Only a tab already open on this exact page is filled.
+ */
+export async function handleFillApplicationTab({ url } = {}) {
+  let parsed;
+  try {
+    parsed = new URL(String(url || ''));
+  } catch {
+    throw new Error('FILL_APPLICATION_TAB needs a valid URL.');
+  }
+  if (parsed.protocol !== 'https:' && parsed.protocol !== 'http:') {
+    throw new Error('FILL_APPLICATION_TAB only fills http(s) pages.');
+  }
+  const tabs = await chrome.tabs.query({ url: `${parsed.origin}/*` });
+  // Exact match on the whole URL, query and fragment included: the query can
+  // be what identifies the job, so a different job must never be filled.
+  const tab = tabs.find((t) => {
+    try {
+      return new URL(t.url).href === parsed.href;
+    } catch {
+      return false;
+    }
+  });
+  if (!tab) throw new Error('No open tab on that application page. Open it with OPEN_APPLICATION_TAB first.');
+  // Re-read the browser-owned URL immediately before delivery. A tab can navigate
+  // after tabs.query, so never send a fill request based only on the stale snapshot.
+  const currentTab = await chrome.tabs.get(tab.id);
+  let currentUrl;
+  try { currentUrl = new URL(currentTab.url).href; } catch { currentUrl = ''; }
+  if (currentUrl !== parsed.href) {
+    throw new Error('The application page navigated or changed. Reopen the intended application tab and try again.');
+  }
+  const resp = await sendFillFormToVerifiedTab(tab.id, parsed.href);
+  // No response means no frame on the page owns an application form (for
+  // example, an overview page). Say so instead of reporting a silent success.
+  if (!resp) throw new Error('No application form on that page. Open the application tab (the /application URL) and try again.');
+  if (!resp.success) throw new Error(resp.error || 'The page could not be filled.');
+  const filled = Number.isFinite(resp.filled) ? resp.filled : 0;
+  // Zero fields means nothing was set; usually the profile or saved answers are empty.
+  if (filled === 0) throw new Error('Filled 0 fields. Check the ats-fill profile and saved answers, then try the popup Fill on this tab.');
+  return { success: true, tabId: tab.id, filled, warning: resp.warning || null };
 }
 
 export async function handleGetJobSources() {

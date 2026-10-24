@@ -47,6 +47,29 @@ const IS_TOP_FRAME = (() => {
 })();
 
 /**
+ * Validate the browser-verified application URL in the receiving frame.
+ * Cross-origin referrers can be reduced to an origin by Referrer-Policy; in
+ * that case the background has already verified the exact tab URL and targets
+ * this specific documentId rather than broadcasting to a replacement document.
+ */
+function matchesExpectedFillDocument(expectedUrl) {
+  if (typeof expectedUrl !== 'string') return false;
+  let expected;
+  try { expected = new URL(expectedUrl); } catch { return false; }
+  if (expected.protocol !== 'https:' && expected.protocol !== 'http:') return false;
+  if (IS_TOP_FRAME) return location.href === expected.href;
+  if (expected.hash) return false;
+  try {
+    const referrer = new URL(document.referrer);
+    if (referrer.origin !== expected.origin) return false;
+    const originOnly = referrer.pathname === '/' && referrer.search === '';
+    return originOnly || (referrer.pathname === expected.pathname && referrer.search === expected.search);
+  } catch {
+    return false;
+  }
+}
+
+/**
  * With `all_frames: true`, the same content script runs in the top document and
  * in every (same- or cross-origin) iframe — e.g. the iCIMS application form,
  * which lives inside an iframe. `chrome.tabs.sendMessage` delivers to all of
@@ -60,6 +83,9 @@ const IS_TOP_FRAME = (() => {
 function frameOwnsMessage(msg) {
   switch (msg?.type) {
     case 'FILL_FORM':
+      // Reject stale or unbound fill messages before reading questions or writing fields.
+      if (!matchesExpectedFillDocument(msg.expectedUrl)) return false;
+      return getFillableInputs().length > 0 && (!IS_TOP_FRAME || !pageEmbedsAtsFrame());
     case 'INJECT_ANSWERS':
       // The frame that actually contains the application fields fills them. A
       // host page that embeds an ATS form defers to that iframe, so the fill
@@ -110,7 +136,7 @@ chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
 async function handleMessage(msg, sendResponse) {
   switch (msg.type) {
     case 'FILL_FORM':
-      return handleFillForm();
+      return handleFillForm(msg.expectedUrl);
     case 'INJECT_ANSWERS':
       return handleInjectAnswers(msg.payload);
     case 'GET_JOB_INFO':
@@ -150,7 +176,8 @@ async function handleMessage(msg, sendResponse) {
 
 // ── Fill form flow ────────────────────────────────────────────────────────────
 
-async function handleFillForm() {
+async function handleFillForm(expectedUrl) {
+  if (!matchesExpectedFillDocument(expectedUrl)) throw new Error('The application page navigated or changed. Try Fill again on the intended tab.');
   // 1. Extract JD + job meta
   const { jd, company, title, location: jobLocation, employment_type, remote, salary_range } = extractJobInfo();
 
@@ -166,6 +193,7 @@ async function handleFillForm() {
   if (!resp?.success) {
     throw new Error(resp?.error || 'Failed to generate answers');
   }
+  if (!matchesExpectedFillDocument(expectedUrl)) throw new Error('The application page navigated or changed. Try Fill again on the intended tab.');
 
   const answers = resp.answers;
   const warning = resp.warning || null;
@@ -177,8 +205,9 @@ async function handleFillForm() {
     }
   }
 
-  // 5. Fill the form, then attach the saved resume file
+  // 5. Revalidate after async work, immediately before writing any field values.
   const fieldMap = await loadFieldMap();
+  if (!matchesExpectedFillDocument(expectedUrl)) throw new Error('The application page navigated or changed. Try Fill again on the intended tab.');
   const report = fillForm(answers, fieldMap);
   const combos = await fillComboboxes(answers, fieldMap).catch(() => ({ filled: 0, unresolved: [] }));
   report.filled += combos.filled;

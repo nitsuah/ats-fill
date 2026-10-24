@@ -5,6 +5,7 @@
 
 import { handleFillForm, handleInjectAnswers, handleGetJobInfo, handleFocusField, handleFetchLinkedInJobs } from './job-processor.js';
 import { detectAts } from './ats-detector.js';
+import { matchesExpectedFillDocument } from './fill-url-guard.js';
 import { getFillableInputs, findFieldForReviewTarget } from './form-filler.js';
 
 /**
@@ -26,6 +27,9 @@ export function setupMessageListener() {
 async function handleMessage(msg, sendResponse) {
   switch (msg.type) {
     case 'FILL_FORM':
+      if (!matchesExpectedFillDocument(msg)) {
+        throw new Error('The application page navigated or changed. Reopen the intended application tab and try again.');
+      }
       return handleFillForm();
     case 'INJECT_ANSWERS':
       return handleInjectAnswers(msg.payload);
