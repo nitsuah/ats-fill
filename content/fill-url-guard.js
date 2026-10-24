@@ -7,6 +7,7 @@ export function matchesExpectedFillDocument(msg) {
   try {
     if (window.top === window) return window.location.href === expected.href;
     const referrer = new URL(document.referrer);
-    return referrer.origin === expected.origin && referrer.pathname === expected.pathname;
+    // Referrers omit fragments, so an embedded frame cannot prove a hash-bearing top-level URL.
+    return !expected.hash && referrer.origin === expected.origin && referrer.pathname === expected.pathname && referrer.search === expected.search;
   } catch { return false; }
 }
