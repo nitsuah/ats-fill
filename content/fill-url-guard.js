@@ -1,6 +1,6 @@
 /** Bind fill requests to the selected document, including embedded application frames. */
 export function matchesExpectedFillDocument(msg) {
-  if (typeof msg?.expectedUrl !== 'string') return true;
+  if (typeof msg?.expectedUrl !== 'string') return false;
   let expected;
   try { expected = new URL(msg.expectedUrl); } catch { return false; }
   if (expected.protocol !== 'https:' && expected.protocol !== 'http:') return false;
