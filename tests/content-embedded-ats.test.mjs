@@ -123,6 +123,17 @@ test('the embedded Greenhouse form owns the messages once it has fields', () => 
   window.close();
 });
 
+test('embedded fill accepts an origin-only referrer while binding to the exact parent URL', () => {
+  const { window, api } = load({
+    url: EMBED_URL,
+    body: EMBED_BODY,
+    referrer: 'https://databricks.com/',
+    framed: true,
+  });
+  assert.equal(api.frameOwnsMessage({ type: 'FILL_FORM', expectedUrl: PARENT_JOB_URL }), true);
+  window.close();
+});
+
 test('an unrelated iframe with fields does not claim DETECT_ATS on a generic page', () => {
   const { window, api } = load({
     url: 'https://ads.example.net/frame',
