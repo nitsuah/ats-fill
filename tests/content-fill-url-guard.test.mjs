@@ -45,3 +45,76 @@ test('fill delivery enumerates frame documents and targets the selected document
   assert.ok(source.includes('chrome.tabs.sendMessage(tabId, msg, { documentId }'));
   assert.ok(source.includes('if (href !== expected.href) throw new Error'));
 });
+
+test('sender binds fill delivery to the verified frame documentId', async () => {
+  const priorChrome = globalThis.chrome;
+  const expectedUrl = 'https://jobs.example/application?id=1';
+  const targetedDocuments = [];
+  let lastError = null;
+  let urlReads = 0;
+  globalThis.chrome = {
+    runtime: { get lastError() { return lastError; } },
+    tabs: {
+      async get() { urlReads += 1; return { url: expectedUrl }; },
+      sendMessage(_tabId, _message, options, callback) {
+        targetedDocuments.push(options.documentId);
+        if (options.documentId === 'top-doc') {
+          lastError = { message: 'The message port closed before a response was received.' };
+          callback(undefined);
+          lastError = null;
+          return;
+        }
+        callback({ success: true, filled: 3 });
+      },
+    },
+    scripting: {
+      async executeScript() {
+        return [
+          { frameId: 0, documentId: 'top-doc', result: { href: expectedUrl } },
+          { frameId: 4, documentId: 'form-doc', result: { href: 'https://forms.example/application' } },
+        ];
+      },
+    },
+  };
+  try {
+    const { sendFillFormToVerifiedTab } = await import('../lib/utils.js');
+    const result = await sendFillFormToVerifiedTab(7, expectedUrl);
+    assert.deepEqual(targetedDocuments, ['top-doc', 'form-doc']);
+    assert.equal(result.success, true);
+    assert.equal(result.filled, 3);
+    assert.ok(urlReads >= 3, 'the browser-owned tab URL is rechecked before delivery');
+  } finally {
+    if (priorChrome === undefined) delete globalThis.chrome;
+    else globalThis.chrome = priorChrome;
+  }
+});
+
+test('sender aborts if the top-level URL changes before document-targeted delivery', async () => {
+  const priorChrome = globalThis.chrome;
+  const expectedUrl = 'https://jobs.example/application?id=1';
+  let reads = 0;
+  let sendCount = 0;
+  globalThis.chrome = {
+    runtime: { lastError: null },
+    tabs: {
+      async get() {
+        reads += 1;
+        return { url: reads === 1 ? expectedUrl : 'https://jobs.example/application?id=2' };
+      },
+      sendMessage() { sendCount += 1; },
+    },
+    scripting: {
+      async executeScript() {
+        return [{ frameId: 0, documentId: 'top-doc', result: { href: expectedUrl } }];
+      },
+    },
+  };
+  try {
+    const { sendFillFormToVerifiedTab } = await import('../lib/utils.js');
+    await assert.rejects(sendFillFormToVerifiedTab(7, expectedUrl), /navigated or changed/);
+    assert.equal(sendCount, 0, 'no fill message is sent after navigation');
+  } finally {
+    if (priorChrome === undefined) delete globalThis.chrome;
+    else globalThis.chrome = priorChrome;
+  }
+});
