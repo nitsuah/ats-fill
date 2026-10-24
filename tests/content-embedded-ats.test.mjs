@@ -10,6 +10,7 @@ const CONTENT_JS = readFileSync(new URL('../content/content.js', import.meta.url
 
 const EMBED_URL = 'https://job-boards.greenhouse.io/embed/job_app?for=databricks&token=8548986002';
 const PARENT_JOB_URL = 'https://databricks.com/company/careers/open-positions/job?gh_jid=8548986002';
+const MISMATCHED_URL = 'https://databricks.com/company/careers/open-positions/another-job?gh_jid=999999';
 const EMBED_SCRIPT = `window.__remixContext = {"state":{"loaderData":{"routes/embed.job_app":{"jobPost":{"post_type":"job_post","title":"Delivery Solutions Architect - Digital Native Business","content":"\\u003cp\\u003eAt Databricks\\u003c/p\\u003e","public_url":"${PARENT_JOB_URL}","company_name":"Databricks"}}}}};`;
 const EMBED_BODY = `<script>${EMBED_SCRIPT}</script><form id="application-form"><input id="first_name" /></form>`;
 
@@ -78,6 +79,83 @@ test('embedded Greenhouse form falls back to public_url when the referrer is onl
 test('top-level pages keep their own URL as the tracker URL', () => {
   const { window, api } = load({ url: 'https://jobs.ashbyhq.com/acme/123/application', body: '<h1>Engineer</h1>' });
   assert.equal(api.jobPageUrl(), 'https://jobs.ashbyhq.com/acme/123/application');
+  window.close();
+});
+
+test('embedded FILL_FORM rejects an expected URL that does not match the parent page', () => {
+  const { window, api } = load({
+    url: EMBED_URL,
+    body: EMBED_BODY,
+    referrer: PARENT_JOB_URL,
+    framed: true,
+  });
+  assert.equal(api.frameOwnsMessage({ type: 'FILL_FORM', expectedUrl: MISMATCHED_URL }), false);
+  window.close();
+});
+
+test('handleFillForm rejects a mismatched URL before requesting generated answers', async () => {
+  const { window, api } = load({
+    url: EMBED_URL,
+    body: EMBED_BODY,
+    referrer: PARENT_JOB_URL,
+    framed: true,
+  });
+  const messages = [];
+  window.chrome.runtime.sendMessage = (message) => {
+    messages.push(message.type);
+    return Promise.resolve({ success: true, answers: { first_name: 'Jane' } });
+  };
+  await assert.rejects(api.handleFillForm(MISMATCHED_URL), /application page navigated or changed/);
+  assert.deepEqual(messages, []);
+  assert.equal(window.document.querySelector('#first_name').value, '');
+  window.close();
+});
+
+test('handleFillForm stops if the parent URL changes while answers are being generated', async () => {
+  const { window, api } = load({
+    url: EMBED_URL,
+    body: EMBED_BODY,
+    referrer: PARENT_JOB_URL,
+    framed: true,
+  });
+  const messages = [];
+  window.chrome.runtime.sendMessage = (message) => {
+    messages.push(message.type);
+    if (message.type === 'GENERATE_ANSWERS') {
+      Object.defineProperty(window.document, 'referrer', { configurable: true, value: MISMATCHED_URL });
+      return Promise.resolve({ success: true, answers: { first_name: 'Jane' } });
+    }
+    return Promise.resolve({});
+  };
+  await assert.rejects(api.handleFillForm(PARENT_JOB_URL), /application page navigated or changed/);
+  assert.deepEqual(messages, ['GENERATE_ANSWERS']);
+  assert.equal(window.document.querySelector('#first_name').value, '');
+  window.close();
+});
+
+test('handleFillForm stops if the parent URL changes while loading the field map', async () => {
+  const { window, api } = load({
+    url: EMBED_URL,
+    body: EMBED_BODY,
+    referrer: PARENT_JOB_URL,
+    framed: true,
+  });
+  const messages = [];
+  window.chrome.runtime.sendMessage = (message) => {
+    messages.push(message.type);
+    if (message.type === 'GENERATE_ANSWERS') {
+      return Promise.resolve({ success: true, answers: { first_name: 'Jane' } });
+    }
+    if (message.type === 'GET_FIELD_MAP') {
+      Object.defineProperty(window.document, 'referrer', { configurable: true, value: MISMATCHED_URL });
+      return Promise.resolve({});
+    }
+    return Promise.resolve({});
+  };
+  await assert.rejects(api.handleFillForm(PARENT_JOB_URL), /application page navigated or changed/);
+  assert.deepEqual(messages, ['GENERATE_ANSWERS', 'GET_FIELD_MAP']);
+  assert.equal(window.document.querySelector('#first_name').value, '');
+  assert.ok(!messages.includes('LOG_APPLICATION'));
   window.close();
 });
 
