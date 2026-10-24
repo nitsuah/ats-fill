@@ -11,6 +11,7 @@ import process from 'node:process';
 import { handleHostMessage, encodeFrame, decodeFrame } from '../scripts/tracker/native-host.mjs';
 import { enqueue, waitForResults, bridgeStatus, registerViaExplorer } from '../scripts/tracker/bridge.mjs';
 import { checkInWithBridge, requestBridgeAccess, setupNativeBridge, BRIDGE_ALLOWED_TYPES, BRIDGE_ALARM } from '../background/native-bridge.js';
+import { handleFillApplicationTab } from '../background/modules/handlers/jobs.js';
 
 const HOST = fileURLToPath(new URL('../scripts/tracker/native-host.mjs', import.meta.url));
 const tempDir = () => mkdtempSync(join(tmpdir(), 'ats-fill-bridge-'));
@@ -214,4 +215,34 @@ test('Windows registration fails fast on a non-zero reg exit code', () => {
 test('Windows registration reports failure when Explorer never confirms', () => {
   const dir = mkdtempSync(join(tmpdir(), 'ats-fill-reg-'));
   assert.equal(registerViaExplorer(String.raw`C:\x\host.json`, dir, { timeoutMs: 500, run: () => { throw new Error('no explorer'); } }), false);
+});
+
+
+test('FILL_APPLICATION_TAB returns the numeric field count from the content script', async () => {
+  const previousChrome = globalThis.chrome;
+  const url = 'https://jobs.example.com/application/123';
+  globalThis.chrome = {
+    tabs: {
+      query: async () => [{ id: 17, url }],
+      get: async () => ({ id: 17, url }),
+      sendMessage: (_tabId, message, options, callback) => {
+        if (typeof options === 'function') callback = options;
+        callback({ success: true, filled: 3, warning: null });
+      },
+    },
+    scripting: {
+      executeScript: async ({ target }) => target.allFrames
+        ? [{ frameId: 0, documentId: 'doc-1', result: { href: url } }]
+        : [],
+    },
+    runtime: { lastError: undefined },
+  };
+  try {
+    assert.deepEqual(await handleFillApplicationTab({ url }), {
+      success: true, tabId: 17, filled: 3, warning: null,
+    });
+  } finally {
+    if (previousChrome === undefined) delete globalThis.chrome;
+    else globalThis.chrome = previousChrome;
+  }
 });
