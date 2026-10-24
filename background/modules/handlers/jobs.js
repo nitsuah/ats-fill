@@ -110,7 +110,7 @@ export async function handleFillApplicationTab({ url } = {}) {
   // example, an overview page). Say so instead of reporting a silent success.
   if (!resp) throw new Error('No application form on that page. Open the application tab (the /application URL) and try again.');
   if (!resp.success) throw new Error(resp.error || 'The page could not be filled.');
-  const filled = resp.filled?.length ?? 0;
+  const filled = Number.isFinite(resp.filled) ? resp.filled : 0;
   // Zero fields means nothing was set; usually the profile or saved answers are empty.
   if (filled === 0) throw new Error('Filled 0 fields. Check the ats-fill profile and saved answers, then try the popup Fill on this tab.');
   return { success: true, tabId: tab.id, filled, warning: resp.warning || null };
