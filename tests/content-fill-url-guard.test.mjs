@@ -1,11 +1,11 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 
+import { matchesExpectedFillDocument } from '../content/fill-url-guard.js';
+
 globalThis.window = { location: { href: 'https://jobs.example/application?id=1' } };
 globalThis.window.top = globalThis.window;
 globalThis.document = { referrer: '' };
-
-const { matchesExpectedFillDocument } = await import('../content/message-listener.js');
 
 test('fill receiver requires the exact selected URL in the top-level document', () => {
   assert.equal(matchesExpectedFillDocument({ type: 'FILL_FORM', expectedUrl: 'https://jobs.example/application?id=1' }), true);
