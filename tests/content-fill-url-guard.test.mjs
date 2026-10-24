@@ -1,5 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
 
 import { matchesExpectedFillDocument } from '../content/fill-url-guard.js';
 
@@ -28,4 +29,19 @@ test('fill receiver checks full referrers and accepts browsers that reduce cross
   globalThis.document.referrer = 'https://jobs.example/application?id=1';
   assert.equal(matchesExpectedFillDocument({ type: 'FILL_FORM', expectedUrl: 'https://jobs.example/application?id=1#step-2' }), false);
   globalThis.window = top;
+});
+
+test('production content script enforces the URL guard before filling and revalidates after async work', () => {
+  const source = readFileSync(new URL('../content/content.js', import.meta.url), 'utf8');
+  assert.match(source, /case 'FILL_FORM':\\s*\\/\\/ Reject stale or unbound fill messages before reading questions or writing fields\\.\\s*if \\(!matchesExpectedFillDocument\\(msg\\.expectedUrl\\)\\) return false;/);
+  assert.match(source, /case 'FILL_FORM':\\s*return handleFillForm\\(msg\\.expectedUrl\\);/);
+  assert.match(source, /async function handleFillForm\\(expectedUrl\\)/);
+  assert.match(source, /if \\(!matchesExpectedFillDocument\\(expectedUrl\\)\\) throw new Error/);
+});
+
+test('fill delivery enumerates frame documents and targets the selected documentId', () => {
+  const source = readFileSync(new URL('../lib/utils.js', import.meta.url), 'utf8');
+  assert.match(source, /target: \\{ tabId, allFrames: true \\}/);
+  assert.match(source, /chrome\\.tabs\\.sendMessage\\(tabId, msg, \\{ documentId \\}/);
+  assert.match(source, /if \\(href !== expected\\.href\\) throw new Error/);
 });
