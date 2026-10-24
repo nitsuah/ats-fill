@@ -88,7 +88,7 @@ test('the host page defers FILL_FORM, INJECT_ANSWERS, DETECT_ATS and GET_JOB_INF
       <iframe src="${EMBED_URL}"></iframe>`,
   });
   for (const type of ['FILL_FORM', 'INJECT_ANSWERS', 'DETECT_ATS', 'GET_JOB_INFO']) {
-    assert.equal(api.frameOwnsMessage({ type }), false, `${type} should be left to the iframe`);
+    assert.equal(api.frameOwnsMessage(type === 'FILL_FORM' ? { type, expectedUrl: PARENT_JOB_URL } : { type }), false, `${type} should be left to the iframe`);
   }
   window.close();
 });
@@ -99,7 +99,7 @@ test('a hosted ATS page keeps the fill even when it frames its own domain', () =
     body: `<h1>Engineer</h1><input id="first_name" />
       <iframe src="https://job-boards.greenhouse.io/embed/widget"></iframe>`,
   });
-  assert.equal(api.frameOwnsMessage({ type: 'FILL_FORM' }), true);
+  assert.equal(api.frameOwnsMessage({ type: 'FILL_FORM', expectedUrl: 'https://job-boards.greenhouse.io/acme/jobs/123' }), true);
   assert.equal(api.frameOwnsMessage({ type: 'DETECT_ATS' }), true);
   window.close();
 });
@@ -109,15 +109,15 @@ test('the host page answers when it has no embedded ATS form', () => {
     url: 'https://www.example.com/careers/engineer',
     body: '<h1>Engineer</h1><input id="q" /><iframe src="https://www.youtube.com/embed/abc"></iframe>',
   });
-  assert.equal(api.frameOwnsMessage({ type: 'FILL_FORM' }), true);
+  assert.equal(api.frameOwnsMessage({ type: 'FILL_FORM', expectedUrl: 'https://www.example.com/careers/engineer' }), true);
   assert.equal(api.frameOwnsMessage({ type: 'DETECT_ATS' }), true);
   assert.equal(api.frameOwnsMessage({ type: 'GET_JOB_INFO' }), true);
   window.close();
 });
 
 test('the embedded Greenhouse form owns the messages once it has fields', () => {
-  const { window, api } = load({ url: EMBED_URL, body: EMBED_BODY, framed: true });
-  assert.equal(api.frameOwnsMessage({ type: 'FILL_FORM' }), true);
+  const { window, api } = load({ url: EMBED_URL, body: EMBED_BODY, referrer: PARENT_JOB_URL, framed: true });
+  assert.equal(api.frameOwnsMessage({ type: 'FILL_FORM', expectedUrl: PARENT_JOB_URL }), true);
   assert.equal(api.frameOwnsMessage({ type: 'DETECT_ATS' }), true);
   assert.equal(api.frameOwnsMessage({ type: 'GET_JOB_INFO' }), true);
   window.close();
@@ -146,7 +146,7 @@ test('filling an embedded Greenhouse form logs one tracker entry with company an
     if (msg.type === 'GENERATE_ANSWERS') return Promise.resolve({ success: true, answers: {} });
     return Promise.resolve({});
   };
-  await api.handleFillForm();
+  await api.handleFillForm(PARENT_JOB_URL);
   assert.equal(logged.length, 1);
   assert.equal(logged[0].company, 'Databricks');
   assert.equal(logged[0].title, 'Delivery Solutions Architect - Digital Native Business');
