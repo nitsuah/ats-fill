@@ -96,8 +96,15 @@ export async function handleFillApplicationTab({ url } = {}) {
     }
   });
   if (!tab) throw new Error('No open tab on that application page. Open it with OPEN_APPLICATION_TAB first.');
-  const resp = await chrome.tabs.sendMessage(tab.id, { type: 'FILL_FORM', expectedUrl: parsed.href },
-    tab.documentId ? { documentId: tab.documentId } : undefined);
+  // Re-read the browser-owned URL immediately before delivery. A tab can navigate
+  // after tabs.query, so never send a fill request based only on the stale snapshot.
+  const currentTab = await chrome.tabs.get(tab.id);
+  let currentUrl;
+  try { currentUrl = new URL(currentTab.url).href; } catch { currentUrl = ''; }
+  if (currentUrl !== parsed.href) {
+    throw new Error('The application page navigated or changed. Reopen the intended application tab and try again.');
+  }
+  const resp = await chrome.tabs.sendMessage(tab.id, { type: 'FILL_FORM', expectedUrl: parsed.href });
   // No response means no frame on the page owns an application form (for
   // example, an overview page). Say so instead of reporting a silent success.
   if (!resp) throw new Error('No application form on that page. Open the application tab (the /application URL) and try again.');
