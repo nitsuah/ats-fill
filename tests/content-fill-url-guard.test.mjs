@@ -14,12 +14,16 @@ test('fill receiver requires the exact selected URL in the top-level document', 
   assert.equal(matchesExpectedFillDocument({ type: 'FILL_FORM', expectedUrl: 'not a URL' }), false);
 });
 
-test('fill receiver checks the parent page for embedded application frames', () => {
+test('fill receiver checks full referrers and accepts browsers that reduce cross-origin referrers to origin', () => {
   const top = globalThis.window;
   globalThis.window = { top, location: { href: 'https://forms.example/embedded' } };
   globalThis.document = { referrer: 'https://jobs.example/application?id=1' };
   assert.equal(matchesExpectedFillDocument({ type: 'FILL_FORM', expectedUrl: 'https://jobs.example/application?id=1' }), true);
   globalThis.document.referrer = 'https://jobs.example/application?id=2';
+  assert.equal(matchesExpectedFillDocument({ type: 'FILL_FORM', expectedUrl: 'https://jobs.example/application?id=1' }), false);
+  globalThis.document.referrer = 'https://jobs.example/';
+  assert.equal(matchesExpectedFillDocument({ type: 'FILL_FORM', expectedUrl: 'https://jobs.example/application?id=1' }), true);
+  globalThis.document.referrer = 'https://attacker.example/';
   assert.equal(matchesExpectedFillDocument({ type: 'FILL_FORM', expectedUrl: 'https://jobs.example/application?id=1' }), false);
   globalThis.document.referrer = 'https://jobs.example/application?id=1';
   assert.equal(matchesExpectedFillDocument({ type: 'FILL_FORM', expectedUrl: 'https://jobs.example/application?id=1#step-2' }), false);
