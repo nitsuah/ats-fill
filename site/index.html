@@ -4,14 +4,21 @@
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 <title>ats-fill — fill the form, keep the receipts</title>
-<meta name="description" content="A local-first Chrome extension that fills Greenhouse, Lever, Ashby and Workday application forms from your saved profile. You review every field and press submit. Pipeline tracker, job search across 16 boards, analytics and interview prep. No server, no account." />
+<meta name="description" content="A local-first Chrome extension that fills Greenhouse, Lever, Ashby and LinkedIn Easy Apply forms from your saved profile, with partial support for Workday, iCIMS, Jobvite and other application forms. You review every field and press submit. Pipeline tracker, job search across 16 boards, analytics and interview prep. No server, no account." />
 <meta name="theme-color" content="#f4efe6" media="(prefers-color-scheme: light)" />
 <meta name="theme-color" content="#191816" media="(prefers-color-scheme: dark)" />
+<link rel="canonical" href="https://nitsuah.github.io/ats-fill/" />
 <meta property="og:title" content="ats-fill — fill the form, keep the receipts" />
 <meta property="og:description" content="The same 20 questions on 47 different forms. ats-fill fills them from your own profile, you review and submit, and every application lands in a local pipeline." />
 <meta property="og:type" content="website" />
-<meta property="og:image" content="https://nitsuah.github.io/ats-fill/assets/poster.jpg" />
+<meta property="og:url" content="https://nitsuah.github.io/ats-fill/" />
+<meta property="og:image" content="https://nitsuah.github.io/ats-fill/assets/og-share.jpg" />
+<meta property="og:image:width" content="1200" />
+<meta property="og:image:height" content="630" />
 <meta name="twitter:card" content="summary_large_image" />
+<meta name="twitter:title" content="ats-fill — fill the form, keep the receipts" />
+<meta name="twitter:description" content="The same 20 questions on 47 different forms. ats-fill fills them from your own profile, you review and submit, and every application lands in a local pipeline." />
+<meta name="twitter:image" content="https://nitsuah.github.io/ats-fill/assets/og-share.jpg" />
 <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 24 24%22><g transform=%22rotate(-5 12 12)%22><rect x=%223%22 y=%223%22 width=%2218%22 height=%2218%22 rx=%222.5%22 fill=%22%23c4411a%22/><path d=%22m7.5 12.5 3 3 6-7%22 fill=%22none%22 stroke=%22%23fff%22 stroke-width=%222.4%22 stroke-linecap=%22round%22 stroke-linejoin=%22round%22/></g></svg>" />
 <link rel="preload" href="assets/fonts/fraunces-wght.woff2" as="font" type="font/woff2" crossorigin />
 <link rel="preload" href="assets/fonts/instrument-sans-wght.woff2" as="font" type="font/woff2" crossorigin />
@@ -44,7 +51,7 @@
       <p class="eyebrow"><span class="dia" aria-hidden="true"></span>Local-first application assistant</p>
       <h1 class="hero-headline">The same 20 questions on 47 different forms.</h1>
       <p class="tagline">Fill the form. Keep the receipts.</p>
-      <p class="hero-sub">ats-fill is a Chrome extension that fills <strong>Greenhouse, Lever, Ashby and Workday</strong> application forms from the profile you saved once. <strong>You review every field and press submit.</strong> Every application lands in a pipeline that lives in your browser, not on someone's server.</p>
+      <p class="hero-sub">ats-fill is a Chrome extension that fills <strong>Greenhouse, Lever, Ashby and LinkedIn Easy Apply</strong> forms from the profile you saved once, with partial support for Workday, iCIMS, Jobvite and other application forms. <strong>You review every field and press submit.</strong> Every application lands in a pipeline that lives in your browser, not on someone's server.</p>
       <div class="hero-ctas">
         <a class="btn btn-primary" href="https://chromewebstore.google.com/detail/ats-fill/amofaeopfmaicbiijgjaojenedkkadmn" target="_blank" rel="noopener"><svg class="btn-icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="10" fill="none" stroke="currentColor" stroke-width="2"/><circle cx="12" cy="12" r="4" fill="currentColor"/><path d="M12 8h9M8.5 14 4 6.2M15.5 14 11 21.8" fill="none" stroke="currentColor" stroke-width="2"/></svg> Add to Chrome</a>
         <a class="btn btn-ghost" href="https://github.com/nitsuah/ats-fill" target="_blank" rel="noopener">View on GitHub <span aria-hidden="true">↗</span></a>
@@ -69,7 +76,7 @@
   </div>
 
   <ul class="stats" aria-label="At a glance">
-    <li><span class="stat-num">4</span><span class="stat-label">ATS platforms with form fill: Greenhouse, Lever, Ashby, Workday</span></li>
+    <li><span class="stat-num">4</span><span class="stat-label">ATS platforms with full form fill: Greenhouse, Lever, Ashby, LinkedIn Easy Apply</span></li>
     <li><span class="stat-num">16</span><span class="stat-label">job boards searched from one panel</span></li>
     <li><span class="stat-num">0</span><span class="stat-label">servers, accounts or subscriptions</span></li>
     <li><span class="stat-num">1</span><span class="stat-label">person who presses submit: you</span></li>
