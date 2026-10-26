@@ -96,7 +96,7 @@ Built and validated from each release tag by the release workflow (see [docs/CHR
 ## Privacy Policy
 
 **Privacy Policy URL**
-https://github.com/nitsuah/ats-fill/blob/main/docs/PRIVACY.md
+https://nitsuah.github.io/ats-fill/privacy.html
 
 ## Distribution
 
