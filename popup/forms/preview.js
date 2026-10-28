@@ -182,7 +182,7 @@ function renderPreviewReport(report) {
       const reason = typeof item === 'object' ? (item.reason || '') : '';
       const payload = encodeURIComponent(JSON.stringify(item));
       return `<li>
-        <button class="btn btn-ghost btn-xs review-jump-btn" data-payload="${escAttr(payload)}">${esc(label)}</button>
+        <button class="btn btn-ghost btn-xs review-jump-btn" data-payload="${escAttr(payload)}" title="${escAttr(label)}">${esc(label)}</button>
         ${reason ? `<span class="review-reason">${esc(reason)}</span>` : ''}
       </li>`;
     }).join('');
@@ -219,7 +219,7 @@ export function renderFillReport(report) {
       const reason = typeof item === 'object' ? (item.reason || '') : '';
       const payload = encodeURIComponent(JSON.stringify(item));
       return `<li>
-        <button class="btn btn-ghost btn-xs review-jump-btn" data-payload="${escAttr(payload)}">${esc(label)}</button>
+        <button class="btn btn-ghost btn-xs review-jump-btn" data-payload="${escAttr(payload)}" title="${escAttr(label)}">${esc(label)}</button>
         ${reason ? `<span class="review-reason">${esc(reason)}</span>` : ''}
       </li>`;
     }).join('');

@@ -1118,6 +1118,7 @@ body:not([data-standalone="true"]) .main-status-panel { padding: 14px; }
   flex-wrap: wrap;
   align-items: baseline;
   gap: 4px 10px;
+  min-width: 0;
   max-width: 100%;
   padding-left: 16px;
   position: relative;
