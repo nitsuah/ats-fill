@@ -29,62 +29,83 @@ test('setup profile workspace remains visible for first-load state', async ({ pa
   await expect(page.locator('#profile-privacy-section')).toHaveCount(1);
 });
 
-test('long unresolved question labels truncate without overflowing the report card', async () => {
-  const LONG = 'Describe a production incident you personally handled end to end, including the customer impact, the root cause you found, the remediation you shipped, and what you would change about the on-call process so it does not happen again in the future.';
-  const SHORT = 'Why are you interested in this role?';
+const LAYOUTS = [
+  { name: 'toolbar popup', query: '', width: 440, height: 1400 },
+  { name: 'standalone phone', query: '?standalone=1', width: 390, height: 844 },
+  { name: 'standalone desktop', query: '?standalone=1', width: 1280, height: 900 },
+];
 
-  const { context, extensionId } = await launchExtensionContext(EXTENSION_PATH, 'playwright-long-label-profile');
-  const page = await context.newPage();
-  await page.setViewportSize({ width: 440, height: 900 });
+for (const layout of LAYOUTS) {
+  test(`long unresolved question labels truncate without overflowing (${layout.name}, ${layout.width}px)`, async () => {
+    const LONG = 'Describe a production incident you personally handled end to end, including the customer impact, the root cause you found, the remediation you shipped, and what you would change about the on-call process so it does not happen again in the future.';
+    const SHORT = 'Why are you interested in this role?';
 
-  await page.goto(`chrome-extension://${extensionId}/popup/popup.html?standalone=1`);
-  await page.evaluate(async (report) => {
-    await chrome.storage.local.set({
-      settings: { privacy_consent: true },
-      resume: { structured: { name: 'Jordan Morgan' } },
-      applications: [{ id: 'app-1', status: 'drafted' }],
-      lastTrackedApplicationId: 'app-1',
-      lastFillReport: report,
-    });
-  }, {
-    filled: 3,
-    preserved: 0,
-    unresolved: [
-      { label: LONG, reason: 'No saved answer — review before submitting' },
-      { label: SHORT, reason: 'No saved answer — review before submitting' },
-    ],
+    const { context, extensionId } = await launchExtensionContext(EXTENSION_PATH, `playwright-long-label-${layout.width}-${layout.query ? 's' : 't'}`);
+    try {
+      const page = await context.newPage();
+      await page.setViewportSize({ width: layout.width, height: layout.height });
+
+      await page.goto(`chrome-extension://${extensionId}/popup/popup.html${layout.query}`);
+      await page.evaluate(async (report) => {
+        await chrome.storage.local.set({
+          settings: { privacy_consent: true },
+          resume: { structured: { name: 'Jordan Morgan' } },
+          applications: [{ id: 'app-1', status: 'drafted' }],
+          lastTrackedApplicationId: 'app-1',
+          lastFillReport: report,
+        });
+      }, {
+        filled: 3,
+        preserved: 0,
+        unresolved: [
+          { label: LONG, reason: 'No saved answer — review before submitting' },
+          { label: SHORT, reason: 'No saved answer — review before submitting' },
+        ],
+      });
+      await page.reload();
+
+      const buttons = page.locator('#fill-report-unresolved .review-jump-btn');
+      await expect(buttons).toHaveCount(2);
+
+      const longBtn = buttons.nth(0);
+      const shortBtn = buttons.nth(1);
+
+      // Accessible name stays the full question even though it is visually clipped.
+      await expect(longBtn).toHaveAccessibleName(LONG);
+      await expect(longBtn).toHaveAttribute('title', LONG);
+      await expect(shortBtn).toHaveAttribute('title', SHORT);
+
+      const metrics = await page.evaluate(() => {
+        const [long, short] = document.querySelectorAll('#fill-report-unresolved .review-jump-btn');
+        const card = document.querySelector('#fill-report-card');
+        return {
+          docScroll: document.documentElement.scrollWidth,
+          docClient: document.documentElement.clientWidth,
+          cardRight: Math.round(card.getBoundingClientRect().right),
+          longClips: long.scrollWidth > long.clientWidth,
+          shortClips: short.scrollWidth > short.clientWidth,
+        };
+      });
+
+      expect(metrics.docScroll).toBeLessThanOrEqual(metrics.docClient);
+      expect(metrics.cardRight).toBeLessThanOrEqual(metrics.docClient);
+      expect(metrics.longClips).toBe(true);
+      expect(metrics.shortClips).toBe(false);
+
+      // Real keyboard navigation: Shift+Tab from the next button reaches the long-label button.
+      await shortBtn.focus();
+      await page.keyboard.press('Shift+Tab');
+      await expect(longBtn).toBeFocused();
+
+      // Enter and Space both activate the jump handler (no page tab here, so it reports an error status).
+      for (const key of ['Enter', 'Space']) {
+        await page.evaluate(() => { document.getElementById('fill-status').textContent = ''; });
+        await longBtn.focus();
+        await page.keyboard.press(key);
+        await expect(page.locator('#fill-status')).not.toHaveText('');
+      }
+    } finally {
+      await context.close();
+    }
   });
-  await page.reload();
-
-  const buttons = page.locator('#fill-report-unresolved .review-jump-btn');
-  await expect(buttons).toHaveCount(2);
-
-  const longBtn = buttons.nth(0);
-  const shortBtn = buttons.nth(1);
-
-  // Accessible name stays the full question even though it is visually clipped.
-  await expect(longBtn).toHaveAccessibleName(LONG);
-  await expect(longBtn).toHaveAttribute('title', LONG);
-  await expect(shortBtn).toHaveAttribute('title', SHORT);
-
-  const metrics = await page.evaluate(() => {
-    const [long, short] = document.querySelectorAll('#fill-report-unresolved .review-jump-btn');
-    const card = document.querySelector('#fill-report-card');
-    return {
-      docScroll: document.documentElement.scrollWidth,
-      docClient: document.documentElement.clientWidth,
-      cardRight: Math.round(card.getBoundingClientRect().right),
-      longClips: long.scrollWidth > long.clientWidth,
-      shortClips: short.scrollWidth > short.clientWidth,
-      longFocusable: (long.focus(), document.activeElement === long),
-    };
-  });
-
-  expect(metrics.docScroll).toBeLessThanOrEqual(metrics.docClient);
-  expect(metrics.cardRight).toBeLessThanOrEqual(metrics.docClient);
-  expect(metrics.longClips).toBe(true);
-  expect(metrics.shortClips).toBe(false);
-  expect(metrics.longFocusable).toBe(true);
-
-  await context.close();
-});
+}
