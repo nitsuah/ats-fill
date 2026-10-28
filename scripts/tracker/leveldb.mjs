@@ -217,6 +217,7 @@ export function readExtensionStorage(env = process.env) {
   const snap = mkdtempSync(join(tmpdir(), 'ats-fill-ldb-'));
   try {
     for (const name of readdirSync(dir)) {
+      if (name === 'lost') continue;
       if (name === 'LOCK') continue;
       copyFileSync(join(dir, name), join(snap, name));
     }
