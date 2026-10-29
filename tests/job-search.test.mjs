@@ -704,6 +704,31 @@ test('searchJobs fetches and normalizes results from a custom RSS source', async
   }
 });
 
+test('custom RSS fetch stops reading and cancels the stream once the byte budget is exceeded', async () => {
+  let cancelled = false;
+  let textCalled = false;
+  const body = new ReadableStream({
+    start(controller) {
+      controller.enqueue(new Uint8Array(600_000));
+      controller.enqueue(new Uint8Array(600_000));
+    },
+    cancel() { cancelled = true; },
+  });
+  const fetchImpl = async () => ({
+    ok: true,
+    headers: { get: () => null },
+    body,
+    text: async () => { textCalled = true; return ''; },
+  });
+  const config = { customSources: [{ id: 'custom-jobs4tn', label: 'JOBS4TN', url: 'https://jobs4tn.gov/rss' }] };
+  await assert.rejects(
+    () => searchJobs('analyst', { fetchImpl, config, sources: ['custom-jobs4tn'] }),
+    /unavailable/i
+  );
+  assert.equal(cancelled, true);
+  assert.equal(textCalled, false);
+});
+
 test('normalizeLinkedInJob — maps entityUrn to id and url, uses companyMap', () => {
   const raw = {
     entityUrn: 'urn:li:fsd_jobPosting:9876543',
