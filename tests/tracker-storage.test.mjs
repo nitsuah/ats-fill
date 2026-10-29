@@ -8,6 +8,8 @@ import {
   importApplicationsFromCsv,
   updateApplication,
   updateApplicationStatus,
+  MAX_IMPORT_CSV_CHARS,
+  MAX_IMPORT_ROWS,
 } from '../lib/tracker.js';
 
 function installChromeStorageMock(seed = {}) {
@@ -76,4 +78,56 @@ test('tracker CRUD helpers persist and normalize stored applications', async () 
   const finalApps = await getApplications();
   assert.equal(finalApps.length, 1);
   assert.equal(finalApps[0].company, 'Northwind');
+});
+
+test('importApplicationsFromCsv: single write for bulk import', async () => {
+  const state = installChromeStorageMock({ applications: [] });
+  let sets = 0;
+  const origSet = global.chrome.storage.local.set;
+  global.chrome.storage.local.set = async (v) => {
+    sets++;
+    return origSet(v);
+  };
+
+  const rows = Array.from({ length: 50 }, (_, i) =>
+    `Co${i},Role${i},Applied,https://example.com/j/${i}`
+  ).join('\n');
+  const csv = `Company,Role Title,Status,URL\n${rows}`;
+  const result = await importApplicationsFromCsv(csv);
+
+  assert.equal(result.imported, 50);
+  assert.equal(sets, 1);
+  assert.equal(state.applications.length, 50);
+});
+
+test('importApplicationsFromCsv: row cap at MAX_IMPORT_ROWS', async () => {
+  const state = installChromeStorageMock({ applications: [] });
+  const rows = Array.from({ length: MAX_IMPORT_ROWS + 1 }, (_, i) =>
+    `Co${i},Role${i},Applied,https://example.com/j/${i}`
+  ).join('\n');
+  const csv = `Company,Role Title,Status,URL\n${rows}`;
+  const result = await importApplicationsFromCsv(csv);
+
+  assert.equal(result.imported, MAX_IMPORT_ROWS);
+  assert.equal(result.skipped, 1);
+  assert.equal(result.warnings.length, 1);
+  assert.match(result.warnings[0], /Only the first/);
+  assert.equal(state.applications.length, MAX_IMPORT_ROWS);
+});
+
+test('importApplicationsFromCsv: size cap throws', async () => {
+  const huge = 'a'.repeat(MAX_IMPORT_CSV_CHARS + 1);
+  await assert.rejects(
+    () => importApplicationsFromCsv(huge),
+    /too large/
+  );
+});
+
+test('importApplicationsFromCsv: duplicate URLs in one CSV collapse to one stored application', async () => {
+  const state = installChromeStorageMock({ applications: [] });
+  const csv = `Company,Role Title,Status,URL\nAcme,Role1,Applied,https://example.com/same\nAcme,Role2,Applied,https://example.com/same`;
+  const result = await importApplicationsFromCsv(csv);
+
+  assert.equal(result.imported, 2);
+  assert.equal(state.applications.length, 1);
 });
