@@ -4,6 +4,7 @@
 import { sendMessage } from '../../lib/utils.js';
 import { renderTracker } from './tracker-ui.js';
 import { showScreen } from '../ux/navigation.js';
+import { csvCell } from '../../lib/csv-cell.js';
 
 function setTrackerScreenStatus(msg, type = '') {
   const el = document.getElementById('tracker-status');
@@ -31,7 +32,7 @@ export function exportCsv(applications) {
       a.url,
       a.description || a.jd_snippet || '',
     ]
-      .map((v) => '"' + String(v || '').replace(/"/g, '""') + '"')
+      .map((v) => csvCell(v))
       .join(',')
   );
   const csv = [header, ...rows].join('\n');
