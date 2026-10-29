@@ -3,6 +3,7 @@
 
 import { $, esc, escAttr, sendMessage, formatDate, formatDateInput, formatSavedTimestamp, renderStatusOptions, renderEmploymentTypeOptions } from '../../lib/utils.js';
 import { normalizeApplicationStatus } from '../../lib/tracker.js';
+import { MAX_SCORECARD_LENGTH, parseScoreRatio } from '../../lib/score-ratio.js';
 import { expandedTrackerIds, trackerViewState } from './tracker-state.js';
 import { getTrackingStatusMeta, TRACKER_STATUS_ORDER } from './tracker-meta.js';
 
@@ -742,7 +743,7 @@ function renderCardSummaryDetailsInner(app = {}) {
 }
 
 function getScoreDisplay(value = '') {
-  const raw = String(value || '').trim();
+  const raw = String(value || '').trim().slice(0, MAX_SCORECARD_LENGTH);
   if (!raw) return null;
 
   const zeroText = /\bzero\b|\b0\s*stars?\b/i.test(raw);
@@ -750,13 +751,13 @@ function getScoreDisplay(value = '') {
     return { stars: '☆☆☆☆☆', raw: 'ZERO stars', isZero: true };
   }
 
-  const ratioMatch = raw.match(/(\d+(?:\.\d+)?)\s*\/\s*(\d+(?:\.\d+)?)/);
+  const ratio = parseScoreRatio(raw);
   let score = 0;
   let max = 0;
 
-  if (ratioMatch) {
-    score = Number(ratioMatch[1]);
-    max = Number(ratioMatch[2]);
+  if (ratio) {
+    score = ratio.score;
+    max = ratio.max;
   } else {
     const numMatch = raw.match(/\d+(?:\.\d+)?/);
     if (!numMatch) return null;
@@ -798,17 +799,16 @@ function getCompanyInitial(company = '') {
 }
 
 function getScorecardUiState(value = '') {
-  const raw = String(value || '').trim();
+  const raw = String(value || '').trim().slice(0, MAX_SCORECARD_LENGTH);
   if (!raw) return { selectValue: '', otherText: '' };
 
   if (/\bzero\b|\b0\s*stars?\b/i.test(raw)) {
     return { selectValue: '0', otherText: '' };
   }
 
-  const ratioMatch = raw.match(/(\d+(?:\.\d+)?)\s*\/\s*(\d+(?:\.\d+)?)/);
-  if (ratioMatch) {
-    const score = Number(ratioMatch[1]);
-    const max = Number(ratioMatch[2]);
+  const ratio = parseScoreRatio(raw);
+  if (ratio) {
+    const { score, max } = ratio;
     if (Number.isFinite(score) && Number.isFinite(max) && max > 0) {
       const stars = Math.max(0, Math.min(5, Math.round((score / max) * 5)));
       return { selectValue: String(stars), otherText: '' };
