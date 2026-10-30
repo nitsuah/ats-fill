@@ -19,6 +19,32 @@ import { join } from 'node:path';
 
 export const STORE_EXTENSION_ID = 'amofaeopfmaicbiijgjaojenedkkadmn';
 
+const SENSITIVE_FIELDS = new Set([
+  'secretfield',
+  'apikey',
+  'apisecret',
+  'accesstoken',
+  'refreshtoken',
+  'password',
+  'secret',
+  'token',
+  'privatekey',
+]);
+
+function normalizeKey(k) {
+  return k.replace(/\u200B|\u200C|\u200D|\uFEFF/g, '').toLowerCase();
+}
+
+function redactSecrets(obj) {
+  if (!obj || typeof obj !== 'object') return obj;
+  const out = Array.isArray(obj) ? [] : {};
+  for (const [k, v] of Object.entries(obj)) {
+    if (SENSITIVE_FIELDS.has(normalizeKey(k))) continue;
+    out[k] = redactSecrets(v);
+  }
+  return out;
+}
+
 function userDataDirs() {
   const home = homedir();
   if (process.platform === 'win32') {
@@ -149,15 +175,16 @@ export async function withExtensionPage(fn, { env = process.env } = {}) {
 }
 
 /** Send one message through the extension's router and unwrap the result. */
-export function sendMessage(evaluate, type, payload) {
-  const msg = JSON.stringify({ type, payload });
-  return evaluate(`chrome.runtime.sendMessage(${msg}).then((res) => {
-    if (res && res.success === false) throw new Error(res.error || 'ats-fill rejected the request');
-    return res;
-  })`);
+export async function sendMessage(evaluate, type, payload) {
+  const redactedPayload = redactSecrets(payload);
+  const msg = JSON.stringify({ type, payload: redactedPayload });
+  const res = await evaluate(`chrome.runtime.sendMessage(${msg})`);
+  if (res && res.success === false) throw new Error(res.error || 'ats-fill rejected the request');
+  return redactSecrets(res);
 }
 
 /** Read the tracker straight from storage (read-only; writes go through the router). */
-export function readApplications(evaluate) {
-  return evaluate(`chrome.storage.local.get('applications').then((d) => d.applications || [])`);
+export async function readApplications(evaluate) {
+  const apps = await evaluate(`chrome.storage.local.get('applications').then((d) => d.applications || [])`);
+  return redactSecrets(apps);
 }
