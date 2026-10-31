@@ -224,22 +224,20 @@ function ldText(value) {
 
 function stripLdHtml(value) {
   return String(value || '')
-    .replace(/&amp;/g, '&')
-    .replace(/&lt;/g, '<')
-    .replace(/&gt;/g, '>')
-    .replace(/&nbsp;/g, ' ')
-    .replace(/&#\d+;/g, (match) => {
-      const num = parseInt(match.replace(/[^0-9]/g, ''), 10);
-      return isNaN(num) ? '' : String.fromCharCode(num);
-    })
-    .replace(/&quot;/g, '"')
-    .replace(/&apos;/g, "'")
-    .replace(/&#[xX][0-9a-fA-F]+;/g, (match) => {
-      const hex = match.replace(/[^0-9a-fA-F]/g, '');
-      const code = parseInt(hex, 16);
-      return isNaN(code) ? '' : String.fromCharCode(code);
-    })
     .replace(/<[^>]*>/g, ' ')
+    .replace(/&(?:amp|lt|gt|nbsp|#\d+|#x[0-9a-fA-F]+|quot|apos);/g, (m) => {
+      switch (m) {
+        case '&': return '&';
+        case '<': return '<';
+        case '>': return '>';
+        case '&nbsp;': return ' ';
+        case '"': return '"';
+        case '&apos;': return "'";
+      }
+      if (m.startsWith('&#x')) return String.fromCharCode(parseInt(m.slice(3, -1), 16));
+      if (m.startsWith('&#')) return String.fromCharCode(parseInt(m.slice(2, -1), 10));
+      return m;
+    })
     .replace(/\s+/g, ' ')
     .trim();
 }

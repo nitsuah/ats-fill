@@ -576,8 +576,19 @@ function ldText(value) {
 function stripLdHtml(value) {
   return String(value || '')
     .replace(/<[^>]*>/g, ' ')
-    .replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>')
-    .replace(/&nbsp;/g, ' ').replace(/&#\d+;/g, ' ')
+    .replace(/&(?:amp|lt|gt|nbsp|#\d+|#x[0-9a-fA-F]+|quot|apos);/g, (m) => {
+      switch (m) {
+        case '&': return '&';
+        case '<': return '<';
+        case '>': return '>';
+        case '&nbsp;': return ' ';
+        case '"': return '"';
+        case '&apos;': return "'";
+      }
+      if (m.startsWith('&#x')) return String.fromCharCode(parseInt(m.slice(3, -1), 16));
+      if (m.startsWith('&#')) return String.fromCharCode(parseInt(m.slice(2, -1), 10));
+      return m;
+    })
     .replace(/\s+/g, ' ')
     .trim();
 }

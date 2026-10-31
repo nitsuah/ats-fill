@@ -307,8 +307,9 @@ test('normalizeMuseJob maps The Muse shape and strips HTML', () => {
 test('searchJobs only queries the selected sources', async () => {
   const hits = [];
   const fetchImpl = async (url) => {
-    if (url.includes('remotive.com')) { hits.push('remotive'); return { ok: true, json: async () => ({ jobs: [] }) }; }
-    if (url.includes('arbeitnow.com')) { hits.push('arbeitnow'); return { ok: true, json: async () => ({ data: [] }) }; }
+    const u = new URL(url);
+    if (u.hostname.includes('remotive.com')) { hits.push('remotive'); return { ok: true, json: async () => ({ jobs: [] }) }; }
+    if (u.hostname.includes('arbeitnow.com')) { hits.push('arbeitnow'); return { ok: true, json: async () => ({ data: [] }) }; }
     return { ok: true, json: async () => ({}) };
   };
   await searchJobs('dev', { fetchImpl, sources: ['arbeitnow'] });
@@ -810,12 +811,13 @@ test('listJobSources — hn-hiring, weworkremotely, remoteco present and availab
 test('searchJobs includes Remote OK, Jobicy, and Working Nomads as default active sources', async () => {
   const queried = [];
   const fetchImpl = async (url, opts = {}) => {
-    if (url.includes('remoteok.com')) { queried.push('remoteok'); return { ok: true, json: async () => ([{ legal: true }]) }; }
-    if (url.includes('jobicy.com')) { queried.push('jobicy'); return { ok: true, json: async () => ({ jobs: [] }) }; }
-    if (url.includes('workingnomads.com')) { queried.push('workingnomads'); return { ok: true, json: async () => ([]) }; }
-    if (url.includes('remotive.com')) return { ok: true, json: async () => ({ jobs: [] }) };
-    if (url.includes('arbeitnow.com')) return { ok: true, json: async () => ({ data: [] }) };
-    if (url.includes('themuse.com')) return { ok: true, json: async () => ({ results: [] }) };
+    const u = new URL(url);
+    if (u.hostname.includes('remoteok.com')) { queried.push('remoteok'); return { ok: true, json: async () => ([{ legal: true }]) }; }
+    if (u.hostname.includes('jobicy.com')) { queried.push('jobicy'); return { ok: true, json: async () => ({ jobs: [] }) }; }
+    if (u.hostname.includes('workingnomads.com')) { queried.push('workingnomads'); return { ok: true, json: async () => ([]) }; }
+    if (u.hostname.includes('remotive.com')) return { ok: true, json: async () => ({ jobs: [] }) };
+    if (u.hostname.includes('arbeitnow.com')) return { ok: true, json: async () => ({ data: [] }) };
+    if (u.hostname.includes('themuse.com')) return { ok: true, json: async () => ({ results: [] }) };
     return { ok: true, json: async () => ({}) };
   };
 
@@ -900,10 +902,11 @@ test('normalizeIndeedJob handles HTML entities and malformed data', () => {
 test('searchJobs includes Indeed as default active source', async () => {
   const queried = [];
   const fetchImpl = async (url, opts = {}) => {
-    if (url.includes('indeed.com/rss')) { queried.push('indeed'); return { ok: true, text: async () => `<?xml version="1.0"?><rss><channel><item><title>Test</title><link>https://indeed.com/viewjob?jk=1</link><pubDate>Mon, 27 Jun 2026 10:00:00 GMT</pubDate><description><b>Company:</b> Test<br/><b>Location:</b> NYC</description><guid>1</guid></item></channel></rss>` }; }
-    if (url.includes('remotive.com')) return { ok: true, json: async () => ({ jobs: [] }) };
-    if (url.includes('arbeitnow.com')) return { ok: true, json: async () => ({ data: [] }) };
-    if (url.includes('themuse.com')) return { ok: true, json: async () => ({ results: [] }) };
+    const u = new URL(url);
+    if (u.hostname.includes('indeed.com') && u.pathname.includes('/rss')) { queried.push('indeed'); return { ok: true, text: async () => `<?xml version="1.0"?><rss><channel><item><title>Test</title><link>https://indeed.com/viewjob?jk=1</link><pubDate>Mon, 27 Jun 2026 10:00:00 GMT</pubDate><description><b>Company:</b> Test<br/><b>Location:</b> NYC</description><guid>1</guid></item></channel></rss>` }; }
+    if (u.hostname.includes('remotive.com')) return { ok: true, json: async () => ({ jobs: [] }) };
+    if (u.hostname.includes('arbeitnow.com')) return { ok: true, json: async () => ({ data: [] }) };
+    if (u.hostname.includes('themuse.com')) return { ok: true, json: async () => ({ results: [] }) };
     return { ok: true, json: async () => ({}) };
   };
 
