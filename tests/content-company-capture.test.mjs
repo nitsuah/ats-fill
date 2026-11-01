@@ -99,3 +99,13 @@ test('titles that only look like prefixes, and numbers outside Workday, are left
     body: '<h1>Applications Engineer</h1>',
   }), { company: '84 Lumber', title: 'Applications Engineer' });
 });
+
+
+test('Greenhouse JSON-LD company decodes uppercase-X numeric entities', () => {
+  assert.deepEqual(capture({
+    url: 'https://boards.greenhouse.io/embed/job_app?for=fabrikam&token=1',
+    title: 'Job Application for Data Engineer at Fabrikam',
+    body: '<h1 class="app-title">Data Engineer</h1>',
+    jsonLd: { '@type': 'JobPosting', title: 'Data Engineer', hiringOrganization: { name: 'Fabrikam &#X41; Labs' } },
+  }), { company: 'Fabrikam A Labs', title: 'Data Engineer' });
+});
