@@ -166,7 +166,8 @@ test('dedupeJobs removes same company+title and same url duplicates', () => {
 
 test('searchJobs merges sources, dedupes, sorts by recency, and reports source status', async () => {
   const fetchImpl = async (url) => {
-    if (url.includes('remotive.com')) {
+    const u = new URL(url);
+    if (u.hostname === 'remotive.com' || u.hostname.endsWith('.remotive.com')) {
       return {
         ok: true,
         json: async () => ({ jobs: [
@@ -196,7 +197,8 @@ test('searchJobs merges sources, dedupes, sorts by recency, and reports source s
 test('searchJobs applies the query to Remotive results, which ignore the search parameter', async () => {
   let remotiveUrl = '';
   const fetchImpl = async (url) => {
-    if (url.includes('remotive.com')) {
+    const u = new URL(url);
+    if (u.hostname === 'remotive.com' || u.hostname.endsWith('.remotive.com')) {
       remotiveUrl = url;
       // Remotive returns the same listings whatever `search` says.
       return {
@@ -220,13 +222,15 @@ test('searchJobs applies the query to Remotive results, which ignore the search 
 test('searchJobs includes Adzuna only when credentials are supplied', async () => {
   let adzunaCalled = false;
   const fetchImpl = async (url) => {
-    if (url.includes('api.adzuna.com')) {
+    const u = new URL(url);
+    if (u.hostname === 'api.adzuna.com') {
       adzunaCalled = true;
       return { ok: true, json: async () => ({ results: [
         { id: 7, title: 'ML Engineer', company: { display_name: 'Initech' }, location: { display_name: 'Remote' }, redirect_url: 'https://adzuna/7', created: '2026-05-29T00:00:00Z' },
       ] }) };
     }
-    if (url.includes('remotive.com')) return { ok: true, json: async () => ({ jobs: [] }) };
+    const u2 = new URL(url);
+    if (u2.hostname === 'remotive.com' || u2.hostname.endsWith('.remotive.com')) return { ok: true, json: async () => ({ jobs: [] }) };
     return { ok: true, json: async () => ({ data: [] }) };
   };
 
@@ -682,7 +686,8 @@ test('searchJobs fetches and normalizes results from a custom RSS source', async
     </item>
   </channel></rss>`;
   const fetchImpl = async (url) => {
-    if (String(url).includes('jobs4tn.gov')) {
+    const u = new URL(url);
+    if (u.hostname === 'jobs4tn.gov' || u.hostname.endsWith('.jobs4tn.gov')) {
       return { ok: true, headers: { get: () => null }, text: async () => rssXml };
     }
     return { ok: true, json: async () => ({ jobs: [], data: [] }) };

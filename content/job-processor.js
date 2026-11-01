@@ -98,7 +98,8 @@ export async function handleFocusField(target = {}) {
 /** Handle FETCH_LINKEDIN_JOBS message */
 export async function handleFetchLinkedInJobs(payload, sendResponse) {
   // Only allow on LinkedIn domains to prevent CSRF token leakage
-  if (!location.hostname.endsWith('linkedin.com')) {
+  const hostname = location.hostname;
+  if (hostname !== 'linkedin.com' && !hostname.endsWith('.linkedin.com')) {
     sendResponse({ success: false, error: 'LinkedIn job fetch only allowed on LinkedIn domains' });
     return;
   }
