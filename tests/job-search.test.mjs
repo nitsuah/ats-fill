@@ -906,6 +906,24 @@ test('normalizeIndeedJob handles HTML entities and malformed data', () => {
   assert.equal(job.salary_interval, 'hourly');
 });
 
+test('normalizeIndeedJob decodes uppercase-X numeric entities', () => {
+  const rssItem = {
+    querySelector: (sel) => {
+      const data = {
+        title: { textContent: 'Engineer' },
+        link: { textContent: 'https://www.indeed.com/viewjob?jk=upperx123' },
+        pubDate: { textContent: 'Mon, 27 Jun 2026 10:00:00 GMT' },
+        description: { textContent: '<b>Company:</b> Test &#X41; Co<br/><b>Location:</b> Austin, TX<br/>No salary listed' },
+        guid: { textContent: 'upperx123' },
+      };
+      return data[sel] || null;
+    },
+  };
+  const job = normalizeIndeedJob(rssItem);
+  assert.equal(job.company, 'Test A Co');
+  assert.equal(job.location, 'Austin, TX');
+});
+
 test('searchJobs includes Indeed as default active source', async () => {
   const queried = [];
   const fetchImpl = async (url, opts = {}) => {
