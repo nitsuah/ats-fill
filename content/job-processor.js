@@ -224,7 +224,6 @@ function ldText(value) {
 
 function stripLdHtml(value) {
   return String(value || '')
-    .replace(/<[^>]*>/g, ' ')
     .replace(/&(?:amp|lt|gt|nbsp|#\d+|#x[0-9a-fA-F]+|quot|apos);/g, (m) => {
       switch (m) {
         case "&" + "amp;": return "&";
@@ -234,7 +233,7 @@ function stripLdHtml(value) {
         case "&" + "quot;": return '"';
         case "&apos;": return "'";
       }
-      if (m.startsWith("&#x")) {
+      if (m.startsWith("&#x") || m.startsWith("&#X")) {
         const cp = parseInt(m.slice(3, -1), 16);
         return cp <= 0x10FFFF ? String.fromCodePoint(cp) : " ";
       }
@@ -244,6 +243,7 @@ function stripLdHtml(value) {
       }
       return " ";
     })
+    .replace(/<[^>]*>/g, ' ')
     .replace(/\s+/g, ' ')
     .trim();
 }
