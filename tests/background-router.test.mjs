@@ -563,7 +563,16 @@ test('GENERATE_INTERVIEW_ANSWER calls Gemini and returns the trimmed suggestion'
     assert.match(urlText, /\/gemini-2\.5-flash:generateContent\?key=test-interview-answer-key$/);
     assert.equal(options.method, 'POST');
     const request = JSON.parse(options.body);
-    assert.match(request.contents[0].parts[0].text, /QUESTION: "Why this role\?"/);
+    const prompt = request.contents[0].parts[0].text;
+    const startMarker = '<<<UNTRUSTED_DATA>>>';
+    const endMarker = '<<<END_UNTRUSTED_DATA>>>';
+    const start = prompt.indexOf(startMarker);
+    const end = prompt.indexOf(endMarker, start + startMarker.length);
+    assert.ok(start >= 0 && end > start, 'question must be inside the fixed untrusted data block');
+    const data = JSON.parse(prompt.slice(start + startMarker.length, end).trim());
+    assert.equal(data.question, 'Why this role?');
+    assert.ok(!prompt.slice(0, start).includes('Why this role?'), 'question must not appear in trusted prompt prose');
+    assert.ok(!prompt.slice(end + endMarker.length).includes('Why this role?'), 'question must not appear after the untrusted data block');
     return {
       ok: true,
       status: 200,
