@@ -575,9 +575,26 @@ function ldText(value) {
 
 function stripLdHtml(value) {
   return String(value || '')
+    .replace(/&(?:amp|lt|gt|nbsp|#\d+|#x[0-9a-fA-F]+|quot|apos);/g, (m) => {
+      switch (m) {
+        case "&" + "amp;": return "&";
+        case "&" + "lt;": return "<";
+        case "&" + "gt;": return ">";
+        case "&nbsp;": return " ";
+        case "&" + "quot;": return '"';
+        case "&apos;": return "'";
+      }
+      if (m.startsWith("&#x") || m.startsWith("&#X")) {
+        const cp = parseInt(m.slice(3, -1), 16);
+        return cp <= 0x10FFFF ? String.fromCodePoint(cp) : " ";
+      }
+      if (m.startsWith("&#")) {
+        const cp = parseInt(m.slice(2, -1), 10);
+        return cp <= 0x10FFFF ? String.fromCodePoint(cp) : " ";
+      }
+      return " ";
+    })
     .replace(/<[^>]*>/g, ' ')
-    .replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>')
-    .replace(/&nbsp;/g, ' ').replace(/&#\d+;/g, ' ')
     .replace(/\s+/g, ' ')
     .trim();
 }
