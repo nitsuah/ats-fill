@@ -166,7 +166,8 @@ test('dedupeJobs removes same company+title and same url duplicates', () => {
 
 test('searchJobs merges sources, dedupes, sorts by recency, and reports source status', async () => {
   const fetchImpl = async (url) => {
-    if (url.includes('remotive.com')) {
+    const u = new URL(url);
+    if (u.hostname === 'remotive.com' || u.hostname.endsWith('.remotive.com')) {
       return {
         ok: true,
         json: async () => ({ jobs: [
@@ -196,7 +197,8 @@ test('searchJobs merges sources, dedupes, sorts by recency, and reports source s
 test('searchJobs applies the query to Remotive results, which ignore the search parameter', async () => {
   let remotiveUrl = '';
   const fetchImpl = async (url) => {
-    if (url.includes('remotive.com')) {
+    const u = new URL(url);
+    if (u.hostname === 'remotive.com' || u.hostname.endsWith('.remotive.com')) {
       remotiveUrl = url;
       // Remotive returns the same listings whatever `search` says.
       return {
@@ -220,13 +222,15 @@ test('searchJobs applies the query to Remotive results, which ignore the search 
 test('searchJobs includes Adzuna only when credentials are supplied', async () => {
   let adzunaCalled = false;
   const fetchImpl = async (url) => {
-    if (url.includes('api.adzuna.com')) {
+    const u = new URL(url);
+    if (u.hostname === 'api.adzuna.com') {
       adzunaCalled = true;
       return { ok: true, json: async () => ({ results: [
         { id: 7, title: 'ML Engineer', company: { display_name: 'Initech' }, location: { display_name: 'Remote' }, redirect_url: 'https://adzuna/7', created: '2026-05-29T00:00:00Z' },
       ] }) };
     }
-    if (url.includes('remotive.com')) return { ok: true, json: async () => ({ jobs: [] }) };
+    const u2 = new URL(url);
+    if (u2.hostname === 'remotive.com' || u2.hostname.endsWith('.remotive.com')) return { ok: true, json: async () => ({ jobs: [] }) };
     return { ok: true, json: async () => ({ data: [] }) };
   };
 
@@ -307,8 +311,9 @@ test('normalizeMuseJob maps The Muse shape and strips HTML', () => {
 test('searchJobs only queries the selected sources', async () => {
   const hits = [];
   const fetchImpl = async (url) => {
-    if (url.includes('remotive.com')) { hits.push('remotive'); return { ok: true, json: async () => ({ jobs: [] }) }; }
-    if (url.includes('arbeitnow.com')) { hits.push('arbeitnow'); return { ok: true, json: async () => ({ data: [] }) }; }
+    const u = new URL(url);
+    if (u.hostname === 'remotive.com' || u.hostname.endsWith('.remotive.com')) { hits.push('remotive'); return { ok: true, json: async () => ({ jobs: [] }) }; }
+    if (u.hostname === 'arbeitnow.com' || u.hostname.endsWith('.arbeitnow.com')) { hits.push('arbeitnow'); return { ok: true, json: async () => ({ data: [] }) }; }
     return { ok: true, json: async () => ({}) };
   };
   await searchJobs('dev', { fetchImpl, sources: ['arbeitnow'] });
@@ -680,7 +685,8 @@ test('searchJobs fetches and normalizes results from a custom RSS source', async
     </item>
   </channel></rss>`;
   const fetchImpl = async (url) => {
-    if (String(url).includes('jobs4tn.gov')) {
+    const u = new URL(url);
+    if (u.hostname === 'jobs4tn.gov' || u.hostname.endsWith('.jobs4tn.gov')) {
       return { ok: true, headers: { get: () => null }, text: async () => rssXml };
     }
     return { ok: true, json: async () => ({ jobs: [], data: [] }) };
@@ -810,12 +816,13 @@ test('listJobSources — hn-hiring, weworkremotely, remoteco present and availab
 test('searchJobs includes Remote OK, Jobicy, and Working Nomads as default active sources', async () => {
   const queried = [];
   const fetchImpl = async (url, opts = {}) => {
-    if (url.includes('remoteok.com')) { queried.push('remoteok'); return { ok: true, json: async () => ([{ legal: true }]) }; }
-    if (url.includes('jobicy.com')) { queried.push('jobicy'); return { ok: true, json: async () => ({ jobs: [] }) }; }
-    if (url.includes('workingnomads.com')) { queried.push('workingnomads'); return { ok: true, json: async () => ([]) }; }
-    if (url.includes('remotive.com')) return { ok: true, json: async () => ({ jobs: [] }) };
-    if (url.includes('arbeitnow.com')) return { ok: true, json: async () => ({ data: [] }) };
-    if (url.includes('themuse.com')) return { ok: true, json: async () => ({ results: [] }) };
+    const u = new URL(url);
+    if (u.hostname === 'remoteok.com' || u.hostname.endsWith('.remoteok.com')) { queried.push('remoteok'); return { ok: true, json: async () => ([{ legal: true }]) }; }
+    if (u.hostname === 'jobicy.com' || u.hostname.endsWith('.jobicy.com')) { queried.push('jobicy'); return { ok: true, json: async () => ({ jobs: [] }) }; }
+    if (u.hostname === 'workingnomads.com' || u.hostname.endsWith('.workingnomads.com')) { queried.push('workingnomads'); return { ok: true, json: async () => ([]) }; }
+    if (u.hostname === 'remotive.com' || u.hostname.endsWith('.remotive.com')) return { ok: true, json: async () => ({ jobs: [] }) };
+    if (u.hostname === 'arbeitnow.com' || u.hostname.endsWith('.arbeitnow.com')) return { ok: true, json: async () => ({ data: [] }) };
+    if (u.hostname === 'themuse.com' || u.hostname.endsWith('.themuse.com')) return { ok: true, json: async () => ({ results: [] }) };
     return { ok: true, json: async () => ({}) };
   };
 
@@ -900,10 +907,11 @@ test('normalizeIndeedJob handles HTML entities and malformed data', () => {
 test('searchJobs includes Indeed as default active source', async () => {
   const queried = [];
   const fetchImpl = async (url, opts = {}) => {
-    if (url.includes('indeed.com/rss')) { queried.push('indeed'); return { ok: true, text: async () => `<?xml version="1.0"?><rss><channel><item><title>Test</title><link>https://indeed.com/viewjob?jk=1</link><pubDate>Mon, 27 Jun 2026 10:00:00 GMT</pubDate><description><b>Company:</b> Test<br/><b>Location:</b> NYC</description><guid>1</guid></item></channel></rss>` }; }
-    if (url.includes('remotive.com')) return { ok: true, json: async () => ({ jobs: [] }) };
-    if (url.includes('arbeitnow.com')) return { ok: true, json: async () => ({ data: [] }) };
-    if (url.includes('themuse.com')) return { ok: true, json: async () => ({ results: [] }) };
+    const u = new URL(url);
+    if (u.hostname === 'indeed.com' || u.hostname.endsWith('.indeed.com')) { queried.push('indeed'); return { ok: true, text: async () => `<?xml version="1.0"?><rss><channel><item><title>Test</title><link>https://indeed.com/viewjob?jk=1</link><pubDate>Mon, 27 Jun 2026 10:00:00 GMT</pubDate><description><b>Company:</b> Test<br/><b>Location:</b> NYC</description><guid>1</guid></item></channel></rss>` }; }
+    if (u.hostname === 'remotive.com' || u.hostname.endsWith('.remotive.com')) return { ok: true, json: async () => ({ jobs: [] }) };
+    if (u.hostname === 'arbeitnow.com' || u.hostname.endsWith('.arbeitnow.com')) return { ok: true, json: async () => ({ data: [] }) };
+    if (u.hostname === 'themuse.com' || u.hostname.endsWith('.themuse.com')) return { ok: true, json: async () => ({ results: [] }) };
     return { ok: true, json: async () => ({}) };
   };
 
