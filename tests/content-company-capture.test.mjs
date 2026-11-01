@@ -12,8 +12,8 @@ import { JSDOM } from 'jsdom';
 //   - Monster apply flow → title "My Application - …", no company.
 const CONTENT_JS = readFileSync(new URL('../content/content.js', import.meta.url), 'utf8');
 
-function extractFromPage({ url, title = '', body = '', jsonLd = null }) {
-  const ld = jsonLd ? `<script type="application/ld+json">${JSON.stringify(jsonLd)}</script>` : '';
+function extractFromPage({ url, title = '', body = '', jsonLd: jsonLdInput = null }) {
+  const ld = jsonLdInput ? `<script type="application/ld+json">${JSON.stringify(jsonLdInput)}</script>` : '';
   const dom = new JSDOM(`<!doctype html><html><head><title>${title}</title>${ld}</head><body>${body}</body></html>`, {
     url,
     runScripts: 'outside-only',
