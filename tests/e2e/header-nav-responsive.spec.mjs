@@ -46,6 +46,17 @@ test('at narrow widths, the hamburger toggle shows and primary-button labels hid
   await expect(page.locator('#header-secondary-nav')).not.toBeVisible();
 });
 
+test('at tablet standalone widths, the hamburger collapses nav without horizontal overflow', async () => {
+  const page = await context.newPage();
+  await page.setViewportSize({ width: 768, height: 780 });
+  await page.goto(`chrome-extension://${extensionId}/popup/popup.html?standalone=1`);
+  await expect(page.locator('.screen:not(.hidden)')).toBeVisible({ timeout: 30000 });
+
+  await expect(page.locator('#header-menu-toggle')).toBeVisible();
+  await expect(page.locator('#header-secondary-nav')).not.toBeVisible();
+  await expect.poll(() => page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(768);
+});
+
 test('opening the hamburger reveals the secondary nav with labels', async () => {
   const page = await context.newPage();
   await page.setViewportSize({ width: 420, height: 640 });
