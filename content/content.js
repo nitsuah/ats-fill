@@ -578,16 +578,22 @@ function stripLdHtml(value) {
     .replace(/<[^>]*>/g, ' ')
     .replace(/&(?:amp|lt|gt|nbsp|#\d+|#x[0-9a-fA-F]+|quot|apos);/g, (m) => {
       switch (m) {
-        case '&': return '&';
-        case '<': return '<';
-        case '>': return '>';
-        case '&nbsp;': return ' ';
-        case '"': return '"';
-        case '&apos;': return "'";
+        case "&" + "amp;": return "&";
+        case "&" + "lt;": return "<";
+        case "&" + "gt;": return ">";
+        case "&nbsp;": return " ";
+        case "&" + "quot;": return '"';
+        case "&apos;": return "'";
       }
-      if (m.startsWith('&#x')) return String.fromCharCode(parseInt(m.slice(3, -1), 16));
-      if (m.startsWith('&#')) return String.fromCharCode(parseInt(m.slice(2, -1), 10));
-      return m;
+      if (m.startsWith("&#x")) {
+        const cp = parseInt(m.slice(3, -1), 16);
+        return cp <= 0x10FFFF ? String.fromCodePoint(cp) : " ";
+      }
+      if (m.startsWith("&#")) {
+        const cp = parseInt(m.slice(2, -1), 10);
+        return cp <= 0x10FFFF ? String.fromCodePoint(cp) : " ";
+      }
+      return " ";
     })
     .replace(/\s+/g, ' ')
     .trim();

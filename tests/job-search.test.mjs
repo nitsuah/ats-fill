@@ -903,7 +903,13 @@ test('searchJobs includes Indeed as default active source', async () => {
   const queried = [];
   const fetchImpl = async (url, opts = {}) => {
     const u = new URL(url);
-    if (u.hostname === 'www.indeed.com' && u.pathname === '/rss') { queried.push('indeed'); return { ok: true, text: async () => `<?xml version="1.0"?><rss><channel><item><title>Test</title><link>https://indeed.com/viewjob?jk=1</link><pubDate>Mon, 27 Jun 2026 10:00:00 GMT</pubDate><description><b>Company:</b> Test<br/><b>Location:</b> NYC</description><guid>1</guid></item></channel></rss>` }; }
+    if (u.hostname === 'www.indeed.com' && u.pathname === '/rss') {
+      queried.push('indeed');
+      return {
+        ok: true,
+        text: async () => `<?xml version="1.0"?><rss><channel><item><title>Test</title><link>https://www.indeed.com/viewjob?jk=1</link><pubDate>Mon, 27 Jun 2026 10:00:00 GMT</pubDate><description><b>Company:</b> Test<br/><b>Location:</b> NYC</description><guid>1</guid></item></channel></rss>`
+      };
+    }
     if (u.hostname.includes('remotive.com')) return { ok: true, json: async () => ({ jobs: [] }) };
     if (u.hostname.includes('arbeitnow.com')) return { ok: true, json: async () => ({ data: [] }) };
     if (u.hostname.includes('themuse.com')) return { ok: true, json: async () => ({ results: [] }) };
