@@ -393,11 +393,11 @@ body[data-standalone="true"] .icon-btn { padding: 0 12px; }
 }
 
 /* Hamburger nav — collapses Analytics/Settings/Profile/Help behind a toggle
-   below 700px, keeping Search/Pipeline/Interview Prep visible. Two-class
+   below 860px, keeping Search/Pipeline/Interview Prep visible. Two-class
    selectors keep these `display` values above the plain `.icon-btn` rule. */
 .icon-btn.header-menu-toggle { display: none; }
 
-@media (max-width: 700px) {
+@media (max-width: 860px) {
   .icon-btn.header-menu-toggle { display: inline-flex; }
 
   .header-secondary-nav {
@@ -430,7 +430,7 @@ body[data-standalone="true"] .icon-btn { padding: 0 12px; }
   body[data-standalone="true"] .nav-primary .tracker-btn-label { display: none; }
 }
 
-@media (min-width: 701px) {
+@media (min-width: 861px) {
   .icon-btn.header-menu-toggle { display: none; }
   .header-secondary-nav { display: contents; }
 }
