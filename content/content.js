@@ -575,7 +575,7 @@ function ldText(value) {
 
 function stripLdHtml(value) {
   return String(value || '')
-    .replace(/&(?:amp|lt|gt|nbsp|#\d+|#x[0-9a-fA-F]+|quot|apos);/g, (m) => {
+    .replace(/&(?:amp|lt|gt|nbsp|#\d+|#[xX][0-9a-fA-F]+|quot|apos);/g, (m) => {
       switch (m) {
         case "&" + "amp;": return "&";
         case "&" + "lt;": return "<";

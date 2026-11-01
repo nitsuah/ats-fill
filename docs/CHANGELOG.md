@@ -22,6 +22,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- HTML entity decoders now accept uppercase `X` in hexadecimal numeric references across job and page extraction.
+
 - **Fixed:** CDP tracker helper no longer passes credential-named fields through
 - Long unresolved-question labels in the fill report no longer push the popup into horizontal scrolling: the label truncates with an ellipsis, and the full question is still available as the button's accessible name and tooltip (#169).
 

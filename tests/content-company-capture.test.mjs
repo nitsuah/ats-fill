@@ -12,8 +12,8 @@ import { JSDOM } from 'jsdom';
 //   - Monster apply flow → title "My Application - …", no company.
 const CONTENT_JS = readFileSync(new URL('../content/content.js', import.meta.url), 'utf8');
 
-function capture({ url, title = '', body = '', jsonLd = null }) {
-  const ld = jsonLd ? `<script type="application/ld+json">${JSON.stringify(jsonLd)}</script>` : '';
+function extractFromPage({ url, title = '', body = '', jsonLd: jsonLdInput = null }) {
+  const ld = jsonLdInput ? `<script type="application/ld+json">${JSON.stringify(jsonLdInput)}</script>` : '';
   const dom = new JSDOM(`<!doctype html><html><head><title>${title}</title>${ld}</head><body>${body}</body></html>`, {
     url,
     runScripts: 'outside-only',
@@ -34,8 +34,18 @@ function capture({ url, title = '', body = '', jsonLd = null }) {
   };
   window.eval(CONTENT_JS);
   const info = window.extractJobInfo();
+  const jsonLd = window.parseJobPostingJsonLd(window.readJsonLdObjects());
   window.close();
+  return { info, jsonLd };
+}
+
+function capture(options) {
+  const { info } = extractFromPage(options);
   return { company: info.company, title: info.title };
+}
+
+function captureJsonLdDescription(options) {
+  return extractFromPage(options).jsonLd?.description || '';
 }
 
 test('Ashby application page takes the company from "Role @ Company", not the whole tab title', () => {
@@ -98,4 +108,19 @@ test('titles that only look like prefixes, and numbers outside Workday, are left
     title: 'Applications Engineer at 84 Lumber',
     body: '<h1>Applications Engineer</h1>',
   }), { company: '84 Lumber', title: 'Applications Engineer' });
+});
+
+
+test('JSON-LD description decodes uppercase-X numeric entities', () => {
+  assert.equal(captureJsonLdDescription({
+    url: 'https://boards.greenhouse.io/fabrikam/jobs/1',
+    title: 'Data Engineer',
+    body: '<h1 class="app-title">Data Engineer</h1>',
+    jsonLd: {
+      '@type': 'JobPosting',
+      title: 'Data Engineer',
+      description: '<p>Fabrikam &#X41; Labs</p>',
+      hiringOrganization: { name: 'Fabrikam Labs' },
+    },
+  }), 'Fabrikam A Labs');
 });
