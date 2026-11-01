@@ -3,6 +3,8 @@
  * Extracted from service-worker.js
  */
 
+import { callGemini } from '../../../lib/gemini.js';
+
 async function getGeminiApiKey() {
   const data = await chrome.storage.local.get('settings');
   const settings = data.settings || {};
@@ -42,7 +44,7 @@ export async function handleGenerateInterviewQuestions(payload) {
   if (!apiKey) throw new Error('Gemini API key not configured. Add it in AI settings.');
 
   const prompt = buildInterviewQuestionsPrompt(job, profile, resume);
-  const response = await callGeminiWithRetry(apiKey, prompt);
+  const response = await callGemini(apiKey, prompt);
   const questions = parseInterviewQuestionsResponse(response);
 
   return { success: true, questions };
@@ -58,7 +60,7 @@ export async function handleGenerateInterviewAnswer(payload) {
   if (!apiKey) throw new Error('Gemini API key not configured. Add it in AI settings.');
 
   const prompt = buildInterviewAnswerPrompt(question, type, profile, resume, job);
-  const response = await callGeminiWithRetry(apiKey, prompt);
+  const response = await callGemini(apiKey, prompt);
   const suggestion = parseInterviewAnswerResponse(response);
 
   return { success: true, suggestion };
