@@ -166,6 +166,9 @@ test('generateAnswers merges resume/static fields with model output', async () =
     assert.equal(answers.current_title, 'Engineer');
     assert.equal(answers.desired_salary_min, '150000');
     assert.equal(answers.desired_salary_max, '180000');
+    assert.equal(answers.work_authorization, 'Yes');
+    assert.equal(answers.salary_expectation, '150000');
+    assert.equal(answers.preferred_location, 'Nashville, TN');
     assert.equal(answers.custom_answers['Why us?'], 'Because impact.');
   } finally {
     global.fetch = originalFetch;
