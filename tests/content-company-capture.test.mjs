@@ -34,17 +34,18 @@ function extractFromPage({ url, title = '', body = '', jsonLd = null }) {
   };
   window.eval(CONTENT_JS);
   const info = window.extractJobInfo();
+  const jsonLd = window.parseJobPostingJsonLd(window.readJsonLdObjects());
   window.close();
-  return info;
+  return { info, jsonLd };
 }
 
 function capture(options) {
-  const info = extractFromPage(options);
+  const { info } = extractFromPage(options);
   return { company: info.company, title: info.title };
 }
 
 function captureJsonLdDescription(options) {
-  return extractFromPage(options)._ld?.description || '';
+  return extractFromPage(options).jsonLd?.description || '';
 }
 
 test('Ashby application page takes the company from "Role @ Company", not the whole tab title', () => {
