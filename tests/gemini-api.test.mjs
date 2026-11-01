@@ -126,6 +126,9 @@ test('generateAnswers merges resume/static fields with model output', async () =
         relevant_accomplishment: 'Improved reliability',
         cover_letter: 'Short cover letter',
         years_of_experience: '7',
+        work_authorization: 'Model guess',
+        salary_expectation: '999999',
+        preferred_location: 'Remote',
         custom_answers: { 'Why us?': 'Because impact.' },
       }) }] } }],
     }),
@@ -288,3 +291,39 @@ test('transformJobText wraps bounded user text and does not let it forge the clo
   }
 });
 
+
+
+test('generateAnswers leaves static fields empty when trusted settings/profile values are absent', async () => {
+  const responses = [
+    jsonResponse(200, {
+      models: [{ name: 'models/gemini-2.5-flash', supportedGenerationMethods: ['generateContent'] }],
+    }),
+    jsonResponse(200, {
+      candidates: [{ content: { parts: [{ text: JSON.stringify({
+        work_authorization: 'Model guess',
+        salary_expectation: '999999',
+        preferred_location: 'Remote',
+        custom_answers: {},
+      }) }] } }],
+    }),
+  ];
+  const originalFetch = global.fetch;
+  global.fetch = async () => responses.shift();
+
+  try {
+    const answers = await generateAnswers({
+      apiKey: 'api-key-static-fields',
+      model: 'gemini-2.5-flash',
+      jd: 'Platform engineer role.',
+      customQuestions: [],
+      settings: {},
+      resume: { name: 'Candidate', location: '', experience: [] },
+    });
+
+    assert.equal(answers.work_authorization, '');
+    assert.equal(answers.salary_expectation, '');
+    assert.equal(answers.preferred_location, '');
+  } finally {
+    global.fetch = originalFetch;
+  }
+});
