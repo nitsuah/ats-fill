@@ -99,3 +99,9 @@ test('escAttr encodes quotes including apostrophes', async () => {
   assert.equal(escAttr(`& < > " '`), '&amp; &lt; &gt; &quot; &#39;');
   assert.equal(escAttr(`&#39;`), '&amp;#39;');
 });
+
+
+test('stripHtml decodes uppercase-X hexadecimal numeric entities', async () => {
+  const { stripHtml } = await import('../lib/utils.js');
+  assert.equal(stripHtml('&#X41; &#x1F4BB;'), 'A 💻');
+});
