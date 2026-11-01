@@ -86,3 +86,16 @@ test('sendToActiveTab delegates FILL_FORM to document-targeted delivery for the 
   assert.ok(sends.every((send) => send.message.expectedUrl === EXPECTED_URL));
   assert.ok(sends.every((send) => !('expectedTopDocumentId' in send.message)));
 });
+
+test('esc encodes HTML metacharacters exactly once', async () => {
+  const { esc } = await import('../lib/utils.js');
+  assert.equal(esc('& < > "'), '&amp; &lt; &gt; &quot;');
+  assert.equal(esc('&amp;'), '&amp;amp;');
+  assert.equal(esc(0), '');
+});
+
+test('escAttr encodes quotes including apostrophes', async () => {
+  const { escAttr } = await import('../lib/utils.js');
+  assert.equal(escAttr(`& < > " '`), '&amp; &lt; &gt; &quot; &#39;');
+  assert.equal(escAttr(`&#39;`), '&amp;#39;');
+});
