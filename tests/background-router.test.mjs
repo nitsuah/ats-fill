@@ -486,12 +486,56 @@ test('GENERATE_INTERVIEW_QUESTIONS requires a configured Gemini API key', async 
   assert.match(result.error, /Gemini API key not configured/);
 });
 
-test('GENERATE_INTERVIEW_QUESTIONS: with an API key configured, hits the pre-existing undefined ' +
-  '`callGeminiWithRetry` reference (known bug, preserved as-is)', async () => {
-  resetStorage({ settings: { gemini_api_key: 'key-123' } });
-  const result = await send({ type: 'GENERATE_INTERVIEW_QUESTIONS', payload: { job: { title: 'Engineer' } } });
-  assert.equal(result.success, false);
-  assert.match(result.error, /callGeminiWithRetry is not defined/);
+test('GENERATE_INTERVIEW_QUESTIONS calls Gemini and parses the returned question array', async () => {
+  resetStorage({ settings: { gemini_api_key: 'test-interview-questions-key' } });
+  const originalFetch = globalThis.fetch;
+  const calls = [];
+  globalThis.fetch = async (url, options = {}) => {
+    const urlText = String(url);
+    calls.push({ url: urlText, options });
+    if (urlText.endsWith('/models?key=test-interview-questions-key')) {
+      return {
+        ok: true,
+        status: 200,
+        json: async () => ({
+          models: [{ name: 'models/gemini-2.5-flash', supportedGenerationMethods: ['generateContent'] }],
+        }),
+      };
+    }
+    assert.match(urlText, /\/gemini-2\.5-flash:generateContent\?key=test-interview-questions-key$/);
+    assert.equal(options.method, 'POST');
+    const request = JSON.parse(options.body);
+    assert.match(request.contents[0].parts[0].text, /Generate 8-10 likely interview questions/);
+    return {
+      ok: true,
+      status: 200,
+      json: async () => ({
+        candidates: [{
+          content: {
+            parts: [{
+              text: JSON.stringify([
+                { question: 'Tell me about a difficult project.', type: 'behavioral', hint: 'Use STAR.' },
+              ]),
+            }],
+          },
+        }],
+      }),
+    };
+  };
+
+  try {
+    const result = await send({
+      type: 'GENERATE_INTERVIEW_QUESTIONS',
+      payload: { job: { title: 'Engineer', company: 'Example' } },
+    });
+    assert.deepEqual(result, {
+      success: true,
+      questions: [{ question: 'Tell me about a difficult project.', type: 'behavioral', hint: 'Use STAR.' }],
+    });
+    assert.equal(calls.length, 2);
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
 });
 
 test('GENERATE_INTERVIEW_ANSWER requires a configured Gemini API key', async () => {
@@ -500,10 +544,43 @@ test('GENERATE_INTERVIEW_ANSWER requires a configured Gemini API key', async () 
   assert.match(result.error, /Gemini API key not configured/);
 });
 
-test('GENERATE_INTERVIEW_ANSWER: with an API key configured, hits the same pre-existing ' +
-  '`callGeminiWithRetry` reference bug', async () => {
-  resetStorage({ settings: { gemini_api_key: 'key-123' } });
-  const result = await send({ type: 'GENERATE_INTERVIEW_ANSWER', payload: { question: 'Why this role?' } });
-  assert.equal(result.success, false);
-  assert.match(result.error, /callGeminiWithRetry is not defined/);
+test('GENERATE_INTERVIEW_ANSWER calls Gemini and returns the trimmed suggestion', async () => {
+  resetStorage({ settings: { gemini_api_key: 'test-interview-answer-key' } });
+  const originalFetch = globalThis.fetch;
+  const calls = [];
+  globalThis.fetch = async (url, options = {}) => {
+    const urlText = String(url);
+    calls.push({ url: urlText, options });
+    if (urlText.endsWith('/models?key=test-interview-answer-key')) {
+      return {
+        ok: true,
+        status: 200,
+        json: async () => ({
+          models: [{ name: 'models/gemini-2.5-flash', supportedGenerationMethods: ['generateContent'] }],
+        }),
+      };
+    }
+    assert.match(urlText, /\/gemini-2\.5-flash:generateContent\?key=test-interview-answer-key$/);
+    assert.equal(options.method, 'POST');
+    const request = JSON.parse(options.body);
+    assert.match(request.contents[0].parts[0].text, /QUESTION: "Why this role\?"/);
+    return {
+      ok: true,
+      status: 200,
+      json: async () => ({
+        candidates: [{ content: { parts: [{ text: '  I am interested in this role.  ' }] } }],
+      }),
+    };
+  };
+
+  try {
+    const result = await send({
+      type: 'GENERATE_INTERVIEW_ANSWER',
+      payload: { question: 'Why this role?' },
+    });
+    assert.deepEqual(result, { success: true, suggestion: 'I am interested in this role.' });
+    assert.equal(calls.length, 2);
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
 });
