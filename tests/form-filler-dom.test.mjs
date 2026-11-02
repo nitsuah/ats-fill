@@ -10,7 +10,8 @@ function setupDom(html) {
   global.document = dom.window.document;
   global.getComputedStyle = dom.window.getComputedStyle.bind(dom.window);
   global.Event = dom.window.Event;
-  global.CSS = dom.window.CSS || { escape: (value) => String(value).replace(/"/g, '\\"') };
+  // codeql[js/incomplete-sanitization]: Test helper - CSS.escape polyfill for JSDOM; input not user-controlled
+global.CSS = dom.window.CSS || { escape: (value) => String(value).replace(/"/g, '\\"') };
   return dom;
 }
 
