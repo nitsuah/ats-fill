@@ -12,16 +12,17 @@ test("an exact published version skips upload and publish", async () => {
   const calls = [];
   const result = await publishIfNeeded({
     version: "1.0.4",
-    fetchStatus: async () => ({
-      publishedItemRevisionStatus: revision("PUBLISHED", "1.0.3", "1.0.4"),
-    }),
+    fetchStatus: async () => {
+      calls.push("status");
+      return { publishedItemRevisionStatus: revision("PUBLISHED", "1.0.3", "1.0.4") };
+    },
     upload: async () => calls.push("upload"),
     publish: async () => calls.push("publish"),
     onSkip: ({ version, state }) => calls.push(`skip:${version}:${state}`),
   });
 
   assert.deepEqual(result, { skipped: true, state: "published" });
-  assert.deepEqual(calls, ["skip:1.0.4:published"]);
+  assert.deepEqual(calls, ["status", "skip:1.0.4:published"]);
 });
 
 for (const state of ["PENDING_REVIEW", "STAGED", "PUBLISHED", "PUBLISHED_TO_TESTERS"]) {
@@ -29,15 +30,16 @@ for (const state of ["PENDING_REVIEW", "STAGED", "PUBLISHED", "PUBLISHED_TO_TEST
     const calls = [];
     const result = await publishIfNeeded({
       version: "1.0.4",
-      fetchStatus: async () => ({
-        submittedItemRevisionStatus: revision(state, "1.0.4"),
-      }),
+      fetchStatus: async () => {
+        calls.push("status");
+        return { submittedItemRevisionStatus: revision(state, "1.0.4") };
+      },
       upload: async () => calls.push("upload"),
       publish: async () => calls.push("publish"),
     });
 
     assert.deepEqual(result, { skipped: true, state: `submitted:${state}` });
-    assert.deepEqual(calls, []);
+    assert.deepEqual(calls, ["status"]);
   });
 }
 
@@ -50,7 +52,10 @@ test("a different or missing version follows the normal upload/publish path", as
     const calls = [];
     const result = await publishIfNeeded({
       version: "1.0.4",
-      fetchStatus: async () => status,
+      fetchStatus: async () => {
+        calls.push("status");
+        return status;
+      },
       upload: async () => {
         calls.push("upload");
         return { uploadState: "SUCCEEDED" };
@@ -62,7 +67,7 @@ test("a different or missing version follows the normal upload/publish path", as
     });
 
     assert.equal(result.skipped, false);
-    assert.deepEqual(calls, ["upload", "publish"]);
+    assert.deepEqual(calls, ["status", "upload", "publish"]);
   }
 });
 
