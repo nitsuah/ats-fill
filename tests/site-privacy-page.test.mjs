@@ -14,7 +14,7 @@ const text = new JSDOM(html).window.document.body.textContent.replace(/\s+/g, ' 
 
 test('privacy page matches the PRIVACY.md document version and date', () => {
   for (const label of ['Document version', 'Last updated']) {
-    const m = md.match(new RegExp(`\*\*${label}:\*\* (.+)`));
+    const m = md.match(new RegExp(`\\*\\*${label}:\\*\\* (.+)`));
     assert.ok(m, `${label} missing from docs/PRIVACY.md`);
     assert.ok(text.includes(`${label}: ${m[1].trim()}`), `site/privacy.html ${label} differs from docs/PRIVACY.md (${m[1].trim()})`);
   }
