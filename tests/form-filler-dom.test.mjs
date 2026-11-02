@@ -10,7 +10,7 @@ function setupDom(html) {
   global.document = dom.window.document;
   global.getComputedStyle = dom.window.getComputedStyle.bind(dom.window);
   global.Event = dom.window.Event;
-  global.CSS = dom.window.CSS || { escape: (value) => String(value).replace(/"/g, '\\"') };
+  global.CSS = dom.window.CSS || { escape: (value) => String(value).replace(/\\/g, '\\\\').replace(/"/g, '\\"') };
   return dom;
 }
 
