@@ -1,5 +1,7 @@
 import fs from "node:fs";
 
+import { publishIfNeeded } from "./chrome-web-store-publish-lib.mjs";
+
 // `--check-token` only proves the OAuth credentials still work (the weekly
 // cws-token-check workflow); it uploads and publishes nothing.
 const checkTokenOnly = process.argv[2] === "--check-token";
@@ -86,41 +88,56 @@ if (checkTokenOnly) {
   process.exit(0);
 }
 const headers = { Authorization: `Bearer ${token}` };
+const manifest = JSON.parse(fs.readFileSync(new URL("../manifest.json", import.meta.url), "utf8"));
+if (typeof manifest.version !== "string" || manifest.version.trim() === "") {
+  throw new Error("The source manifest must contain a non-empty version string.");
+}
 
-const upload = await request(uploadUrl, {
-  method: "POST",
-  headers: { ...headers, "Content-Type": "application/zip" },
-  body: fs.readFileSync(packagePath),
+await publishIfNeeded({
+  version: manifest.version,
+  fetchStatus: () => request(`${base}:fetchStatus`, { headers }),
+  upload: async () => {
+    const upload = await request(uploadUrl, {
+      method: "POST",
+      headers: { ...headers, "Content-Type": "application/zip" },
+      body: fs.readFileSync(packagePath),
+    });
+    console.log(`Upload response: ${JSON.stringify(upload)}`);
+
+    // The upload response reports its state as `uploadState`; fetchStatus
+    // reports the same information as `lastAsyncUploadState`. Track one
+    // `state` value across both so polling observes progress.
+    let state = upload.uploadState;
+    let status = upload;
+    for (let attempt = 1; state === "IN_PROGRESS" && attempt <= 12; attempt += 1) {
+      await new Promise((resolve) => setTimeout(resolve, 10_000));
+      status = await request(`${base}:fetchStatus`, { headers });
+      state = status.lastAsyncUploadState;
+      console.log(`Upload status attempt ${attempt}: ${JSON.stringify(status)}`);
+    }
+
+    if (state === "IN_PROGRESS") {
+      throw new Error("Chrome Web Store upload is still in progress after 2 minutes.");
+    }
+    if (state && state !== "SUCCEEDED") {
+      const detail = status.itemError ?? status.itemErrors ?? status.error ?? status;
+      throw new Error(`Chrome Web Store upload did not succeed: ${JSON.stringify(detail)}`);
+    }
+    return status;
+  },
+  publish: async () => {
+    const published = await request(`${base}:publish`, {
+      method: "POST",
+      headers,
+    });
+    console.log(`Publish response: ${JSON.stringify(published)}`);
+
+    if (["REJECTED", "CANCELLED"].includes(published.state)) {
+      throw new Error(`Chrome Web Store publish returned an unsuccessful state: ${JSON.stringify(published)}`);
+    }
+    return published;
+  },
+  onSkip: ({ version, state }) => {
+    console.log(`Chrome Web Store version ${version} is already ${state}; skipping upload and publish.`);
+  },
 });
-console.log(`Upload response: ${JSON.stringify(upload)}`);
-
-// The upload response reports its state as `uploadState`; fetchStatus reports
-// the same information as `lastAsyncUploadState`. Track one `state` value
-// across both so polling actually observes progress instead of always
-// re-reading the (absent) `uploadState` field from fetchStatus responses.
-let state = upload.uploadState;
-let status = upload;
-for (let attempt = 1; state === "IN_PROGRESS" && attempt <= 12; attempt += 1) {
-  await new Promise((resolve) => setTimeout(resolve, 10_000));
-  status = await request(`${base}:fetchStatus`, { headers });
-  state = status.lastAsyncUploadState;
-  console.log(`Upload status attempt ${attempt}: ${JSON.stringify(status)}`);
-}
-
-if (state === "IN_PROGRESS") {
-  throw new Error("Chrome Web Store upload is still in progress after 2 minutes.");
-}
-if (state && state !== "SUCCEEDED") {
-  const detail = status.itemError ?? status.itemErrors ?? status.error ?? status;
-  throw new Error(`Chrome Web Store upload did not succeed: ${JSON.stringify(detail)}`);
-}
-
-const published = await request(`${base}:publish`, {
-  method: "POST",
-  headers,
-});
-console.log(`Publish response: ${JSON.stringify(published)}`);
-
-if (["REJECTED", "CANCELLED"].includes(published.state)) {
-  throw new Error(`Chrome Web Store publish returned an unsuccessful state: ${JSON.stringify(published)}`);
-}
