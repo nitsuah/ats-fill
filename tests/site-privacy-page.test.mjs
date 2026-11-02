@@ -4,10 +4,13 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
+import { JSDOM } from 'jsdom';
 
 const md = readFileSync(new URL('../docs/PRIVACY.md', import.meta.url), 'utf8');
 const html = readFileSync(new URL('../site/privacy.html', import.meta.url), 'utf8');
-const text = html.replace(/<[^>]+>/g, '').replace(/&amp;/g, '&').replace(/\s+/g, ' ');
+
+// Properly decode all HTML entities by using JSDOM
+const text = new JSDOM(html).window.document.body.textContent.replace(/\s+/g, ' ');
 
 test('privacy page matches the PRIVACY.md document version and date', () => {
   for (const label of ['Document version', 'Last updated']) {
