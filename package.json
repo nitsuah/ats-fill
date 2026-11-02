@@ -25,5 +25,8 @@
     "esbuild": "^0.28.2",
     "eslint": "^10.14.0",
     "jsdom": "^30.1.3"
+  },
+  "overrides": {
+    "minimatch": "^11.0.4"
   }
 }
