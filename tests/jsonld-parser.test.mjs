@@ -60,3 +60,19 @@ test('parseJobPostingJsonLd returns null when no JobPosting is present', () => {
   assert.equal(parseJobPostingJsonLd([{ '@type': 'Organization', name: 'Globex' }]), null);
   assert.equal(parseJobPostingJsonLd([]), null);
 });
+
+test('parseJobPostingJsonLd accepts an @type array in a nested @graph posting', () => {
+  const result = parseJobPostingJsonLd([{
+    '@context': 'https://schema.org',
+    '@graph': [
+      {
+        '@type': ['WebPage', 'JobPosting'],
+        title: 'Array Type Engineer',
+        hiringOrganization: { '@type': 'Organization', name: 'Acme Labs' },
+      },
+    ],
+  }]);
+
+  assert.equal(result.title, 'Array Type Engineer');
+  assert.equal(result.company, 'Acme Labs');
+});
