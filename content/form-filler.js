@@ -3,7 +3,7 @@
  * Extracted from content.js (lines 534-897)
  */
 
-import { qs, hasExtensionContext, isExtensionContextInvalidatedError, warnIfRelevant, DRAFT_STORAGE_KEY } from './utils.js';
+import { qs, hasExtensionContext, isExtensionContextInvalidatedError, warnIfRelevant } from './utils.js';
 
 /* ── Custom question collector ───────────────────────────────────────── */
 
