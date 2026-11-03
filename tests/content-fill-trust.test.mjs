@@ -52,6 +52,22 @@ test('values ats-fill typed are not learned until the user changes them', () => 
   window.close();
 });
 
+test('whitespace-only generated answers remain unresolved and do not overwrite user values', () => {
+  const window = load('<form><label for="empty">Why do you want to work here?</label><textarea id="empty"></textarea><label for="existing">Where did you hear about this vacancy?</label><input id="existing" value="User entered value" /></form>');
+  const { document } = window;
+
+  const result = window.fillForm({
+    'Why do you want to work here?': ' \t\n',
+    'Where did you hear about this vacancy?': '   ',
+  }, {});
+
+  assert.equal(document.getElementById('empty').value, '');
+  assert.equal(document.getElementById('existing').value, 'User entered value');
+  assert.equal(result.filled, 0);
+  assert.equal(result.unresolved.some((item) => item.label === 'Why do you want to work here?' && /manual input/i.test(item.reason)), true);
+  window.close();
+});
+
 test('radio groups are learned under their question, not the option label', () => {
   const window = load(`
     <fieldset>

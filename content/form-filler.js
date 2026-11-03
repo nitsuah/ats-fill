@@ -3,7 +3,7 @@
  * Extracted from content.js (lines 534-897)
  */
 
-import { qs, hasExtensionContext, isExtensionContextInvalidatedError, warnIfRelevant, DRAFT_STORAGE_KEY } from './utils.js';
+import { qs, hasExtensionContext, isExtensionContextInvalidatedError, warnIfRelevant } from './utils.js';
 
 /* ── Custom question collector ───────────────────────────────────────── */
 
@@ -70,7 +70,7 @@ export function fillForm(answers, fieldMap) {
     }
 
     const value = answers[key];
-    if (value === undefined || value === null || value === '') {
+    if (value === undefined || value === null || value === '' || (typeof value === 'string' && !value.trim())) {
       unresolved.push(describeUnresolvedField(input, 'Answer still needs manual input'));
       continue;
     }

@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import { JSDOM } from 'jsdom';
 
 import { collectCustomQuestions, fillForm, parseYesNoAnswer } from '../lib/form-filler.js';
+import { fillForm as fillContentModuleForm } from '../content/form-filler.js';
 
 function setupDom(html) {
   const dom = new JSDOM(html, { url: 'https://example.com/job' });
@@ -215,6 +216,24 @@ test('AI non-answers are left for the user instead of being filled', () => {
 
   assert.equal(document.getElementById('hear').value, '');
   assert.equal(result.unresolved.some((item) => /hear about/i.test(item.label)), true);
+});
+
+test('whitespace-only answers stay unresolved in both form-filler modules', () => {
+  for (const fill of [fillForm, fillContentModuleForm]) {
+    const dom = setupDom('<form><label for="empty">Portfolio</label><input id="empty" name="empty_answer" /><label for="existing">Website</label><input id="existing" name="existing_answer" value="User entered value" /></form>');
+
+    const result = fill(
+      { empty_answer: ' \t\n', existing_answer: '   ' },
+      {},
+      { highlight: false },
+    );
+
+    assert.equal(document.getElementById('empty').value, '');
+    assert.equal(document.getElementById('existing').value, 'User entered value');
+    assert.equal(result.filled, 0);
+    assert.equal(result.unresolved.some((item) => item.label === 'Portfolio' && /manual input/i.test(item.reason)), true);
+    dom.window.close();
+  }
 });
 
 test('a saved one-word answer key is not pulled into a long question that mentions it', () => {
