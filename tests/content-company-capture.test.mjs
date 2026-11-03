@@ -73,6 +73,14 @@ test('Workday on myworkdayjobs.com strips the legal-entity code from hiringOrgan
   }), { company: 'Contoso Holdings, LLC', title: 'Collaboration Tools Administrator' });
 });
 
+test('Workday with no JSON-LD hiringOrganization leaves company empty', () => {
+  assert.deepEqual(capture({
+    url: 'https://acme.wd5.myworkdayjobs.com/en-US/careers/job/USA-CA/Software-Engineer_R123/apply',
+    title: 'Software Engineer',
+    body: '<h2 data-automation-id="jobPostingHeader">Software Engineer</h2>',
+  }), { company: '', title: 'Software Engineer' });
+});
+
 test('generic apply flow drops the "My Application -" prefix from the title', () => {
   assert.deepEqual(capture({
     url: 'https://www.example-jobs.com/profile/apply/contact-info',
