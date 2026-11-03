@@ -110,6 +110,14 @@ test('titles that only look like prefixes, and numbers outside Workday, are left
   }), { company: '84 Lumber', title: 'Applications Engineer' });
 });
 
+test('generic non-ATS page with pipe-delimited tab title does not infer company from suffix', () => {
+  assert.deepEqual(capture({
+    url: 'https://careers.example.com/jobs/123',
+    title: 'Senior Engineer | Acme Careers',
+    body: '<h1>Senior Engineer</h1>',
+  }), { company: '', title: 'Senior Engineer' });
+});
+
 
 test('JSON-LD description decodes uppercase-X numeric entities', () => {
   assert.equal(captureJsonLdDescription({
