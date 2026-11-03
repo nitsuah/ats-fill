@@ -70,7 +70,7 @@ export function fillForm(answers, fieldMap) {
     }
 
     const value = answers[key];
-    if (value === undefined || value === null || value === '') {
+    if (value === undefined || value === null || value === '' || (typeof value === 'string' && !value.trim())) {
       unresolved.push(describeUnresolvedField(input, 'Answer still needs manual input'));
       continue;
     }
