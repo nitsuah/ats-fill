@@ -11,6 +11,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- Custom job feeds on the local network (localhost, private and link-local IP addresses, single-label names, and `.local`, `.internal`, `.lan`, `.home`, `.corp`, `.intranet`, `.private` names) are refused unless the new **Allow local-network feeds** setting is on (default off). The setting is checked when a feed is added and on every search; with it on, only those hosts may use `http://`. Public feeds must use `https://`.
+- Feed requests omit cookies, skip the HTTP cache, refuse redirects, time out, stop reading at the size cap and require an XML content type.
 - Answer injection from the preview now targets the verified application document and is accepted only from the extension and only in frames that pass the fill guard.
 - Page drafts are keyed by a normalised query string (sorted params, tracking params removed); older query-less drafts are shown only on URLs with no non-tracking query; older drafts saved for query URLs are no longer restored.
 - Standalone popup navigation collapses at tablet widths (up to 860px) to prevent horizontal overflow.

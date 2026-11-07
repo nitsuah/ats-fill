@@ -208,6 +208,8 @@ Click **🔍 Search** in the header to open the job search panel. Results are pu
 
 Add any RSS-based job board from **Settings → Custom job sources** — a state workforce board (e.g. [JOBS4TN.gov](https://www.jobs4tn.gov/)), an internal careers feed, or any niche board with an RSS endpoint. Your search terms are appended as a `?q=` param when the feed doesn't already encode a query. The extension asks for one-time permission to read that specific site rather than requesting broad site access up front.
 
+Feeds must use `https://`. Feeds on your own computer or local network (`localhost`, private IP addresses, single-name hosts such as `intranet`, and names ending in `.local`, `.internal`, `.lan`, `.corp` and similar) are refused unless you turn on **Allow local-network feeds** in the same card; with it on they may also use `http://`. The setting is checked when you add a feed and again on every search. Feed requests send no cookies, are not cached, do not follow redirects, time out, are size-limited, and must return an XML feed. The extension cannot look up DNS, so a public-looking name that points at a local address is not detected.
+
 ### Filters
 
 - **Sources** — toggle individual boards on/off via chip buttons; locked chips (🔒) open the Settings panel

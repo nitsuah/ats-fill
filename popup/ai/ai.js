@@ -4,6 +4,7 @@
 import { $, sendMessage } from '../../lib/utils.js';
 import { showScreen } from '../ux/navigation.js';
 import { setStatus } from '../ux/state.js';
+import { checkFeedUrl } from '../../lib/feed-hosts.js';
 
 /** Read only the settings fields that live on the AI panel. */
 function readAiSettings() {
@@ -22,6 +23,7 @@ function readAiSettings() {
     google_client_id: $('google-client-id')?.value.trim() || '',
     google_client_secret: $('google-client-secret')?.value.trim() || '',
     custom_job_sources: customJobSources.slice(),
+    allow_local_network_feeds: $('allow-local-network-feeds')?.checked === true,
   };
 }
 
@@ -131,18 +133,14 @@ export async function addCustomJobSource() {
     return;
   }
 
-  let origin;
-  try {
-    const parsed = new URL(url);
-    if (parsed.protocol !== 'https:') {
-      setStatus('custom-source-status', '❌ Custom source URLs must use https:// — search terms are sent as a plaintext query string.', 'error');
-      return;
-    }
-    origin = `${parsed.origin}/*`;
-  } catch {
-    setStatus('custom-source-status', '❌ That doesn’t look like a valid URL.', 'error');
+  const check = checkFeedUrl(url, { allowLocalNetwork: $('allow-local-network-feeds')?.checked === true });
+  if (!check.ok) {
+    setStatus('custom-source-status', '❌ ' + check.error, 'error');
     return;
   }
+  const parsed = new URL(url);
+  // Match patterns take no port; the grant covers this one host only.
+  const origin = `${parsed.protocol}//${parsed.hostname}/*`;
 
   try {
     const granted = typeof chrome !== 'undefined' && chrome.permissions
@@ -169,6 +167,22 @@ export async function addCustomJobSource() {
     setStatus('custom-source-status', `✅ Added "${name}".`, 'success');
   } catch (err) {
     setStatus('custom-source-status', '❌ ' + (err?.message || 'Failed to save custom source.'), 'error');
+  }
+}
+
+/**
+ * Persist the "Allow local-network feeds" setting. The checkbox is put back
+ * to its previous state when the save does not succeed.
+ */
+export async function setAllowLocalNetworkFeeds(allowed) {
+  const box = $('allow-local-network-feeds');
+  try {
+    const resp = await sendMessage({ type: 'SAVE_SETTINGS_ONLY', payload: { settings: { allow_local_network_feeds: allowed === true } } });
+    if (!resp?.success) throw new Error(resp?.error || 'Failed to save the setting.');
+    setStatus('custom-source-status', allowed ? 'Local-network feeds are allowed.' : 'Local-network feeds are off.', '');
+  } catch (err) {
+    if (box) box.checked = allowed !== true;
+    setStatus('custom-source-status', '❌ ' + (err?.message || 'Failed to save the setting.'), 'error');
   }
 }
 
@@ -341,6 +355,7 @@ export function initAiHandlers() {
 
   // Custom job sources — add via button, remove via event delegation on the list.
   $('add-custom-source-btn')?.addEventListener('click', addCustomJobSource);
+  $('allow-local-network-feeds')?.addEventListener('change', (e) => setAllowLocalNetworkFeeds(e.target.checked));
   $('custom-job-sources-list')?.addEventListener('click', (event) => {
     const removeBtn = event.target.closest('[data-remove-id]');
     if (!removeBtn) return;

@@ -38,6 +38,7 @@ async function buildJobSearchConfig(settings = {}) {
   } catch {
     config.linkedin = { sessionActive: false };
   }
+  config.allowLocalNetworkFeeds = settings.allow_local_network_feeds === true;
   if (Array.isArray(settings.custom_job_sources)) {
     config.customSources = settings.custom_job_sources;
   }
