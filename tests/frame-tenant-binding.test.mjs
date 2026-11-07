@@ -5,7 +5,7 @@ import { generateKeyPairSync } from 'node:crypto';
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 
-import { matchesExpectedFillDocument as moduleGuard } from '../content/fill-url-guard.js';
+import { matchesExpectedFillDocument as moduleGuard, atsFrameTenant as moduleTenant } from '../content/fill-url-guard.js';
 import { findExtensionId, extensionIdFromKey, STORE_EXTENSION_ID } from '../scripts/tracker/cdp.mjs';
 
 // Load the shipped classic content script and drive its real message listener.
@@ -157,4 +157,91 @@ test('cdp: an unpacked install is accepted only when its path is this build', as
 
 test('cdp: the published store id is accepted by id', async () => {
   assert.equal(await findExtensionId(fakeCdp([STORE_EXTENSION_ID, A]), {}, { ...noKey, unpackedPathFor: () => null }), STORE_EXTENSION_ID);
+});
+
+// ── Host, encoding and port edge cases ──────────────────────────────────────
+test('frame binding: lookalike hosts are refused even when listed', async () => {
+  for (const url of ['https://greenhouse.io.evil.com/embed/job_app?for=acme', 'https://evilgreenhouse.io/embed/job_app?for=acme']) {
+    const r = await inject(url, [url]);
+    assert.equal(r.res, 'declined', url);
+    assert.equal(r.filled, 0);
+  }
+});
+
+test('frame binding: a duplicated for= uses the first value', async () => {
+  const first = 'https://job-boards.greenhouse.io/embed/job_app?for=acme&for=other';
+  assert.equal((await inject(first, ['https://job-boards.greenhouse.io/embed/job_app?for=acme'])).filled, 1);
+  assert.equal((await inject(first, ['https://job-boards.greenhouse.io/embed/job_app?for=other&for=acme'])).res, 'declined');
+});
+
+test('frame binding: percent-encoded tenants and paths are refused', async () => {
+  for (const url of [
+    'https://job-boards.greenhouse.io/embed/job_app?for=ac%6De',
+    'https://jobs.lever.co/ac%6De/123',
+    'https://jobs.lever.co/acme%2F..%2Fother/123',
+  ]) {
+    const r = await inject(url, [url]);
+    assert.equal(r.res, 'declined', url);
+    assert.equal(r.filled, 0);
+  }
+});
+
+test('frame binding: a port mismatch is refused', async () => {
+  const withPort = 'https://job-boards.greenhouse.io:8443/embed/job_app?for=acme';
+  assert.equal((await inject(withPort, [GH_FRAME])).res, 'declined');
+  assert.equal((await inject(GH_FRAME, [withPort])).res, 'declined');
+});
+
+// ── Parity of the two atsFrameTenant copies ─────────────────────────────────
+function contentTenant() {
+  const sandbox = {
+    document: { referrer: '', addEventListener() {}, querySelector: () => null, querySelectorAll: () => [], readyState: 'complete', documentElement: {}, body: null },
+    location: new URL(TOP), URL, URLSearchParams, console, setTimeout, clearTimeout,
+  };
+  sandbox.window = sandbox; sandbox.self = sandbox; sandbox.top = sandbox;
+  sandbox.addEventListener = () => {};
+  sandbox.MutationObserver = class { observe() {} disconnect() {} };
+  sandbox.chrome = { runtime: { id: 'ext-id', onMessage: { addListener() {} }, sendMessage: () => Promise.resolve({}) } };
+  vm.createContext(sandbox);
+  vm.runInContext(`${CONTENT_JS}
+;globalThis.__tenant = atsFrameTenant;`, sandbox);
+  return sandbox.__tenant;
+}
+
+const TENANT_CASES = [
+  'https://job-boards.greenhouse.io/embed/job_app?for=acme&token=1',
+  'https://job-boards.greenhouse.io/embed/job_app?for=acme&for=other',
+  'https://job-boards.greenhouse.io/embed/job_app',
+  'https://boards.greenhouse.io/acme/jobs/1',
+  'https://boards.greenhouse.io/embed/job_app?for=ac%6De',
+  'https://jobs.lever.co/acme/1', 'https://jobs.lever.co/', 'https://jobs.eu.lever.co/Acme/1',
+  'https://jobs.ashbyhq.com/acme/1', 'https://jobs.ashby.io/acme',
+  'https://jobs.jobvite.com/acme/job/1',
+  'https://acme.wd5.myworkdayjobs.com/en-US/Careers', 'https://wd5.myworkdayjobs.com/x', 'https://acme.workday.com/x', 'https://www.workday.com/x',
+  'https://careers-acme.icims.com/jobs/1', 'https://jobs.icims.com/x',
+  'https://acme.phenompeople.com/apply', 'https://careers.phenompeople.com/apply',
+  'https://greenhouse.io.evil.com/acme', 'https://evilgreenhouse.io/acme', 'https://other.example/acme',
+  'https://jobs.lever.co/ac%6De/1', 'https://jobs.lever.co:8443/acme/1',
+];
+
+test('frame binding: both atsFrameTenant copies agree on every case', () => {
+  const shipped = contentTenant();
+  for (const url of TENANT_CASES) {
+    assert.equal(shipped(new URL(url)), moduleTenant(new URL(url)), url);
+  }
+  assert.equal(shipped(new URL(TENANT_CASES[0])), 'greenhouse:acme');
+  assert.equal(shipped(new URL('https://jobs.lever.co/ac%6De/1')), null);
+});
+
+// ── Extension id known-answer vector (computed independently with openssl) ──
+test('cdp: extensionIdFromKey matches an openssl-computed vector', () => {
+  const key = 'MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAucscRd3S1f6seuVkT53NCaGWRJ0w8kwDLBE2xVfs/VKYmOt623QhuUurR3dmmSypWVLyD4yC6FgI7mRWhoZnS2sixI3iRexTX+Es0rIz2qXdzwh4bTCmVZRomlzwj6td1nrT1itryCST8WFMkyCgf9f4BRbc2pYfCjcMfZuU2RgZmazwiay4dblC6rsRP1hEdwYuF92qyvnaALsgFeb45loCers8B4djlkjji5hpqlB61grt3mxl+yyV1TIMFGX2WVjaNSCOTRIyQZ7frtXwlBK5eKYPYLi4jNpI/Wicip8tJ17e2YFy1DAbZu4p+5whSJ5ai+FUDrR0t2ykmcnjRwIDAQAB';
+  assert.equal(extensionIdFromKey(key), 'ijmbnoeallibmnffggiimloehbhinncl');
+});
+
+test('cdp: a recorded path in any profile that matches this build is accepted', async () => {
+  const paths = { [A]: ['/elsewhere', BUILD], [B]: ['/elsewhere'] };
+  assert.equal(await findExtensionId(fakeCdp([A, B]), {}, { ...noKey, unpackedPathFor: (id) => paths[id] }), A);
+  const none = { [A]: ['/elsewhere', '/other'] };
+  await assert.rejects(findExtensionId(fakeCdp([A]), {}, { ...noKey, unpackedPathFor: (id) => none[id] }), /Could not identify/);
 });

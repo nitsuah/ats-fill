@@ -141,14 +141,15 @@ export function extensionIdFromKey(key) {
 
 function samePath(a, b) {
   try {
-    const norm = (p) => realpathSync(resolve(p)).replace(/[\/]+$/, '');
+    const norm = (p) => realpathSync.native(resolve(p)).replace(/[\/]+$/, '');
     const [x, y] = [norm(a), norm(b)];
     return process.platform === 'win32' ? x.toLowerCase() === y.toLowerCase() : x === y;
   } catch { return false; }
 }
 
-/** Unpacked install path Chrome recorded for an extension id, from the profile preferences. */
-export function readUnpackedPath(id, env = process.env) {
+/** Every unpacked install path Chrome recorded for an extension id, one per profile. */
+export function readUnpackedPaths(id, env = process.env) {
+  const found = [];
   const dirs = env.CHROME_USER_DATA_DIR ? [env.CHROME_USER_DATA_DIR] : userDataDirs();
   for (const dir of dirs) {
     let profiles = [];
@@ -158,12 +159,12 @@ export function readUnpackedPath(id, env = process.env) {
         try {
           const prefs = JSON.parse(readFileSync(join(dir, profile, file), 'utf8'));
           const path = prefs?.extensions?.settings?.[id]?.path;
-          if (typeof path === 'string' && path) return path;
+          if (typeof path === 'string' && path) { found.push(path); break; }
         } catch { /* try the next file */ }
       }
     }
   }
-  return null;
+  return found;
 }
 
 function readManifest() {
@@ -178,7 +179,7 @@ function readManifest() {
  * A manifest name is never used to pick a target.
  */
 export async function findExtensionId(cdp, env = process.env, {
-  manifest = readManifest(), buildDir = BUILD_DIR, unpackedPathFor = (id) => readUnpackedPath(id, env),
+  manifest = readManifest(), buildDir = BUILD_DIR, unpackedPathFor = (id) => readUnpackedPaths(id, env),
 } = {}) {
   if (env.ATS_FILL_EXTENSION_ID) return env.ATS_FILL_EXTENSION_ID;
   if (manifest?.key) return extensionIdFromKey(manifest.key);
@@ -188,8 +189,9 @@ export async function findExtensionId(cdp, env = process.env, {
     .map((t) => t.url.slice('chrome-extension://'.length, 'chrome-extension://'.length + 32)))];
   if (ids.includes(STORE_EXTENSION_ID)) return STORE_EXTENSION_ID;
   const matches = ids.filter((id) => {
-    const path = unpackedPathFor(id);
-    return typeof path === 'string' && samePath(path, buildDir);
+    // Check every profile's recorded path; the first one found is not trusted.
+    const paths = [unpackedPathFor(id)].flat().filter((p) => typeof p === 'string' && p);
+    return paths.some((p) => samePath(p, buildDir));
   });
   if (matches.length === 1) return matches[0];
   throw new Error(

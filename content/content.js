@@ -62,8 +62,9 @@ function atsFrameTenant(url) {
   let tenant = '';
   if (inDomain('greenhouse.io')) {
     family = 'greenhouse';
-    const forParam = (url.searchParams.get('for') || '').toLowerCase();
-    tenant = forParam || (seg() === 'embed' ? '' : seg());
+    // Read the first raw `for=`; an encoded value is refused rather than decoded.
+    const rawFor = /[?&]for=([^&]*)/.exec(url.search);
+    tenant = rawFor ? rawFor[1].toLowerCase() : (seg() === 'embed' ? '' : seg());
   } else if (inDomain('lever.co')) {
     family = 'lever'; tenant = seg();
   } else if (inDomain('ashbyhq.com') || inDomain('ashby.io')) {

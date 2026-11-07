@@ -10,7 +10,7 @@ function frameOriginAllowed(expected) {
 
 // Tenant of an ATS-hosted URL, as "family:tenant", or null when the host does
 // not encode one in a way we can read. Callers treat null as "refuse".
-function atsFrameTenant(url) {
+export function atsFrameTenant(url) {
   // Location objects lack searchParams; normalise to a URL first.
   url = new URL(url.href);
   const host = url.hostname.toLowerCase();
@@ -24,8 +24,9 @@ function atsFrameTenant(url) {
   let tenant = '';
   if (inDomain('greenhouse.io')) {
     family = 'greenhouse';
-    const forParam = (url.searchParams.get('for') || '').toLowerCase();
-    tenant = forParam || (seg() === 'embed' ? '' : seg());
+    // Read the first raw `for=`; an encoded value is refused rather than decoded.
+    const rawFor = /[?&]for=([^&]*)/.exec(url.search);
+    tenant = rawFor ? rawFor[1].toLowerCase() : (seg() === 'embed' ? '' : seg());
   } else if (inDomain('lever.co')) {
     family = 'lever'; tenant = seg();
   } else if (inDomain('ashbyhq.com') || inDomain('ashby.io')) {
