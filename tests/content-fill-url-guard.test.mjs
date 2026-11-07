@@ -129,13 +129,14 @@ test('sender lazily injects only into the selected document when no receiver exi
       },
     },
     scripting: {
-      async executeScript({ target }) {
+      async executeScript({ target, files }) {
         if (target.allFrames) {
           return [
             { frameId: 0, documentId: 'top-doc', result: { href: expectedUrl } },
             { frameId: 4, documentId: 'form-doc', result: { href: 'https://forms.example/application' } },
           ];
         }
+        if (!files) return [{ frameId: 0, documentId: 'top-doc', result: { href: expectedUrl, iframeSrcs: [] } }];
         injectionTargets.push(...target.documentIds);
         return [];
       },

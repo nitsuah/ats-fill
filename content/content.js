@@ -70,7 +70,8 @@ function atsFrameTenant(url) {
   } else if (inDomain('ashbyhq.com') || inDomain('ashby.io')) {
     family = 'ashby'; tenant = seg();
   } else if (inDomain('jobvite.com')) {
-    family = 'jobvite'; tenant = seg();
+    // The legacy CompanyJobs endpoint is shared by all companies; refuse it.
+    family = 'jobvite'; tenant = seg() === 'companyjobs' ? '' : seg();
   } else if (inDomain('myworkdayjobs.com') || inDomain('workday.com')) {
     family = 'workday'; tenant = label(/^(www|jobs|careers|wd\d+|myworkdayjobs|workday)$/);
   } else if (inDomain('icims.com')) {

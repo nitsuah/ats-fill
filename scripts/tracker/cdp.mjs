@@ -16,7 +16,7 @@ import process from 'node:process';
 import { readFileSync, existsSync, readdirSync, realpathSync } from 'node:fs';
 import { createHash } from 'node:crypto';
 import { homedir } from 'node:os';
-import { join, resolve, dirname } from 'node:path';
+import { join, resolve, dirname, isAbsolute } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 export const STORE_EXTENSION_ID = 'amofaeopfmaicbiijgjaojenedkkadmn';
@@ -140,6 +140,8 @@ export function extensionIdFromKey(key) {
 }
 
 function samePath(a, b) {
+  // A relative recorded path is never this checkout; do not resolve it against the cwd.
+  if (!isAbsolute(String(a))) return false;
   try {
     const norm = (p) => realpathSync.native(resolve(p)).replace(/[\/]+$/, '');
     const [x, y] = [norm(a), norm(b)];
@@ -150,10 +152,12 @@ function samePath(a, b) {
 /** Every unpacked install path Chrome recorded for an extension id, one per profile. */
 export function readUnpackedPaths(id, env = process.env) {
   const found = [];
+  // The profile directory named by ATS_FILL_PROFILE is searched too (plain names only).
+  const configured = /^\w[\w .-]*$/.test(env.ATS_FILL_PROFILE || '') ? env.ATS_FILL_PROFILE : '';
   const dirs = env.CHROME_USER_DATA_DIR ? [env.CHROME_USER_DATA_DIR] : userDataDirs();
   for (const dir of dirs) {
     let profiles = [];
-    try { profiles = readdirSync(dir).filter((name) => name === 'Default' || /^Profile \d+$/.test(name)); } catch { continue; }
+    try { profiles = readdirSync(dir).filter((name) => name === 'Default' || /^Profile \d+$/.test(name) || name === configured); } catch { continue; }
     for (const profile of profiles) {
       for (const file of ['Secure Preferences', 'Preferences']) {
         try {

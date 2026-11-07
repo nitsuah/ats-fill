@@ -216,7 +216,7 @@ const TENANT_CASES = [
   'https://boards.greenhouse.io/embed/job_app?for=ac%6De',
   'https://jobs.lever.co/acme/1', 'https://jobs.lever.co/', 'https://jobs.eu.lever.co/Acme/1',
   'https://jobs.ashbyhq.com/acme/1', 'https://jobs.ashby.io/acme',
-  'https://jobs.jobvite.com/acme/job/1',
+  'https://jobs.jobvite.com/acme/job/1', 'https://app.jobvite.com/CompanyJobs/Careers.aspx?c=acme', 'https://app.jobvite.com/companyjobs/careers.aspx?c=other',
   'https://acme.wd5.myworkdayjobs.com/en-US/Careers', 'https://wd5.myworkdayjobs.com/x', 'https://acme.workday.com/x', 'https://www.workday.com/x',
   'https://careers-acme.icims.com/jobs/1', 'https://jobs.icims.com/x',
   'https://acme.phenompeople.com/apply', 'https://careers.phenompeople.com/apply',
@@ -244,4 +244,104 @@ test('cdp: a recorded path in any profile that matches this build is accepted', 
   assert.equal(await findExtensionId(fakeCdp([A, B]), {}, { ...noKey, unpackedPathFor: (id) => paths[id] }), A);
   const none = { [A]: ['/elsewhere', '/other'] };
   await assert.rejects(findExtensionId(fakeCdp([A]), {}, { ...noKey, unpackedPathFor: (id) => none[id] }), /Could not identify/);
+});
+
+// ── Sender: iframe list collection and delivery ─────────────────────────────
+const GH_SRC = 'https://job-boards.greenhouse.io/embed/job_app?for=acme';
+
+async function withSender({ iframes, afterFirst, lazy = false }, run) {
+  const prior = { chrome: globalThis.chrome, window: globalThis.window, document: globalThis.document };
+  let current = iframes;
+  const sent = [];
+  let injected = 0;
+  const page = (list) => {
+    const top = {};
+    globalThis.window = top; top.top = top; top.location = { href: TOP };
+    globalThis.document = { querySelectorAll: () => list.map((src) => ({ src })) };
+  };
+  globalThis.chrome = {
+    runtime: { lastError: null },
+    tabs: {
+      async query() { return [{ id: 7, url: TOP }]; },
+      async get() { return { url: TOP }; },
+      sendMessage(_tab, message, options, cb) {
+        sent.push({ message, documentId: options.documentId });
+        // The page changes right after the first delivery to the child frame.
+        if (afterFirst && options.documentId === 'child-doc') current = afterFirst;
+        if (lazy && options.documentId === 'child-doc' && injected === 0) {
+          globalThis.chrome.runtime.lastError = { message: 'Could not establish connection. Receiving end does not exist.' };
+          cb();
+          globalThis.chrome.runtime.lastError = null;
+          return;
+        }
+        // The top frame declines (no reply); only the child frame answers.
+        if (options.documentId === 'top-doc') { cb(); return; }
+        cb({ success: true, filled: 1 });
+      },
+    },
+    scripting: {
+      async executeScript(opts) {
+        if (opts.files) { injected += 1; return []; }
+        page(current);
+        const result = opts.func();
+        if (opts.target.allFrames) {
+          return [{ frameId: 0, documentId: 'top-doc', result }, { frameId: 3, documentId: 'child-doc', result: { href: GH_SRC, iframeSrcs: [] } }];
+        }
+        return [{ frameId: 0, documentId: 'top-doc', result }];
+      },
+    },
+  };
+  try {
+    const { sendToActiveTab } = await import('../lib/utils.js');
+    await run(sendToActiveTab, sent);
+  } finally {
+    for (const [k, v] of Object.entries(prior)) { if (v === undefined) delete globalThis[k]; else globalThis[k] = v; }
+  }
+}
+
+test('sender: the top frame ATS iframe list reaches the child frame', async () => {
+  await withSender({ iframes: [GH_SRC, 'https://ads.example/x'] }, async (send, sent) => {
+    const res = await send({ type: 'INJECT_ANSWERS', payload: { a: 1 } });
+    assert.equal(res.success, true);
+    const toChild = sent.find((s) => s.documentId === 'child-doc');
+    assert.deepEqual(toChild.message.frameSrcs, [GH_SRC], 'only the ATS iframe is carried');
+    assert.equal(toChild.message.expectedUrl, TOP);
+  });
+});
+
+test('sender: the list survives the lazy-injection retry', async () => {
+  await withSender({ iframes: [GH_SRC], lazy: true }, async (send, sent) => {
+    await send({ type: 'INJECT_ANSWERS', payload: { a: 1 } });
+    const toChild = sent.filter((s) => s.documentId === 'child-doc');
+    assert.equal(toChild.length, 2);
+    assert.ok(toChild.every((s) => JSON.stringify(s.message.frameSrcs) === JSON.stringify([GH_SRC])));
+  });
+});
+
+test('sender: an ATS iframe is kept after many unrelated iframes', async () => {
+  const noise = Array.from({ length: 150 }, (_, i) => `https://ads${i}.example/x`);
+  await withSender({ iframes: [...noise, GH_SRC] }, async (send, sent) => {
+    await send({ type: 'INJECT_ANSWERS', payload: { a: 1 } });
+    assert.deepEqual(sent.find((s) => s.documentId === 'child-doc').message.frameSrcs, [GH_SRC]);
+  });
+});
+
+test('sender: the list is re-read before each delivery', async () => {
+  await withSender({ iframes: [GH_SRC], lazy: true, afterFirst: [] }, async (send, sent) => {
+    await send({ type: 'INJECT_ANSWERS', payload: { a: 1 } });
+    const toChild = sent.filter((s) => s.documentId === 'child-doc');
+    assert.deepEqual(toChild[0].message.frameSrcs, [GH_SRC]);
+    assert.deepEqual(toChild[1].message.frameSrcs, [], 'a removed iframe no longer authorises the frame');
+  });
+});
+
+test('frame binding: the shared legacy Jobvite endpoint is refused', async () => {
+  const url = 'https://app.jobvite.com/CompanyJobs/Careers.aspx?c=acme';
+  assert.equal((await inject(url, [url])).res, 'declined');
+  assert.equal(moduleTenant(new URL(url)), null);
+  assert.equal((await inject('https://jobs.jobvite.com/acme/job/1', ['https://jobs.jobvite.com/acme/job/1'])).filled, 1);
+});
+
+test('cdp: relative recorded paths are never matched against the working directory', async () => {
+  await assert.rejects(findExtensionId(fakeCdp([A]), {}, { ...noKey, unpackedPathFor: () => ['.'] }), /Could not identify/);
 });
