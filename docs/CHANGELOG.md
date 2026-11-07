@@ -22,6 +22,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- State sent to page scripts omits stored credentials; job-board fetches stay on allowed hosts with size and time limits.
+
 - HTML entity decoders now accept uppercase `X` in hexadecimal numeric references across job and page extraction.
 
 - **Fixed:** CDP tracker helper no longer passes credential-named fields through

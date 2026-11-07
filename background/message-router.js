@@ -5,6 +5,7 @@
  */
 
 import { checkInWithBridge, requestBridgeAccess } from './native-bridge.js';
+import { isExtensionPageSender, redactStateForPageCaller } from './modules/handlers/state.js';
 import {
   handleSaveSetup,
   handleSaveSettingsOnly,
@@ -46,13 +47,22 @@ import {
 } from './modules/handlers/index.js';
 
 /**
+ * GET_STATE answers extension pages with the full state (the settings form
+ * round-trips stored credentials) and every other sender with a redacted copy.
+ */
+async function getStateForSender(_payload, sender) {
+  const state = await getState();
+  return isExtensionPageSender(sender) ? state : redactStateForPageCaller(state);
+}
+
+/**
  * Map of message type to handler function.
  * Adding new message types is now a single-line addition here.
  */
 const MESSAGE_HANDLERS = {
   SAVE_SETUP: handleSaveSetup,
   SAVE_SETTINGS_ONLY: handleSaveSettingsOnly,
-  GET_STATE: getState,
+  GET_STATE: getStateForSender,
   GET_RESUME_ATTACHMENT: handleGetResumeAttachment,
   REMOVE_RESUME_ATTACHMENT: handleRemoveResumeAttachment,
   GENERATE_ANSWERS: handleGenerateAnswers,
@@ -113,7 +123,7 @@ export function setupMessageRouter() {
       return false;
     }
 
-    handleMessage(msg).then(sendResponse).catch((err) => {
+    handleMessage(msg, sender).then(sendResponse).catch((err) => {
       sendResponse({ success: false, error: err.message });
     });
     return true; // keep channel open for async response
@@ -126,7 +136,7 @@ export function setupMessageRouter() {
  * @returns {Promise<any>} The handler's return value.
  * @throws {Error} If the message type is unknown.
  */
-export async function handleMessage(msg) {
+export async function handleMessage(msg, sender) {
   // Keep everything before handler() synchronous: NATIVE_BRIDGE_ENABLE needs
   // the user gesture, which ends at the first await.
   const type = msg?.type;
@@ -134,5 +144,5 @@ export async function handleMessage(msg) {
   if (typeof handler !== 'function') {
     throw new Error('Unknown message type: ' + msg?.type);
   }
-  return handler(msg.payload);
+  return handler(msg.payload, sender);
 }
