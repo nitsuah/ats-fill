@@ -1,4 +1,4 @@
-const ATS_FRAME_HOSTS = ['greenhouse.io', 'ashbyhq.com', 'ashby.io', 'lever.co', 'workday.com', 'myworkdayjobs.com', 'icims.com', 'jobvite.com'];
+const ATS_FRAME_HOSTS = ['greenhouse.io', 'ashbyhq.com', 'ashby.io', 'lever.co', 'workday.com', 'myworkdayjobs.com', 'icims.com', 'jobvite.com', 'phenompeople.com'];
 
 function frameOriginAllowed(expected) {
   const own = window.location;

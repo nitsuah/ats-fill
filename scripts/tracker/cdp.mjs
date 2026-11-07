@@ -139,7 +139,11 @@ export async function findExtensionId(cdp, env = process.env) {
   if (ids.includes(STORE_EXTENSION_ID)) return STORE_EXTENSION_ID;
   // An unpacked dev build has its own ID; accept the sole candidate only when
   // its manifest name matches this extension.
-  if (ids.length === 1 && await extensionNameMatches(cdp, targetInfos, ids[0])) return ids[0];
+  const matches = [];
+  for (const id of ids) {
+    if (await extensionNameMatches(cdp, targetInfos, id)) matches.push(id);
+  }
+  if (matches.length === 1) return matches[0];
   throw new Error('Could not identify the ats-fill extension. Set ATS_FILL_EXTENSION_ID to its ID.');
 }
 

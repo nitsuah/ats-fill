@@ -43,6 +43,10 @@ test('shipped guard: known ATS subdomain over https fills', () => {
   assert.equal(fills('https://job-boards.greenhouse.io/embed/job_app'), true);
 });
 
+test('shipped guard: Phenom host over https fills', () => {
+  assert.equal(fills('https://careers.phenompeople.com/apply'), true);
+});
+
 test('shipped guard: ATS host over http is refused', () => {
   assert.equal(fills('http://boards.greenhouse.io/embed/job_app'), false);
 });

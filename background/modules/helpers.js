@@ -294,7 +294,6 @@ export function applyProfileOverrides(resume, profile = {}, settings = {}) {
   next.race = next.sensitive_optin ? firstNonEmpty(profile.race, next.race) : '';
   next.veteran = next.sensitive_optin ? firstNonEmpty(profile.veteran, next.veteran) : '';
   next.disability = next.sensitive_optin ? firstNonEmpty(profile.disability, next.disability) : '';
-  if (next.sensitive_optin && !next.pronouns) next.pronouns = firstNonEmpty(profile.pronouns_sensitive, next.pronouns_sensitive);
   next.pronouns_sensitive = next.sensitive_optin ? firstNonEmpty(profile.pronouns_sensitive, next.pronouns_sensitive) : '';
   next.current_company = firstNonEmpty(profile.current_company, next.current_company, next.experience?.[0]?.company);
   next.current_title = firstNonEmpty(profile.current_title, next.current_title, next.experience?.[0]?.title);
@@ -353,6 +352,8 @@ export function getProfileFromResume(resume = {}, settings = {}) {
     base.veteran = resume.veteran || '';
     base.disability = resume.disability || '';
     base.pronouns_sensitive = resume.pronouns_sensitive || '';
+    // Effective value is derived here, so withdrawing the opt-in drops it.
+    if (!base.pronouns) base.pronouns = base.pronouns_sensitive;
   } else {
     base.sensitive_optin = false;
     base.gender = '';
