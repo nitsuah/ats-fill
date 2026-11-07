@@ -431,12 +431,30 @@ function isDraftableField(el) {
   return true;
 }
 
-function getDraftPageKey() {
+const DRAFT_TRACKING_PARAMS = /^(utm_.*|gclid|dclid|fbclid|msclkid|mc_cid|mc_eid|_ga|_gl|_hsenc|_hsmi|gh_src|li_fat_id|igshid)$/i;
+
+/** Page key without the query string (format used before queries were keyed). */
+function getLegacyDraftPageKey() {
   try {
     const url = new URL(location.href);
     return `${url.origin}${url.pathname}`.replace(/\/$/, '') || url.origin;
   } catch {
     return location.href.split('#')[0].split('?')[0];
+  }
+}
+
+/** Page key including a normalised query: sorted params, tracking params dropped. */
+function getDraftPageKey() {
+  const base = getLegacyDraftPageKey();
+  try {
+    const url = new URL(location.href);
+    const params = [...url.searchParams.entries()]
+      .filter(([name]) => !DRAFT_TRACKING_PARAMS.test(name))
+      .sort((a, b) => (a[0] === b[0] ? a[1].localeCompare(b[1]) : a[0].localeCompare(b[0])));
+    if (!params.length) return base;
+    return `${base}?${new URLSearchParams(params).toString()}`;
+  } catch {
+    return base;
   }
 }
 
@@ -609,7 +627,7 @@ async function restoreDraftValues() {
 
   try {
     const data = await chrome.storage.local.get(DRAFT_STORAGE_KEY);
-    const draft = data[DRAFT_STORAGE_KEY]?.[getDraftPageKey()];
+    const draft = data[DRAFT_STORAGE_KEY]?.[getDraftPageKey()] || data[DRAFT_STORAGE_KEY]?.[getLegacyDraftPageKey()];
     if (!draft?.fields) return;
 
     const processedGroups = new Set();

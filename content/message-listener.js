@@ -13,7 +13,8 @@ import { getFillableInputs, findFieldForReviewTarget } from './form-filler.js';
  * Registers listener that delegates to handleMessage with error normalization
  */
 export function setupMessageListener() {
-  chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
+  chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
+    if (msg?.type === 'INJECT_ANSWERS' && sender?.id !== chrome.runtime.id) return false;
     if (!frameOwnsMessage(msg)) return false;
     handleMessage(msg, sendResponse).then((result) => {
       if (result !== undefined) sendResponse(result);
@@ -32,6 +33,9 @@ async function handleMessage(msg, sendResponse) {
       }
       return handleFillForm();
     case 'INJECT_ANSWERS':
+      if (!matchesExpectedFillDocument(msg)) {
+        throw new Error('The application page navigated or changed. Try again on the intended tab.');
+      }
       return handleInjectAnswers(msg.payload);
     case 'GET_JOB_INFO':
       return handleGetJobInfo();
@@ -54,6 +58,7 @@ function frameOwnsMessage(msg) {
   switch (msg?.type) {
     case 'FILL_FORM':
     case 'INJECT_ANSWERS':
+      if (!matchesExpectedFillDocument(msg)) return false;
       return getFillableInputs().length > 0;
     case 'FOCUS_FIELD':
       return !!findFieldForReviewTarget(msg.payload || {});
