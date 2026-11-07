@@ -11,6 +11,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- Answer injection from the preview now targets the verified application document and is accepted only from the extension and only in frames that pass the fill guard.
+- Page drafts are keyed by a normalised query string (sorted params, tracking params removed); older query-less drafts are shown only on URLs with no non-tracking query; older drafts saved for query URLs are no longer restored.
 - Standalone popup navigation collapses at tablet widths (up to 860px) to prevent horizontal overflow.
 
 - Tracker automation without a model: `scripts/tracker/weekly-review.mjs` (read-only weekly review from the CLI) and `scripts/tracker/inbox-sync.mjs` (Gmail REST API with a `gmail.readonly` refresh token, then `cli sync-email --apply`) replace the two model-driven scheduled tasks; setup and Task Scheduler examples in `scripts/tracker/README-automation.md`.

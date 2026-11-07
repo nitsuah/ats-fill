@@ -93,9 +93,10 @@ function frameOwnsMessage(msg) {
       if (!matchesExpectedFillDocument(msg.expectedUrl)) return false;
       return getFillableInputs().length > 0 && (!IS_TOP_FRAME || !pageEmbedsAtsFrame());
     case 'INJECT_ANSWERS':
-      // The frame that actually contains the application fields fills them. A
-      // host page that embeds an ATS form defers to that iframe, so the fill
-      // (and its tracker entry) comes from one frame only.
+      // Same document guard as a normal fill. The frame that actually contains
+      // the application fields fills them; a host page that embeds an ATS form
+      // defers to that iframe, so the fill comes from one frame only.
+      if (!matchesExpectedFillDocument(msg.expectedUrl)) return false;
       return getFillableInputs().length > 0 && (!IS_TOP_FRAME || !pageEmbedsAtsFrame());
     case 'FOCUS_FIELD':
       return !!findFieldForReviewTarget(msg.payload || {});
@@ -127,7 +128,9 @@ function isEmbeddedAtsFormFrame() {
   return !IS_TOP_FRAME && detectAts() !== 'Generic' && getFillableInputs().length > 0;
 }
 
-chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
+chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
+  // Answers are accepted only from this extension's own pages.
+  if (msg?.type === 'INJECT_ANSWERS' && sender?.id !== chrome.runtime.id) return false;
   if (!frameOwnsMessage(msg)) return false;
   handleMessage(msg, sendResponse).then((result) => {
     // Only call sendResponse here if handleMessage returned a value
@@ -144,11 +147,12 @@ async function handleMessage(msg, sendResponse) {
     case 'FILL_FORM':
       return handleFillForm(msg.expectedUrl);
     case 'INJECT_ANSWERS':
+      if (!matchesExpectedFillDocument(msg.expectedUrl)) throw new Error('The application page navigated or changed. Try again on the intended tab.');
       return handleInjectAnswers(msg.payload);
     case 'GET_JOB_INFO':
       return handleGetJobInfo();
     case 'DETECT_ATS':
-      return { ats: detectAts() };
+      return { ats: detectAts(), url: location.href };
     case 'FOCUS_FIELD':
       return handleFocusField(msg.payload);
     case 'FETCH_LINKEDIN_JOBS': {
@@ -1678,12 +1682,39 @@ function isDraftableField(el) {
   return true;
 }
 
-function getDraftPageKey() {
+const DRAFT_TRACKING_PARAMS = /^(utm_.*|gclid|dclid|fbclid|msclkid|mc_cid|mc_eid|_ga|_gl|_hsenc|_hsmi|gh_src|li_fat_id|igshid|session(_?id)?|sid|jsessionid|token|nonce|timestamp|ts|_t)$/i;
+
+/** Page key without the query string (format used before queries were keyed). */
+function getLegacyDraftPageKey() {
   try {
     const url = new URL(location.href);
     return `${url.origin}${url.pathname}`.replace(/\/$/, '') || url.origin;
   } catch {
     return location.href.split('#')[0].split('?')[0];
+  }
+}
+
+/**
+ * Draft for this page. Old drafts were keyed without the query, which is the
+ * same key as today's when the normalised query is empty, so no extra lookup
+ * is needed and drafts for other query variants are never shown.
+ */
+function findDraftForPage(drafts) {
+  return drafts?.[getDraftPageKey()];
+}
+
+/** Page key including a normalised query: sorted params, tracking params dropped. */
+function getDraftPageKey() {
+  const base = getLegacyDraftPageKey();
+  try {
+    const url = new URL(location.href);
+    const params = [...url.searchParams.entries()]
+      .filter(([name]) => !DRAFT_TRACKING_PARAMS.test(name))
+      .sort((a, b) => (a[0] === b[0] ? a[1].localeCompare(b[1]) : a[0].localeCompare(b[0])));
+    if (!params.length) return base;
+    return `${base}?${new URLSearchParams(params).toString()}`;
+  } catch {
+    return base;
   }
 }
 
@@ -1864,7 +1895,7 @@ async function restoreDraftValues() {
 
   try {
     const data = await chrome.storage.local.get(DRAFT_STORAGE_KEY);
-    const draft = data[DRAFT_STORAGE_KEY]?.[getDraftPageKey()];
+    const draft = findDraftForPage(data[DRAFT_STORAGE_KEY]);
     if (!draft?.fields) return;
 
   const processedGroups = new Set();

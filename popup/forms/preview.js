@@ -19,7 +19,9 @@ export function initPreviewHandlers() {
     const resp = await sendMessage({ type: 'GET_LAST_ANSWERS' });
     if (!resp?.answers) return;
     try {
-      await sendToActiveTab({ type: 'INJECT_ANSWERS', payload: resp.answers });
+      // The page reports its own URL now; the receiver refuses the answers if it changed.
+      const page = await sendToActiveTab({ type: 'DETECT_ATS' });
+      await sendToActiveTab({ type: 'INJECT_ANSWERS', payload: resp.answers, expectedUrl: page?.url });
     } catch (err) {
       // tab may not have content script
     }
