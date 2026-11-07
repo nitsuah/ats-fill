@@ -49,6 +49,7 @@ function recordingFetch(routes) {
     for (let hop = 0; hop < 5; hop += 1) {
       const response = routes(target.split('?')[0]) || notFound();
       const isRedirect = response.status >= 300 && response.status < 400;
+      if (isRedirect && init.redirect === 'error') throw new TypeError('redirect mode is set to error');
       if (!isRedirect || init.redirect === 'manual') return { ...response, url: target, redirected };
       target = new URL(response.headers.get('location'), target).toString();
       calls.push({ url: target, redirect: 'hop' });
@@ -87,34 +88,22 @@ test('custom feed whose final URL is on another host is refused before its body 
   const outcome = await searchJobs('analyst', { fetchImpl, config: JOBS4TN_CONFIG, sources: ['custom-jobs4tn'] })
     .then(() => 'resolved', (err) => err.message);
   assert.equal(evil.reads, 0, 'the body of a response on a disallowed final host must not be read');
-  assert.equal(calls[0].redirect, 'follow', 'the feed request uses the platform redirect handling');
+  assert.equal(calls[0].redirect, 'error', 'custom feed requests refuse redirects');
+  assert.deepEqual(calls.map((c) => c.url), ['https://jobs4tn.gov/rss?q=analyst'], 'the redirect target is never requested');
   assert.match(outcome, /unavailable/i);
 }));
 
-test('custom feed redirect within the same host works and the final URL is accepted', withDomParser(async () => {
+test('custom feed redirect, even within the same host, is refused', withDomParser(async () => {
   const { fetchImpl, calls } = recordingFetch((url) => {
     if (url === 'https://jobs4tn.gov/rss') return redirectTo('https://jobs4tn.gov/rss-current');
     if (url === 'https://jobs4tn.gov/rss-current') return ok(RSS);
     return undefined;
   });
 
-  const { jobs, sources } = await searchJobs('analyst', { fetchImpl, config: JOBS4TN_CONFIG, sources: ['custom-jobs4tn'] });
-  assert.equal(sources[0].ok, true);
-  assert.equal(jobs.length, 1);
-  assert.equal(jobs[0].source, 'JOBS4TN');
-  assert.deepEqual(calls.map((c) => c.url), ['https://jobs4tn.gov/rss?q=analyst', 'https://jobs4tn.gov/rss-current']);
-}));
-
-test('a configured www. feed also accepts its apex host as the final URL', withDomParser(async () => {
-  const { fetchImpl } = recordingFetch((url) => {
-    if (url === 'https://www.jobs4tn.gov/rss') return redirectTo('https://jobs4tn.gov/rss-apex');
-    if (url === 'https://jobs4tn.gov/rss-apex') return ok(RSS);
-    return undefined;
-  });
-  const config = { customSources: [{ id: 'custom-www', label: 'WWW', url: 'https://www.jobs4tn.gov/rss' }] };
-  const { jobs, sources } = await searchJobs('analyst', { fetchImpl, config, sources: ['custom-www'] });
-  assert.equal(sources[0].ok, true);
-  assert.equal(jobs.length, 1);
+  const outcome = await searchJobs('analyst', { fetchImpl, config: JOBS4TN_CONFIG, sources: ['custom-jobs4tn'] })
+    .then(() => 'resolved', (err) => err.message);
+  assert.match(outcome, /unavailable/i);
+  assert.deepEqual(calls.map((c) => c.url), ['https://jobs4tn.gov/rss?q=analyst']);
 }));
 
 test('a trailing dot on the configured host does not change the host match', withDomParser(async () => {
@@ -338,3 +327,13 @@ test('a feed declaring a body larger than the cap is refused before its body is 
   );
   assert.equal(reads.reads, 0);
 }));
+
+test('fetchJobFeedText passes the redirect option through and defaults to follow', async () => {
+  const { fetchJobFeedText } = await import('../lib/job-search.js');
+  const seen = [];
+  const doFetch = async (url, init) => { seen.push(init.redirect); return { ...ok('x'), url }; };
+  const allowedHosts = ['jobs4tn.gov'];
+  await fetchJobFeedText('https://jobs4tn.gov/rss', { doFetch, allowedHosts });
+  await fetchJobFeedText('https://jobs4tn.gov/rss', { doFetch, allowedHosts, redirect: 'error' });
+  assert.deepEqual(seen, ['follow', 'error']);
+});

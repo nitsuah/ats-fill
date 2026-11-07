@@ -1,3 +1,13 @@
+const ATS_FRAME_HOSTS = ['greenhouse.io', 'ashbyhq.com', 'ashby.io', 'lever.co', 'workday.com', 'myworkdayjobs.com', 'icims.com', 'jobvite.com', 'phenompeople.com'];
+
+function frameOriginAllowed(expected) {
+  const own = window.location;
+  if (own.origin === expected.origin) return true;
+  if (own.protocol !== 'https:') return false;
+  const host = own.hostname.toLowerCase();
+  return ATS_FRAME_HOSTS.some((domain) => host === domain || host.endsWith(`.${domain}`));
+}
+
 /** Bind fill requests to the selected document, including embedded application frames. */
 export function matchesExpectedFillDocument(msg) {
   if (typeof msg?.expectedUrl !== 'string') return false;
@@ -6,6 +16,7 @@ export function matchesExpectedFillDocument(msg) {
   if (expected.protocol !== 'https:' && expected.protocol !== 'http:') return false;
   try {
     if (window.top === window) return window.location.href === expected.href;
+    if (!frameOriginAllowed(expected)) return false;
     const referrer = new URL(document.referrer);
     // Referrer-Policy: strict-origin-when-cross-origin strips path, query, and
     // fragment from cross-origin iframe referrers. The extension sender verifies
