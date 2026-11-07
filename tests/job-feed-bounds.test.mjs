@@ -247,16 +247,87 @@ test('hackajob detail pages accept up to 3 MB while custom feeds still stop at 1
   assert.equal(feedReads.reads, 0, 'a 2 MB custom feed is over the feed cap and is not read');
 }));
 
-test('a feed that never answers is abandoned after the time limit', async (t) => {
+test('a feed that never answers is abandoned after the time limit and its request is aborted', async (t) => {
   t.mock.timers.enable({ apis: ['setTimeout'] });
-  const fetchImpl = () => new Promise(() => {});
+  let requestSignal;
+  const fetchImpl = (_url, init = {}) => {
+    requestSignal = init.signal;
+    return new Promise(() => {});
+  };
   const pending = searchJobs('analyst', { fetchImpl, config: JOBS4TN_CONFIG, sources: ['custom-jobs4tn'] })
     .then(() => 'resolved', (err) => err.message);
   t.mock.timers.tick(15_000);
   // setImmediate is not mocked, so this settles after the pending request's microtasks have run.
   const outcome = await Promise.race([pending, new Promise((resolve) => setImmediate(() => resolve('still waiting')))]);
   assert.match(outcome, /unavailable/i);
+  assert.equal(requestSignal?.aborted, true, 'the timed-out request must be aborted, not left running');
 });
+
+/** A streamed response whose cancel() is observable. */
+function streamedResponse(status, headers, tracker) {
+  return {
+    ok: status >= 200 && status < 300,
+    status,
+    headers: { get: (name) => headers[name.toLowerCase()] ?? null },
+    body: new ReadableStream({
+      start(controller) { controller.enqueue(new TextEncoder().encode(RSS)); },
+      cancel() { tracker.cancelled = true; },
+    }),
+    text: async () => { tracker.read = true; return RSS; },
+  };
+}
+
+test('a response refused for its status or declared size has its body cancelled', withDomParser(async () => {
+  for (const [status, headers] of [[500, {}], [200, { 'content-length': '5000000' }]]) {
+    const tracker = { cancelled: false, read: false };
+    const fetchImpl = async () => streamedResponse(status, headers, tracker);
+    await assert.rejects(
+      () => searchJobs('analyst', { fetchImpl, config: JOBS4TN_CONFIG, sources: ['custom-jobs4tn'] }),
+      /unavailable/i
+    );
+    assert.equal(tracker.cancelled, true, `status ${status} body must be cancelled`);
+    assert.equal(tracker.read, false, `status ${status} body must not be read`);
+  }
+}));
+
+test('a text-only response is measured in bytes, so multibyte text over the cap is refused', withDomParser(async () => {
+  // 600,000 two-byte characters: 600,000 UTF-16 units but 1,200,000 UTF-8 bytes, over the 1 MB feed cap.
+  const big = 'é'.repeat(600_000);
+  const reads = { reads: 0 };
+  const fetchImpl = async () => ({
+    ok: true,
+    status: 200,
+    url: 'https://jobs4tn.gov/rss',
+    headers: { get: () => null },
+    text: async () => { reads.reads += 1; return big; },
+  });
+  await assert.rejects(
+    () => searchJobs('analyst', { fetchImpl, config: JOBS4TN_CONFIG, sources: ['custom-jobs4tn'] }),
+    /unavailable/i
+  );
+  assert.equal(reads.reads, 1);
+}));
+
+test('the Hackajob sitemap is bounded: a declared size over the cap or a disallowed final host is refused', withDomParser(async () => {
+  const tooLarge = { cancelled: false, read: false };
+  const { fetchImpl: largeFetch } = recordingFetch((url) => {
+    if (url === HACKAJOB_SITEMAP) return streamedResponse(200, { 'content-length': '4000000' }, tooLarge);
+    return undefined;
+  });
+  const large = await searchJobs('engineer', { fetchImpl: largeFetch, sources: ['hackajob'] })
+    .then((r) => r.sources[0], () => 'rejected');
+  assert.equal(large.ok === true, false, 'an oversized sitemap must not succeed');
+  assert.equal(tooLarge.read, false);
+
+  const evil = { reads: 0 };
+  const { fetchImpl: redirected } = recordingFetch((url) => {
+    if (url === HACKAJOB_SITEMAP) return redirectTo('https://evil-target.example/sitemap.xml');
+    if (url === 'https://evil-target.example/sitemap.xml') return ok('<urlset></urlset>', evil);
+    return undefined;
+  });
+  await searchJobs('engineer', { fetchImpl: redirected, sources: ['hackajob'] }).catch(() => {});
+  assert.equal(evil.reads, 0, 'a sitemap whose final host is not allowed must not be read');
+}));
 
 test('a feed declaring a body larger than the cap is refused before its body is read', withDomParser(async () => {
   const reads = { reads: 0 };
