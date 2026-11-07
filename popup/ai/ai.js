@@ -142,6 +142,14 @@ export async function addCustomJobSource() {
   // Match patterns take no port; the grant covers this one host only.
   const origin = `${parsed.protocol}//${parsed.hostname}/*`;
 
+  let hadAccess = false;
+  try {
+    hadAccess = typeof chrome !== 'undefined' && chrome.permissions?.contains
+      ? await chrome.permissions.contains({ origins: [origin] })
+      : false;
+  } catch {
+    hadAccess = false;
+  }
   try {
     const granted = typeof chrome !== 'undefined' && chrome.permissions
       ? await chrome.permissions.request({ origins: [origin] })
@@ -166,7 +174,30 @@ export async function addCustomJobSource() {
     setCardBadgeOnly('custom-sources-section', customJobSources.length > 0);
     setStatus('custom-source-status', `✅ Added "${name}".`, 'success');
   } catch (err) {
+    await revokeNewFeedAccess(origin, hadAccess);
     setStatus('custom-source-status', '❌ ' + (err?.message || 'Failed to save custom source.'), 'error');
+  }
+}
+
+/**
+ * Give back the host access that was just granted for a feed that could not be
+ * saved, unless it was already held or another saved feed uses the same host.
+ */
+async function revokeNewFeedAccess(origin, hadAccess) {
+  if (hadAccess || typeof chrome === 'undefined' || !chrome.permissions?.remove) return;
+  const stillUsed = customJobSources.some((s) => {
+    try {
+      const u = new URL(s.url);
+      return `${u.protocol}//${u.hostname}/*` === origin;
+    } catch {
+      return false;
+    }
+  });
+  if (stillUsed) return;
+  try {
+    await chrome.permissions.remove({ origins: [origin] });
+  } catch {
+    // The grant could not be removed; the user can revoke it in the browser's extension settings.
   }
 }
 

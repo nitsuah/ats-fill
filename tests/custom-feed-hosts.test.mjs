@@ -14,7 +14,7 @@ const RSS = `<?xml version="1.0"?><rss><channel>
 </channel></rss>`;
 
 function response(body, { contentType = 'application/rss+xml', url, headers = {} } = {}) {
-  const all = { 'content-type': contentType, ...headers };
+  const all = { 'content-type': contentType, 'content-length': String(Buffer.byteLength(body)), ...headers };
   return {
     ok: true,
     status: 200,
@@ -403,4 +403,89 @@ test('toggling the setting saves it, and a failed save puts the checkbox back', 
   global.chrome.runtime.sendMessage = (msg, cb) => cb(null);
   await mod.setAllowLocalNetworkFeeds(true);
   assert.equal(document.getElementById('allow-local-network-feeds').checked, false);
+});
+
+// ── Additional address ranges ──────────────────────────────────────────────
+
+for (const [name, url] of Object.entries({
+  'IPv6 site-local fec0::/10': 'http://[fec0::1]/rss',
+  'IPv6 site-local, top of range': 'http://[feff::1]/rss',
+  'IPv6 Teredo 2001::/32': 'http://[2001:0:4136:e378:8000:63bf:3fff:fdd2]/rss',
+  'NAT64 local-use 64:ff9b:1::/48': 'http://[64:ff9b:1::1]/rss',
+  'NAT64 well-known prefix with a private IPv4': 'http://[64:ff9b::10.0.0.1]/rss',
+})) {
+  test(`local-network class: ${name}`, () => {
+    assert.equal(isLocalNetworkHost(new URL(url).hostname), true, url);
+    assert.equal(checkFeedUrl(url).ok, false);
+    assert.equal(checkFeedUrl(url, { allowLocalNetwork: true }).ok, true);
+  });
+}
+
+for (const url of ['https://[2001:db8::1]/rss', 'https://[2001:1::1]/rss', 'https://[64:ff9b::808:808]/rss', 'https://[fe00::1]/rss']) {
+  test(`public host is not local-network: ${url}`, () => {
+    assert.equal(isLocalNetworkHost(new URL(url).hostname), false);
+  });
+}
+
+// ── Responses without a body stream ────────────────────────────────────────
+
+test('a response with no body stream and no declared size is refused without being read', async () => {
+  let read = false;
+  const fetchImpl = async (url) => ({
+    ...response(RSS, { url, headers: { 'content-length': '' } }),
+    body: null,
+    headers: { get: (n) => (n.toLowerCase() === 'content-type' ? 'application/xml' : null) },
+    text: async () => { read = true; return RSS; },
+  });
+  await assert.rejects(
+    () => fetchJobFeedText('https://jobs.example.org/rss', { doFetch: fetchImpl, allowedHosts: ['jobs.example.org'] }),
+    /too large/
+  );
+  assert.equal(read, false);
+});
+
+test('a response with no body stream is read only when its declared size is within the cap', async () => {
+  const mk = (length) => async (url) => ({ ...response(RSS, { url, headers: { 'content-length': length } }), body: null });
+  const opts = { allowedHosts: ['jobs.example.org'], maxBytes: 5000 };
+  assert.equal(await fetchJobFeedText('https://jobs.example.org/rss', { ...opts, doFetch: mk('4000') }), RSS);
+  await assert.rejects(() => fetchJobFeedText('https://jobs.example.org/rss', { ...opts, doFetch: mk('6000') }), /too large/);
+});
+
+// ── Permission cleanup when saving fails ───────────────────────────────────
+
+test('the origin permission is revoked when saving the feed fails after the prompt', async () => {
+  const env = setupPopup({ allowChecked: false });
+  const removed = [];
+  global.chrome.permissions.remove = async (req) => { removed.push(req); return true; };
+  global.chrome.runtime.sendMessage = (msg, cb) => cb(null);
+  importCount += 1;
+  const mod = await import(`../popup/ai/ai.js?feedhosts=${importCount}`);
+  mod.renderCustomJobSourcesList([]);
+  document.getElementById('custom-source-name').value = 'Feed';
+  document.getElementById('custom-source-url').value = 'https://jobs4tn.gov/rss';
+  await mod.addCustomJobSource();
+  assert.deepEqual(env.permissionRequests, [{ origins: ['https://jobs4tn.gov/*'] }]);
+  assert.deepEqual(removed, [{ origins: ['https://jobs4tn.gov/*'] }]);
+  assert.equal(document.querySelectorAll('.custom-source-item').length, 0);
+});
+
+test('the permission is kept when saving succeeds, and when another saved feed uses the same host', async () => {
+  const env = setupPopup({ allowChecked: false });
+  const removed = [];
+  global.chrome.permissions.remove = async (req) => { removed.push(req); return true; };
+  importCount += 1;
+  const mod = await import(`../popup/ai/ai.js?feedhosts=${importCount}`);
+  mod.renderCustomJobSourcesList([]);
+  document.getElementById('custom-source-name').value = 'Feed';
+  document.getElementById('custom-source-url').value = 'https://jobs4tn.gov/rss';
+  await mod.addCustomJobSource();
+  assert.equal(env.sent.length, 1);
+  assert.deepEqual(removed, []);
+
+  // A second feed on the same host that fails to save must not revoke the first one's access.
+  global.chrome.runtime.sendMessage = (msg, cb) => cb(null);
+  document.getElementById('custom-source-name').value = 'Feed 2';
+  document.getElementById('custom-source-url').value = 'https://jobs4tn.gov/other';
+  await mod.addCustomJobSource();
+  assert.deepEqual(removed, []);
 });

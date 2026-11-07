@@ -12,6 +12,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 
 - Custom job feeds on the local network (localhost, private and link-local IP addresses, single-label names, and `.local`, `.internal`, `.lan`, `.home`, `.corp`, `.intranet`, `.private` names) are refused unless the new **Allow local-network feeds** setting is on (default off). The setting is checked when a feed is added and on every search; with it on, only those hosts may use `http://`. Public feeds must use `https://`.
+- Saving the profile or a resume keeps stored custom job sources and the local-network feed setting instead of replacing all settings. A feed whose save fails no longer keeps the site permission that was just granted.
+- The local-network check also covers site-local, Teredo and local-use NAT64 IPv6 ranges, and a response with no readable body stream is read only when it declares a size within the cap.
 - Feed requests omit cookies, skip the HTTP cache, refuse redirects, time out, stop reading at the size cap and require an XML content type.
 - Answer injection from the preview now targets the verified application document and is accepted only from the extension and only in frames that pass the fill guard.
 - Page drafts are keyed by a normalised query string (sorted params, tracking params removed); older query-less drafts are shown only on URLs with no non-tracking query; older drafts saved for query URLs are no longer restored.

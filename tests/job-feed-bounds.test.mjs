@@ -21,7 +21,7 @@ function ok(body, tracker = { reads: 0 }, headers = {}) {
   return {
     ok: true,
     status: 200,
-    headers: { get: (name) => ({ 'content-type': 'application/rss+xml', ...headers })[name.toLowerCase()] ?? null },
+    headers: { get: (name) => ({ 'content-type': 'application/rss+xml', 'content-length': String(Buffer.byteLength(body)), ...headers })[name.toLowerCase()] ?? null },
     text: async () => { tracker.reads += 1; return body; },
   };
 }
@@ -257,7 +257,7 @@ function streamedResponse(status, headers, tracker) {
   return {
     ok: status >= 200 && status < 300,
     status,
-    headers: { get: (name) => ({ 'content-type': 'application/rss+xml', ...headers })[name.toLowerCase()] ?? null },
+    headers: { get: (name) => ({ 'content-type': 'application/rss+xml', 'content-length': String(Buffer.byteLength(body)), ...headers })[name.toLowerCase()] ?? null },
     body: new ReadableStream({
       start(controller) { controller.enqueue(new TextEncoder().encode(RSS)); },
       cancel() { tracker.cancelled = true; },
@@ -287,7 +287,7 @@ test('a text-only response is measured in bytes, so multibyte text over the cap 
     ok: true,
     status: 200,
     url: 'https://jobs4tn.gov/rss',
-    headers: { get: (n) => (n.toLowerCase() === 'content-type' ? 'application/rss+xml' : null) },
+    headers: { get: (n) => ({ 'content-type': 'application/rss+xml', 'content-length': '1000' })[n.toLowerCase()] ?? null },
     text: async () => { reads.reads += 1; return big; },
   });
   await assert.rejects(

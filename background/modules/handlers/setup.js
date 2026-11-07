@@ -30,11 +30,15 @@ export async function handleSaveSettingsOnly({ settings } = {}) {
 
 /** @param {{ resumeRaw?: string, settings?: object, profile?: object, resumeMeta?: object }} payload */
 export async function handleSaveSetup({ resumeRaw, settings, profile = {}, resumeMeta }) {
-  const data = await chrome.storage.local.get(['resume']);
+  const data = await chrome.storage.local.get(['resume', 'settings']);
   const existingResume = data.resume?.structured || null;
   const existingAttachment = sanitizeResumeAttachment(data.resume?.attachment || null);
   const hasNewResume = typeof resumeRaw === 'string' && resumeRaw.trim() !== '';
+  // Merge over the stored settings so values this form does not carry
+  // (custom job sources, the local-network feed setting) are kept. A field the
+  // form sends empty still overwrites the stored value.
   const nextSettings = {
+    ...(data.settings || {}),
     ...(settings || {}),
     privacy_consent: settings?.privacy_consent === true,
     privacy_consent_at: settings?.privacy_consent
