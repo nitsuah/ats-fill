@@ -15,6 +15,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Saving the profile or a resume keeps stored custom job sources and the local-network feed setting instead of replacing all settings. A feed whose save fails no longer keeps the site permission that was just granted.
 - The local-network check also covers site-local, Teredo and local-use NAT64 IPv6 ranges, and a response with no readable body stream is read only when it declares a size within the cap.
 - Feed requests omit cookies, skip the HTTP cache, refuse redirects, time out, stop reading at the size cap and require an XML content type.
+- Embedded application frames on another origin now receive answers only when they are an iframe present in the page and belong to the same ATS tenant as that iframe; frames whose tenant cannot be read are skipped.
+- The local tracker helper's live (`--live`) mode picks the extension by id (`ATS_FILL_EXTENSION_ID`, a manifest `key`, or an unpacked install of this repo's build), not by manifest name.
 - Answer injection from the preview now targets the verified application document and is accepted only from the extension and only in frames that pass the fill guard.
 - Page drafts are keyed by a normalised query string (sorted params, tracking params removed); older query-less drafts are shown only on URLs with no non-tracking query; older drafts saved for query URLs are no longer restored.
 - Standalone popup navigation collapses at tablet widths (up to 860px) to prevent horizontal overflow.

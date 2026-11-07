@@ -33,22 +33,22 @@ function loadGuard({ frameUrl, referrer = '', top = false }) {
 
 const EXPECTED = 'https://jobs.example/apply?id=1';
 const REFERRER = 'https://jobs.example/apply?id=1';
-const fills = (frameUrl, referrer = REFERRER) => loadGuard({ frameUrl, referrer })(EXPECTED);
+const fills = (frameUrl, referrer = REFERRER, frameSrcs = [frameUrl]) => loadGuard({ frameUrl, referrer })(EXPECTED, frameSrcs);
 
 test('shipped guard: same-origin child frame fills', () => {
   assert.equal(fills('https://jobs.example/embedded'), true);
 });
 
 test('shipped guard: known ATS subdomain over https fills', () => {
-  assert.equal(fills('https://job-boards.greenhouse.io/embed/job_app'), true);
+  assert.equal(fills('https://job-boards.greenhouse.io/embed/job_app?for=acme'), true);
 });
 
-test('shipped guard: Phenom host over https fills', () => {
-  assert.equal(fills('https://careers.phenompeople.com/apply'), true);
+test('shipped guard: Phenom host with a tenant subdomain fills', () => {
+  assert.equal(fills('https://acme.phenompeople.com/apply'), true);
 });
 
 test('shipped guard: ATS host over http is refused', () => {
-  assert.equal(fills('http://boards.greenhouse.io/embed/job_app'), false);
+  assert.equal(fills('http://boards.greenhouse.io/embed/job_app?for=acme'), false);
 });
 
 test('shipped guard: lookalike host is refused', () => {
