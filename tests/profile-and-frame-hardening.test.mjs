@@ -4,7 +4,6 @@ import assert from 'node:assert/strict';
 import { applyProfileOverrides, getProfileFromResume } from '../background/modules/helpers.js';
 import { shouldPersistLearnedValue } from '../lib/form-filler.js';
 import { matchesExpectedFillDocument } from '../content/fill-url-guard.js';
-import { findExtensionId, STORE_EXTENSION_ID } from '../scripts/tracker/cdp.mjs';
 
 test('pronouns_sensitive follows the sensitive opt-in on and off', () => {
   const none = applyProfileOverrides({ name: 'A B' }, { pronouns_sensitive: 'they/them' }, {});
@@ -41,35 +40,11 @@ test('child frames fill only when same-origin with the page or on a known ATS ho
   const msg = { expectedUrl: 'https://jobs.example/apply?id=1' };
   frame('https://jobs.example/embedded', 'https://jobs.example/apply?id=1');
   assert.equal(matchesExpectedFillDocument(msg), true);
-  frame('https://job-boards.greenhouse.io/embed/job_app', 'https://jobs.example/apply?id=1');
-  assert.equal(matchesExpectedFillDocument(msg), true);
+  frame('https://job-boards.greenhouse.io/embed/job_app?for=acme', 'https://jobs.example/apply?id=1');
+  assert.equal(matchesExpectedFillDocument(msg), false, 'known ATS host alone is not enough');
+  assert.equal(matchesExpectedFillDocument({ ...msg, frameSrcs: ['https://job-boards.greenhouse.io/embed/job_app?for=acme'] }), true);
   frame('https://other.example/form', 'https://jobs.example/apply?id=1');
   assert.equal(matchesExpectedFillDocument(msg), false);
   frame('https://notgreenhouse.io/form', 'https://jobs.example/apply?id=1');
   assert.equal(matchesExpectedFillDocument(msg), false);
-});
-
-function fakeCdp(namesById) {
-  const ids = Object.keys(namesById);
-  const targetInfos = ids.map((id) => ({ type: 'service_worker', targetId: id, url: `chrome-extension://${id}/background/service-worker.js` }));
-  const sessions = new Map();
-  return {
-    async send(method, params) {
-      if (method === 'Target.getTargets') return { targetInfos };
-      if (method === 'Target.attachToTarget') { sessions.set(`s-${params.targetId}`, params.targetId); return { sessionId: `s-${params.targetId}` }; }
-      if (method === 'Runtime.evaluate') return { result: { value: namesById[sessions.get(arguments[2])] } };
-      return {};
-    },
-  };
-}
-
-test('findExtensionId accepts exactly one manifest-name match', async () => {
-  const a = 'a'.repeat(32);
-  const b = 'b'.repeat(32);
-  assert.equal(await findExtensionId(fakeCdp({ [a]: 'ats-fill', [b]: 'Other' }), {}), a, '1 match');
-  await assert.rejects(findExtensionId(fakeCdp({ [a]: 'Other', [b]: 'Another' }), {}), /Could not identify/, '0 matches');
-  await assert.rejects(findExtensionId(fakeCdp({ [a]: 'ats-fill', [b]: 'ats-fill' }), {}), /Could not identify/, '2 matches');
-  await assert.rejects(findExtensionId(fakeCdp({}), {}), /Could not identify/);
-  assert.equal(await findExtensionId(fakeCdp({ [STORE_EXTENSION_ID]: 'x' }), {}), STORE_EXTENSION_ID);
-  assert.equal(await findExtensionId(fakeCdp({ [a]: 'x' }), { ATS_FILL_EXTENSION_ID: b }), b);
 });

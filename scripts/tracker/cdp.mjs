@@ -13,9 +13,11 @@
  * ships a global WebSocket.
  */
 import process from 'node:process';
-import { readFileSync, existsSync } from 'node:fs';
+import { readFileSync, existsSync, readdirSync, realpathSync } from 'node:fs';
+import { createHash } from 'node:crypto';
 import { homedir } from 'node:os';
-import { join } from 'node:path';
+import { join, resolve, dirname } from 'node:path';
+import { fileURLToPath } from 'node:url';
 
 export const STORE_EXTENSION_ID = 'amofaeopfmaicbiijgjaojenedkkadmn';
 
@@ -129,38 +131,71 @@ export async function connect(url = resolveBrowserWsUrl(), timeoutMs = 30000) {
   return new CdpConnection(ws);
 }
 
-/** Find the ats-fill extension ID from a live service worker, else fall back. */
-export async function findExtensionId(cdp, env = process.env) {
+const BUILD_DIR = resolve(dirname(fileURLToPath(import.meta.url)), '..', '..');
+
+/** Extension id Chrome derives from a manifest `key` (base64 DER public key). */
+export function extensionIdFromKey(key) {
+  const hex = createHash('sha256').update(Buffer.from(String(key), 'base64')).digest('hex').slice(0, 32);
+  return [...hex].map((c) => String.fromCharCode('a'.charCodeAt(0) + parseInt(c, 16))).join('');
+}
+
+function samePath(a, b) {
+  try {
+    const norm = (p) => realpathSync(resolve(p)).replace(/[\/]+$/, '');
+    const [x, y] = [norm(a), norm(b)];
+    return process.platform === 'win32' ? x.toLowerCase() === y.toLowerCase() : x === y;
+  } catch { return false; }
+}
+
+/** Unpacked install path Chrome recorded for an extension id, from the profile preferences. */
+export function readUnpackedPath(id, env = process.env) {
+  const dirs = env.CHROME_USER_DATA_DIR ? [env.CHROME_USER_DATA_DIR] : userDataDirs();
+  for (const dir of dirs) {
+    let profiles = [];
+    try { profiles = readdirSync(dir).filter((name) => name === 'Default' || /^Profile \d+$/.test(name)); } catch { continue; }
+    for (const profile of profiles) {
+      for (const file of ['Secure Preferences', 'Preferences']) {
+        try {
+          const prefs = JSON.parse(readFileSync(join(dir, profile, file), 'utf8'));
+          const path = prefs?.extensions?.settings?.[id]?.path;
+          if (typeof path === 'string' && path) return path;
+        } catch { /* try the next file */ }
+      }
+    }
+  }
+  return null;
+}
+
+function readManifest() {
+  try { return JSON.parse(readFileSync(join(BUILD_DIR, 'manifest.json'), 'utf8')); } catch { return {}; }
+}
+
+/**
+ * Find the ats-fill extension ID among live service workers. The target is
+ * chosen by id only: ATS_FILL_EXTENSION_ID, else the id derived from the
+ * manifest `key`, else the published store id; with none of those, only an
+ * unpacked install whose recorded path is this repo's build directory.
+ * A manifest name is never used to pick a target.
+ */
+export async function findExtensionId(cdp, env = process.env, {
+  manifest = readManifest(), buildDir = BUILD_DIR, unpackedPathFor = (id) => readUnpackedPath(id, env),
+} = {}) {
   if (env.ATS_FILL_EXTENSION_ID) return env.ATS_FILL_EXTENSION_ID;
+  if (manifest?.key) return extensionIdFromKey(manifest.key);
   const { targetInfos } = await cdp.send('Target.getTargets');
   const ids = [...new Set(targetInfos
     .filter((t) => t.type === 'service_worker' && /^chrome-extension:\/\/[a-p]{32}\/background\/service-worker\.js$/.test(t.url))
     .map((t) => t.url.slice('chrome-extension://'.length, 'chrome-extension://'.length + 32)))];
   if (ids.includes(STORE_EXTENSION_ID)) return STORE_EXTENSION_ID;
-  // An unpacked dev build has its own ID; accept the sole candidate only when
-  // its manifest name matches this extension.
-  const matches = [];
-  for (const id of ids) {
-    if (await extensionNameMatches(cdp, targetInfos, id)) matches.push(id);
-  }
+  const matches = ids.filter((id) => {
+    const path = unpackedPathFor(id);
+    return typeof path === 'string' && samePath(path, buildDir);
+  });
   if (matches.length === 1) return matches[0];
-  throw new Error('Could not identify the ats-fill extension. Set ATS_FILL_EXTENSION_ID to its ID.');
-}
-
-async function extensionNameMatches(cdp, targetInfos, id) {
-  const worker = targetInfos.find((t) => t.type === 'service_worker' && t.url.startsWith(`chrome-extension://${id}/`));
-  if (!worker) return false;
-  try {
-    const { sessionId } = await cdp.send('Target.attachToTarget', { targetId: worker.targetId, flatten: true });
-    try {
-      const result = await cdp.send('Runtime.evaluate', {
-        expression: 'chrome.runtime.getManifest().name', returnByValue: true,
-      }, sessionId);
-      return /ats[\s-]?fill/i.test(String(result?.result?.value || ''));
-    } finally {
-      await cdp.send('Target.detachFromTarget', { sessionId }).catch(() => {});
-    }
-  } catch { return false; }
+  throw new Error(
+    'Could not identify the ats-fill extension. Set ATS_FILL_EXTENSION_ID to its ID '
+    + '(chrome://extensions), or load this repo as the unpacked extension.',
+  );
 }
 
 /**

@@ -127,7 +127,7 @@ test('handleFillForm stops if the parent URL changes while answers are being gen
     }
     return Promise.resolve({});
   };
-  await assert.rejects(api.handleFillForm(PARENT_JOB_URL), /application page navigated or changed/);
+  await assert.rejects(api.handleFillForm(PARENT_JOB_URL, [EMBED_URL]), /application page navigated or changed/);
   assert.deepEqual(messages, ['GENERATE_ANSWERS']);
   assert.equal(window.document.querySelector('#first_name').value, '');
   window.close();
@@ -152,7 +152,7 @@ test('handleFillForm stops if the parent URL changes while loading the field map
     }
     return Promise.resolve({});
   };
-  await assert.rejects(api.handleFillForm(PARENT_JOB_URL), /application page navigated or changed/);
+  await assert.rejects(api.handleFillForm(PARENT_JOB_URL, [EMBED_URL]), /application page navigated or changed/);
   assert.deepEqual(messages, ['GENERATE_ANSWERS', 'GET_FIELD_MAP']);
   assert.equal(window.document.querySelector('#first_name').value, '');
   assert.ok(!messages.includes('LOG_APPLICATION'));
@@ -195,7 +195,7 @@ test('the host page answers when it has no embedded ATS form', () => {
 
 test('the embedded Greenhouse form owns the messages once it has fields', () => {
   const { window, api } = load({ url: EMBED_URL, body: EMBED_BODY, referrer: PARENT_JOB_URL, framed: true });
-  assert.equal(api.frameOwnsMessage({ type: 'FILL_FORM', expectedUrl: PARENT_JOB_URL }), true);
+  assert.equal(api.frameOwnsMessage({ type: 'FILL_FORM', expectedUrl: PARENT_JOB_URL, frameSrcs: [EMBED_URL] }), true);
   assert.equal(api.frameOwnsMessage({ type: 'DETECT_ATS' }), true);
   assert.equal(api.frameOwnsMessage({ type: 'GET_JOB_INFO' }), true);
   window.close();
@@ -208,7 +208,7 @@ test('embedded fill accepts an origin-only referrer while binding to the exact p
     referrer: 'https://databricks.com/',
     framed: true,
   });
-  assert.equal(api.frameOwnsMessage({ type: 'FILL_FORM', expectedUrl: PARENT_JOB_URL }), true);
+  assert.equal(api.frameOwnsMessage({ type: 'FILL_FORM', expectedUrl: PARENT_JOB_URL, frameSrcs: [EMBED_URL] }), true);
   window.close();
 });
 
@@ -235,7 +235,7 @@ test('filling an embedded Greenhouse form logs one tracker entry with company an
     if (msg.type === 'GENERATE_ANSWERS') return Promise.resolve({ success: true, answers: {} });
     return Promise.resolve({});
   };
-  await api.handleFillForm(PARENT_JOB_URL);
+  await api.handleFillForm(PARENT_JOB_URL, [EMBED_URL]);
   assert.equal(logged.length, 1);
   assert.equal(logged[0].company, 'Databricks');
   assert.equal(logged[0].title, 'Delivery Solutions Architect - Digital Native Business');

@@ -8,6 +8,55 @@ function frameOriginAllowed(expected) {
   return ATS_FRAME_HOSTS.some((domain) => host === domain || host.endsWith(`.${domain}`));
 }
 
+// Tenant of an ATS-hosted URL, as "family:tenant", or null when the host does
+// not encode one in a way we can read. Callers treat null as "refuse".
+function atsFrameTenant(url) {
+  // Location objects lack searchParams; normalise to a URL first.
+  url = new URL(url.href);
+  const host = url.hostname.toLowerCase();
+  const inDomain = (domain) => host === domain || host.endsWith(`.${domain}`);
+  const seg = () => (url.pathname.split('/').filter(Boolean)[0] || '').toLowerCase();
+  const label = (skip) => {
+    const first = host.split('.')[0];
+    return skip.test(first) ? '' : first;
+  };
+  let family = '';
+  let tenant = '';
+  if (inDomain('greenhouse.io')) {
+    family = 'greenhouse';
+    const forParam = (url.searchParams.get('for') || '').toLowerCase();
+    tenant = forParam || (seg() === 'embed' ? '' : seg());
+  } else if (inDomain('lever.co')) {
+    family = 'lever'; tenant = seg();
+  } else if (inDomain('ashbyhq.com') || inDomain('ashby.io')) {
+    family = 'ashby'; tenant = seg();
+  } else if (inDomain('jobvite.com')) {
+    family = 'jobvite'; tenant = seg();
+  } else if (inDomain('myworkdayjobs.com') || inDomain('workday.com')) {
+    family = 'workday'; tenant = label(/^(www|jobs|careers|wd\d+|myworkdayjobs|workday)$/);
+  } else if (inDomain('icims.com')) {
+    family = 'icims'; tenant = label(/^(www|jobs|careers|icims)$/);
+  } else if (inDomain('phenompeople.com')) {
+    family = 'phenom'; tenant = label(/^(www|jobs|careers|phenompeople)$/);
+  }
+  return family && /^[a-z0-9][a-z0-9_-]*$/.test(tenant) ? `${family}:${tenant}` : null;
+}
+
+// A cross-origin frame may receive a request only if it is the iframe the top
+// page actually embeds (origin + path) and belongs to the same ATS tenant.
+function frameMatchesReportedIframe(own, frameSrcs) {
+  if (!Array.isArray(frameSrcs) || frameSrcs.length > 100) return false;
+  const ownTenant = atsFrameTenant(own);
+  if (!ownTenant) return false;
+  return frameSrcs.some((value) => {
+    if (typeof value !== 'string') return false;
+    let src;
+    try { src = new URL(value); } catch { return false; }
+    return src.protocol === 'https:' && src.origin === own.origin && src.pathname === own.pathname
+      && atsFrameTenant(src) === ownTenant;
+  });
+}
+
 /** Bind fill requests to the selected document, including embedded application frames. */
 export function matchesExpectedFillDocument(msg) {
   if (typeof msg?.expectedUrl !== 'string') return false;
@@ -17,6 +66,7 @@ export function matchesExpectedFillDocument(msg) {
   try {
     if (window.top === window) return window.location.href === expected.href;
     if (!frameOriginAllowed(expected)) return false;
+    if (window.location.origin !== expected.origin && !frameMatchesReportedIframe(window.location, msg.frameSrcs)) return false;
     const referrer = new URL(document.referrer);
     // Referrer-Policy: strict-origin-when-cross-origin strips path, query, and
     // fragment from cross-origin iframe referrers. The extension sender verifies

@@ -46,13 +46,62 @@ const IS_TOP_FRAME = (() => {
   try { return window.top === window; } catch { return false; }
 })();
 
+// Tenant of an ATS-hosted URL, as "family:tenant", or null when the host does
+// not encode one in a way we can read. Callers treat null as "refuse".
+function atsFrameTenant(url) {
+  // Location objects lack searchParams; normalise to a URL first.
+  url = new URL(url.href);
+  const host = url.hostname.toLowerCase();
+  const inDomain = (domain) => host === domain || host.endsWith(`.${domain}`);
+  const seg = () => (url.pathname.split('/').filter(Boolean)[0] || '').toLowerCase();
+  const label = (skip) => {
+    const first = host.split('.')[0];
+    return skip.test(first) ? '' : first;
+  };
+  let family = '';
+  let tenant = '';
+  if (inDomain('greenhouse.io')) {
+    family = 'greenhouse';
+    const forParam = (url.searchParams.get('for') || '').toLowerCase();
+    tenant = forParam || (seg() === 'embed' ? '' : seg());
+  } else if (inDomain('lever.co')) {
+    family = 'lever'; tenant = seg();
+  } else if (inDomain('ashbyhq.com') || inDomain('ashby.io')) {
+    family = 'ashby'; tenant = seg();
+  } else if (inDomain('jobvite.com')) {
+    family = 'jobvite'; tenant = seg();
+  } else if (inDomain('myworkdayjobs.com') || inDomain('workday.com')) {
+    family = 'workday'; tenant = label(/^(www|jobs|careers|wd\d+|myworkdayjobs|workday)$/);
+  } else if (inDomain('icims.com')) {
+    family = 'icims'; tenant = label(/^(www|jobs|careers|icims)$/);
+  } else if (inDomain('phenompeople.com')) {
+    family = 'phenom'; tenant = label(/^(www|jobs|careers|phenompeople)$/);
+  }
+  return family && /^[a-z0-9][a-z0-9_-]*$/.test(tenant) ? `${family}:${tenant}` : null;
+}
+
+// A cross-origin frame may receive a request only if it is the iframe the top
+// page actually embeds (origin + path) and belongs to the same ATS tenant.
+function frameMatchesReportedIframe(own, frameSrcs) {
+  if (!Array.isArray(frameSrcs) || frameSrcs.length > 100) return false;
+  const ownTenant = atsFrameTenant(own);
+  if (!ownTenant) return false;
+  return frameSrcs.some((value) => {
+    if (typeof value !== 'string') return false;
+    let src;
+    try { src = new URL(value); } catch { return false; }
+    return src.protocol === 'https:' && src.origin === own.origin && src.pathname === own.pathname
+      && atsFrameTenant(src) === ownTenant;
+  });
+}
+
 /**
  * Validate the browser-verified application URL in the receiving frame.
  * Cross-origin referrers can be reduced to an origin by Referrer-Policy; in
  * that case the background has already verified the exact tab URL and targets
  * this specific documentId rather than broadcasting to a replacement document.
  */
-function matchesExpectedFillDocument(expectedUrl) {
+function matchesExpectedFillDocument(expectedUrl, frameSrcs) {
   if (typeof expectedUrl !== 'string') return false;
   let expected;
   try { expected = new URL(expectedUrl); } catch { return false; }
@@ -65,6 +114,7 @@ function matchesExpectedFillDocument(expectedUrl) {
     && ['greenhouse.io', 'ashbyhq.com', 'ashby.io', 'lever.co', 'workday.com', 'myworkdayjobs.com', 'icims.com', 'jobvite.com', 'phenompeople.com']
       .some((domain) => ownHost === domain || ownHost.endsWith(`.${domain}`));
   if (location.origin !== expected.origin && !knownAtsFrame) return false;
+  if (location.origin !== expected.origin && !frameMatchesReportedIframe(location, frameSrcs)) return false;
   try {
     const referrer = new URL(document.referrer);
     if (referrer.origin !== expected.origin) return false;
@@ -90,13 +140,13 @@ function frameOwnsMessage(msg) {
   switch (msg?.type) {
     case 'FILL_FORM':
       // Reject stale or unbound fill messages before reading questions or writing fields.
-      if (!matchesExpectedFillDocument(msg.expectedUrl)) return false;
+      if (!matchesExpectedFillDocument(msg.expectedUrl, msg.frameSrcs)) return false;
       return getFillableInputs().length > 0 && (!IS_TOP_FRAME || !pageEmbedsAtsFrame());
     case 'INJECT_ANSWERS':
       // Same document guard as a normal fill. The frame that actually contains
       // the application fields fills them; a host page that embeds an ATS form
       // defers to that iframe, so the fill comes from one frame only.
-      if (!matchesExpectedFillDocument(msg.expectedUrl)) return false;
+      if (!matchesExpectedFillDocument(msg.expectedUrl, msg.frameSrcs)) return false;
       return getFillableInputs().length > 0 && (!IS_TOP_FRAME || !pageEmbedsAtsFrame());
     case 'FOCUS_FIELD':
       return !!findFieldForReviewTarget(msg.payload || {});
@@ -145,9 +195,9 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
 async function handleMessage(msg, sendResponse) {
   switch (msg.type) {
     case 'FILL_FORM':
-      return handleFillForm(msg.expectedUrl);
+      return handleFillForm(msg.expectedUrl, msg.frameSrcs);
     case 'INJECT_ANSWERS':
-      if (!matchesExpectedFillDocument(msg.expectedUrl)) throw new Error('The application page navigated or changed. Try again on the intended tab.');
+      if (!matchesExpectedFillDocument(msg.expectedUrl, msg.frameSrcs)) throw new Error('The application page navigated or changed. Try again on the intended tab.');
       return handleInjectAnswers(msg.payload);
     case 'GET_JOB_INFO':
       return handleGetJobInfo();
@@ -186,8 +236,8 @@ async function handleMessage(msg, sendResponse) {
 
 // ── Fill form flow ────────────────────────────────────────────────────────────
 
-async function handleFillForm(expectedUrl) {
-  if (!matchesExpectedFillDocument(expectedUrl)) throw new Error('The application page navigated or changed. Try Fill again on the intended tab.');
+async function handleFillForm(expectedUrl, frameSrcs) {
+  if (!matchesExpectedFillDocument(expectedUrl, frameSrcs)) throw new Error('The application page navigated or changed. Try Fill again on the intended tab.');
   // 1. Extract JD + job meta
   const { jd, company, title, location: jobLocation, employment_type, remote, salary_range } = extractJobInfo();
 
@@ -203,7 +253,7 @@ async function handleFillForm(expectedUrl) {
   if (!resp?.success) {
     throw new Error(resp?.error || 'Failed to generate answers');
   }
-  if (!matchesExpectedFillDocument(expectedUrl)) throw new Error('The application page navigated or changed. Try Fill again on the intended tab.');
+  if (!matchesExpectedFillDocument(expectedUrl, frameSrcs)) throw new Error('The application page navigated or changed. Try Fill again on the intended tab.');
 
   const answers = resp.answers;
   const warning = resp.warning || null;
@@ -217,7 +267,7 @@ async function handleFillForm(expectedUrl) {
 
   // 5. Revalidate after async work, immediately before writing any field values.
   const fieldMap = await loadFieldMap();
-  if (!matchesExpectedFillDocument(expectedUrl)) throw new Error('The application page navigated or changed. Try Fill again on the intended tab.');
+  if (!matchesExpectedFillDocument(expectedUrl, frameSrcs)) throw new Error('The application page navigated or changed. Try Fill again on the intended tab.');
   const report = fillForm(answers, fieldMap);
   const combos = await fillComboboxes(answers, fieldMap).catch(() => ({ filled: 0, unresolved: [] }));
   report.filled += combos.filled;
