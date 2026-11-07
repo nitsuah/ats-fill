@@ -16,7 +16,15 @@ const RSS = `<?xml version="1.0"?><rss><channel>
   </item>
 </channel></rss>`;
 
-const ok = (body) => ({ ok: true, status: 200, headers: { get: () => null }, text: async () => body });
+/** A response whose body reads are counted in `tracker.reads`. */
+function ok(body, tracker = { reads: 0 }, headers = {}) {
+  return {
+    ok: true,
+    status: 200,
+    headers: { get: (name) => headers[name.toLowerCase()] ?? null },
+    text: async () => { tracker.reads += 1; return body; },
+  };
+}
 const notFound = () => ({ ok: false, status: 404, headers: { get: () => null }, text: async () => '' });
 const redirectTo = (location) => ({
   ok: false,
@@ -26,23 +34,25 @@ const redirectTo = (location) => ({
 });
 
 /**
- * A fetch stub that records every request. Requests without `redirect: 'manual'`
- * are followed here, the way the platform fetch does by default, so a fetch
- * that follows a redirect to a host it should not reach is visible in `calls`.
+ * A fetch stub that behaves like the platform fetch for the default
+ * redirect mode: it follows 3xx responses and returns a response whose `url`
+ * is the final URL and whose `redirected` says whether a hop happened. Every
+ * request, and every followed hop, is recorded in `calls`. Routes are matched
+ * on the URL without its query string, because the feed fetch appends ?q=.
  */
 function recordingFetch(routes) {
   const calls = [];
   const fetchImpl = async (url, init = {}) => {
     let target = String(url);
-    calls.push({ url: target, redirect: init.redirect ?? 'follow' });
+    calls.push({ url: target, redirect: init.redirect });
+    let redirected = false;
     for (let hop = 0; hop < 5; hop += 1) {
-      // Routes match on the URL without its query string: the feed fetch appends ?q=.
       const response = routes(target.split('?')[0]) || notFound();
       const isRedirect = response.status >= 300 && response.status < 400;
-      if (!isRedirect || init.redirect === 'manual') return response;
-      const location = response.headers.get('location');
-      target = new URL(location, target).toString();
-      calls.push({ url: target, redirect: 'follow' });
+      if (!isRedirect || init.redirect === 'manual') return { ...response, url: target, redirected };
+      target = new URL(response.headers.get('location'), target).toString();
+      calls.push({ url: target, redirect: 'hop' });
+      redirected = true;
     }
     return notFound();
   };
@@ -66,21 +76,22 @@ const JOBS4TN_CONFIG = {
   customSources: [{ id: 'custom-jobs4tn', label: 'JOBS4TN', url: 'https://jobs4tn.gov/rss' }],
 };
 
-test('custom feed redirect to a host outside the allowlist is refused without fetching the target', withDomParser(async () => {
+test('custom feed whose final URL is on another host is refused before its body is read', withDomParser(async () => {
+  const evil = { reads: 0 };
   const { fetchImpl, calls } = recordingFetch((url) => {
     if (url === 'https://jobs4tn.gov/rss') return redirectTo('https://evil-target.example/steal');
-    if (url.startsWith('https://evil-target.example/')) return ok(RSS);
+    if (url === 'https://evil-target.example/steal') return ok(RSS, evil);
     return undefined;
   });
 
   const outcome = await searchJobs('analyst', { fetchImpl, config: JOBS4TN_CONFIG, sources: ['custom-jobs4tn'] })
     .then(() => 'resolved', (err) => err.message);
-  assert.equal(calls.some((c) => c.url.includes('evil-target.example')), false, 'the redirect target must never be requested');
-  assert.equal(calls[0].redirect, 'manual', 'the first request must not follow redirects automatically');
+  assert.equal(evil.reads, 0, 'the body of a response on a disallowed final host must not be read');
+  assert.equal(calls[0].redirect, 'follow', 'the feed request uses the platform redirect handling');
   assert.match(outcome, /unavailable/i);
 }));
 
-test('custom feed on an allowed host works, and a same-host redirect hop is re-checked and followed', withDomParser(async () => {
+test('custom feed redirect within the same host works and the final URL is accepted', withDomParser(async () => {
   const { fetchImpl, calls } = recordingFetch((url) => {
     if (url === 'https://jobs4tn.gov/rss') return redirectTo('https://jobs4tn.gov/rss-current');
     if (url === 'https://jobs4tn.gov/rss-current') return ok(RSS);
@@ -92,6 +103,26 @@ test('custom feed on an allowed host works, and a same-host redirect hop is re-c
   assert.equal(jobs.length, 1);
   assert.equal(jobs[0].source, 'JOBS4TN');
   assert.deepEqual(calls.map((c) => c.url), ['https://jobs4tn.gov/rss?q=analyst', 'https://jobs4tn.gov/rss-current']);
+}));
+
+test('a configured www. feed also accepts its apex host as the final URL', withDomParser(async () => {
+  const { fetchImpl } = recordingFetch((url) => {
+    if (url === 'https://www.jobs4tn.gov/rss') return redirectTo('https://jobs4tn.gov/rss-apex');
+    if (url === 'https://jobs4tn.gov/rss-apex') return ok(RSS);
+    return undefined;
+  });
+  const config = { customSources: [{ id: 'custom-www', label: 'WWW', url: 'https://www.jobs4tn.gov/rss' }] };
+  const { jobs, sources } = await searchJobs('analyst', { fetchImpl, config, sources: ['custom-www'] });
+  assert.equal(sources[0].ok, true);
+  assert.equal(jobs.length, 1);
+}));
+
+test('a trailing dot on the configured host does not change the host match', withDomParser(async () => {
+  const { fetchImpl } = recordingFetch((url) => (url === 'https://jobs4tn.gov./rss' ? ok(RSS) : undefined));
+  const config = { customSources: [{ id: 'custom-dot', label: 'Dot', url: 'https://jobs4tn.gov./rss' }] };
+  const { jobs, sources } = await searchJobs('analyst', { fetchImpl, config, sources: ['custom-dot'] });
+  assert.equal(sources[0].ok, true);
+  assert.equal(jobs.length, 1);
 }));
 
 test('custom feed with a non-https URL is never registered or fetched', async () => {
@@ -109,12 +140,37 @@ test('custom feed with a non-https URL is never registered or fetched', async ()
   assert.equal(calls.length, 0, 'no request may be sent for a non-https feed');
 });
 
-test('custom feed on a numeric private IPv4 or bracketed IPv6 literal is not registered', () => {
-  const entries = buildCustomJobSources([
-    { id: 'custom-private-v4', label: 'Private', url: 'https://10.0.0.5/rss' },
-    { id: 'custom-loopback-v6', label: 'Loopback', url: 'https://[::1]/rss' },
-  ]);
-  assert.deepEqual(entries, []);
+test('custom feeds on blocked addresses and internal names are not registered', () => {
+  const blocked = [
+    'https://127.0.0.1/rss',
+    'https://10.0.0.5/rss',
+    'https://192.0.0.8/rss',
+    'https://198.18.0.1/rss',
+    'https://224.0.0.1/rss',
+    'https://[::1]/rss',
+    'https://[::]/rss',
+    'https://[fd12:3456::1]/rss',
+    'https://[fe80::1]/rss',
+    'https://[::ffff:7f00:1]/rss',
+    'https://[::ffff:10.0.0.1]/rss',
+    'https://[::ffff:a9fe:a9fe]/rss',
+    'https://intranet.internal/rss',
+    'https://printer.local/rss',
+    'https://app.localhost./rss',
+    'https://printer.local./rss',
+  ];
+  for (const url of blocked) {
+    assert.deepEqual(
+      buildCustomJobSources([{ id: 'custom-blocked', label: 'Blocked', url }]),
+      [],
+      `${url} must not be registered`
+    );
+  }
+  assert.deepEqual(
+    buildCustomJobSources([{ id: 'custom-ok', label: 'OK', url: 'https://jobs4tn.gov/rss' }]).map((e) => e.id),
+    ['custom-ok'],
+    'a public host is still registered'
+  );
 });
 
 test('job-board detail URLs whose host only contains an allowed name are not fetched', withDomParser(async () => {
@@ -126,7 +182,7 @@ test('job-board detail URLs whose host only contains an allowed name are not fet
   </urlset>`;
   const { fetchImpl, calls } = recordingFetch((url) => {
     if (url === HACKAJOB_SITEMAP) return ok(sitemap);
-    if (url.startsWith('https://hackajob.com/job/')) return ok('<html></html>');
+    if (url === `https://hackajob.com/job/${JOB_UUID}`) return ok('<html></html>');
     return undefined;
   });
 
@@ -137,6 +193,58 @@ test('job-board detail URLs whose host only contains an allowed name are not fet
     [HACKAJOB_SITEMAP, `https://hackajob.com/job/${JOB_UUID}`],
     'only the sitemap and the allowed detail page may be requested'
   );
+}));
+
+test('a hackajob detail URL with a trailing dot on the allowed host is fetched', withDomParser(async () => {
+  const sitemap = `<?xml version="1.0"?><urlset>
+    <url><loc>https://hackajob.com./job/${JOB_UUID}</loc><lastmod>2026-06-02</lastmod></url>
+  </urlset>`;
+  const { fetchImpl, calls } = recordingFetch((url) => {
+    if (url === HACKAJOB_SITEMAP) return ok(sitemap);
+    if (url === `https://hackajob.com./job/${JOB_UUID}`) return ok('<html></html>');
+    return undefined;
+  });
+  await searchJobs('engineer', { fetchImpl, sources: ['hackajob'] });
+  assert.equal(calls.some((c) => c.url === `https://hackajob.com./job/${JOB_UUID}`), true);
+}));
+
+test('a hackajob detail page whose final URL is another host is refused before its body is read', withDomParser(async () => {
+  const evil = { reads: 0 };
+  const sitemap = `<?xml version="1.0"?><urlset>
+    <url><loc>https://hackajob.com/job/${JOB_UUID}</loc><lastmod>2026-06-02</lastmod></url>
+  </urlset>`;
+  const { fetchImpl } = recordingFetch((url) => {
+    if (url === HACKAJOB_SITEMAP) return ok(sitemap);
+    if (url === `https://hackajob.com/job/${JOB_UUID}`) return redirectTo('https://evil-target.example/job');
+    if (url === 'https://evil-target.example/job') return ok('<html></html>', evil);
+    return undefined;
+  });
+  const { jobs, sources } = await searchJobs('engineer', { fetchImpl, sources: ['hackajob'] });
+  assert.equal(sources[0].ok, true);
+  assert.deepEqual(jobs, []);
+  assert.equal(evil.reads, 0, 'the disallowed final host must not have its body read');
+}));
+
+test('hackajob detail pages accept up to 3 MB while custom feeds still stop at 1 MB', withDomParser(async () => {
+  const detailReads = { reads: 0 };
+  const sitemap = `<?xml version="1.0"?><urlset>
+    <url><loc>https://hackajob.com/job/${JOB_UUID}</loc><lastmod>2026-06-02</lastmod></url>
+  </urlset>`;
+  const { fetchImpl } = recordingFetch((url) => {
+    if (url === HACKAJOB_SITEMAP) return ok(sitemap);
+    if (url === `https://hackajob.com/job/${JOB_UUID}`) return ok('<html></html>', detailReads, { 'content-length': '2000000' });
+    return undefined;
+  });
+  await searchJobs('engineer', { fetchImpl, sources: ['hackajob'] });
+  assert.equal(detailReads.reads, 1, 'a 2 MB detail page is within the detail cap');
+
+  const feedReads = { reads: 0 };
+  const feedFetch = recordingFetch(() => ok(RSS, feedReads, { 'content-length': '2000000' })).fetchImpl;
+  await assert.rejects(
+    () => searchJobs('analyst', { fetchImpl: feedFetch, config: JOBS4TN_CONFIG, sources: ['custom-jobs4tn'] }),
+    /unavailable/i
+  );
+  assert.equal(feedReads.reads, 0, 'a 2 MB custom feed is over the feed cap and is not read');
 }));
 
 test('a feed that never answers is abandoned after the time limit', async (t) => {
@@ -151,16 +259,11 @@ test('a feed that never answers is abandoned after the time limit', async (t) =>
 });
 
 test('a feed declaring a body larger than the cap is refused before its body is read', withDomParser(async () => {
-  let bodyRead = false;
-  const fetchImpl = async () => ({
-    ok: true,
-    status: 200,
-    headers: { get: (name) => (name.toLowerCase() === 'content-length' ? '5000000' : null) },
-    text: async () => { bodyRead = true; return RSS; },
-  });
+  const reads = { reads: 0 };
+  const fetchImpl = async () => ok(RSS, reads, { 'content-length': '5000000' });
   await assert.rejects(
     () => searchJobs('analyst', { fetchImpl, config: JOBS4TN_CONFIG, sources: ['custom-jobs4tn'] }),
     /unavailable/i
   );
-  assert.equal(bodyRead, false);
+  assert.equal(reads.reads, 0);
 }));

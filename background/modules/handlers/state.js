@@ -10,42 +10,6 @@ import {
   getProfileCompleteness,
 } from '../helpers.js';
 
-// Setting names that hold a credential (API keys, app keys, OAuth client
-// secrets, tokens, passwords). Matched against the stored settings field names.
-const CREDENTIAL_SETTING_PATTERN = /(secret|token|password|(^|[_-])(api[_-]?)?key)$/i;
-
-/** @param {string} name */
-export function isCredentialSettingName(name) {
-  return CREDENTIAL_SETTING_PATTERN.test(String(name));
-}
-
-/**
- * True for the extension's own pages (popup, standalone popup tab). Content
- * scripts run in web pages, so their sender URL is the page URL and they are
- * not trusted with stored credentials.
- * @param {chrome.runtime.MessageSender} [sender]
- */
-export function isExtensionPageSender(sender = {}) {
-  if (typeof sender?.url === 'string') return sender.url.startsWith(chrome.runtime.getURL(''));
-  return !sender?.tab;
-}
-
-/**
- * The single place that turns the full state object into the copy sent to
- * callers outside the background context. Credential settings are removed
- * and the raw key is dropped; `hasApiKey` remains as the boolean signal.
- * @param {object} state  The object returned by getState().
- * @returns {object}
- */
-export function redactStateForPageCaller(state = {}) {
-  const redacted = { ...state };
-  delete redacted.apiKey;
-  redacted.settings = Object.fromEntries(
-    Object.entries(state.settings || {}).filter(([name]) => !isCredentialSettingName(name))
-  );
-  return redacted;
-}
-
 /** @returns {Promise<object>} */
 export async function getState() {
   const data = await chrome.storage.local.get([

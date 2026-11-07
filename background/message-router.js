@@ -5,7 +5,6 @@
  */
 
 import { checkInWithBridge, requestBridgeAccess } from './native-bridge.js';
-import { isExtensionPageSender, redactStateForPageCaller } from './modules/handlers/state.js';
 import {
   handleSaveSetup,
   handleSaveSettingsOnly,
@@ -47,12 +46,34 @@ import {
 } from './modules/handlers/index.js';
 
 /**
- * GET_STATE answers extension pages with the full state (the settings form
- * round-trips stored credentials) and every other sender with a redacted copy.
+ * Messages that read or change settings, or use stored credentials. Only the
+ * extension's own pages may send them. Content scripts run in web pages and
+ * must not reach them. GENERATE_ANSWERS, LOG_APPLICATION, SAVE_LEARNED_DEFAULTS,
+ * GET_FIELD_MAP, GET_RESUME_ATTACHMENT and ATS_DETECTED stay open because the
+ * content script sends them during fill.
  */
-async function getStateForSender(_payload, sender) {
-  const state = await getState();
-  return isExtensionPageSender(sender) ? state : redactStateForPageCaller(state);
+const EXTENSION_PAGE_ONLY_TYPES = new Set([
+  'GET_STATE',
+  'SAVE_SETTINGS_ONLY',
+  'SAVE_SETUP',
+  'RESET_ALL_DATA',
+  'SUMMARIZE_JD',
+  'GENERATE_INTERVIEW_QUESTIONS',
+  'GENERATE_INTERVIEW_ANSWER',
+  'LINKEDIN_CONNECT',
+  'GOOGLE_CONNECT',
+]);
+
+/**
+ * Fail-closed: true only for a sender whose origin is this extension's
+ * origin (or, when no origin is reported, whose page URL is under it).
+ * Content scripts report the web page's origin and URL, so they fail.
+ * @param {chrome.runtime.MessageSender} sender
+ */
+export function isExtensionPageSender(sender) {
+  const extensionOrigin = `chrome-extension://${chrome.runtime.id}`;
+  if (typeof sender?.origin === 'string') return sender.origin === extensionOrigin;
+  return typeof sender?.url === 'string' && sender.url.startsWith(`${extensionOrigin}/`);
 }
 
 /**
@@ -62,7 +83,7 @@ async function getStateForSender(_payload, sender) {
 const MESSAGE_HANDLERS = {
   SAVE_SETUP: handleSaveSetup,
   SAVE_SETTINGS_ONLY: handleSaveSettingsOnly,
-  GET_STATE: getStateForSender,
+  GET_STATE: getState,
   GET_RESUME_ATTACHMENT: handleGetResumeAttachment,
   REMOVE_RESUME_ATTACHMENT: handleRemoveResumeAttachment,
   GENERATE_ANSWERS: handleGenerateAnswers,
@@ -123,7 +144,12 @@ export function setupMessageRouter() {
       return false;
     }
 
-    handleMessage(msg, sender).then(sendResponse).catch((err) => {
+    if (EXTENSION_PAGE_ONLY_TYPES.has(msg.type) && !isExtensionPageSender(sender)) {
+      sendResponse({ success: false, error: 'This message is only accepted from extension pages.' });
+      return false;
+    }
+
+    handleMessage(msg).then(sendResponse).catch((err) => {
       sendResponse({ success: false, error: err.message });
     });
     return true; // keep channel open for async response
@@ -136,7 +162,7 @@ export function setupMessageRouter() {
  * @returns {Promise<any>} The handler's return value.
  * @throws {Error} If the message type is unknown.
  */
-export async function handleMessage(msg, sender) {
+export async function handleMessage(msg) {
   // Keep everything before handler() synchronous: NATIVE_BRIDGE_ENABLE needs
   // the user gesture, which ends at the first await.
   const type = msg?.type;
@@ -144,5 +170,5 @@ export async function handleMessage(msg, sender) {
   if (typeof handler !== 'function') {
     throw new Error('Unknown message type: ' + msg?.type);
   }
-  return handler(msg.payload, sender);
+  return handler(msg.payload);
 }
