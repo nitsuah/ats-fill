@@ -52,9 +52,16 @@ test('inject: sender from another extension or page is declined', async () => {
   assert.equal(f.injected.length, 0);
 });
 
-test('inject: missing or mismatched expected URL is declined', async () => {
+test('inject: top frame without a URL binds to itself; child frame without one is declined', async () => {
+  const top = load();
+  assert.equal((await top.send(msg({ expectedUrl: undefined }), { id: 'ext-id' })).success, true);
+  const child = load({ frameUrl: 'https://jobs.example/embedded', top: false });
+  assert.equal(await child.send(msg({ expectedUrl: undefined }), { id: 'ext-id' }), 'declined');
+  assert.equal(child.injected.length, 0);
+});
+
+test('inject: mismatched expected URL is declined', async () => {
   const f = load();
-  assert.equal(await f.send(msg({ expectedUrl: undefined }), { id: 'ext-id' }), 'declined');
   assert.equal(await f.send(msg({ expectedUrl: 'https://jobs.example/apply?id=2' }), { id: 'ext-id' }), 'declined');
   assert.equal(f.injected.length, 0);
 });
@@ -109,6 +116,49 @@ test('sendToActiveTab routes injection to the verified document, once, including
     assert.equal(injected, 1);
     assert.ok(sent.every((s) => s.message.type === 'INJECT_ANSWERS' && s.message.expectedUrl === url && s.message.payload.a === 1));
     assert.deepEqual(sent.map((s) => s.documentId), ['top-doc', 'top-doc'], 'second frame is never offered the answers');
+  } finally {
+    if (prior === undefined) delete globalThis.chrome; else globalThis.chrome = prior;
+  }
+});
+
+test('sendToActiveTab falls back to a URL-bound tab message when frames cannot be enumerated', async () => {
+  const prior = globalThis.chrome;
+  const url = 'https://jobs.example/apply?id=1';
+  const sent = [];
+  globalThis.chrome = {
+    runtime: { lastError: null },
+    tabs: {
+      async query() { return [{ id: 7, url }]; },
+      async get() { return { url }; },
+      sendMessage(_tab, message, cb) { sent.push(message); cb({ success: true, filled: 2 }); },
+    },
+    scripting: { async executeScript() { throw new Error('Cannot access contents of the page.'); } },
+  };
+  try {
+    const { sendToActiveTab } = await import('../lib/utils.js');
+    const res = await sendToActiveTab({ type: 'INJECT_ANSWERS', payload: { a: 1 } });
+    assert.equal(res.filled, 2);
+    assert.equal(sent[0].expectedUrl, url);
+  } finally {
+    if (prior === undefined) delete globalThis.chrome; else globalThis.chrome = prior;
+  }
+});
+
+test('sendToActiveTab sends injection to the tab when the popup cannot read its URL', async () => {
+  const prior = globalThis.chrome;
+  const sent = [];
+  globalThis.chrome = {
+    runtime: { lastError: null },
+    tabs: {
+      async query() { return [{ id: 7 }]; },
+      sendMessage(_tab, message, cb) { sent.push(message); cb({ success: true, filled: 1 }); },
+    },
+  };
+  try {
+    const { sendToActiveTab } = await import('../lib/utils.js');
+    const res = await sendToActiveTab({ type: 'INJECT_ANSWERS', payload: { a: 1 } });
+    assert.equal(res.filled, 1);
+    assert.equal(sent.length, 1);
   } finally {
     if (prior === undefined) delete globalThis.chrome; else globalThis.chrome = prior;
   }
