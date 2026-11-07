@@ -1700,6 +1700,15 @@ function getLegacyDraftPageKey() {
   }
 }
 
+/**
+ * Draft for this page. Old drafts were keyed without the query, which is the
+ * same key as today's when the normalised query is empty, so no extra lookup
+ * is needed and drafts for other query variants are never shown.
+ */
+function findDraftForPage(drafts) {
+  return drafts?.[getDraftPageKey()];
+}
+
 /** Page key including a normalised query: sorted params, tracking params dropped. */
 function getDraftPageKey() {
   const base = getLegacyDraftPageKey();
@@ -1892,7 +1901,7 @@ async function restoreDraftValues() {
 
   try {
     const data = await chrome.storage.local.get(DRAFT_STORAGE_KEY);
-    const draft = data[DRAFT_STORAGE_KEY]?.[getDraftPageKey()] || data[DRAFT_STORAGE_KEY]?.[getLegacyDraftPageKey()];
+    const draft = findDraftForPage(data[DRAFT_STORAGE_KEY]);
     if (!draft?.fields) return;
 
   const processedGroups = new Set();

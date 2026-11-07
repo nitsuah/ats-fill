@@ -17,7 +17,7 @@ function keys(href) {
   sandbox.top = sandbox;
   sandbox.chrome = { runtime: { onMessage: { addListener() {} }, sendMessage: () => Promise.resolve({}) } };
   vm.createContext(sandbox);
-  vm.runInContext(`${CONTENT_JS}\n;globalThis.__k = { page: getDraftPageKey(), legacy: getLegacyDraftPageKey() };`, sandbox);
+  vm.runInContext(`${CONTENT_JS}\n;globalThis.__k = { page: getDraftPageKey(), legacy: getLegacyDraftPageKey(), found: findDraftForPage({ 'https://jobs.example/apply': { fields: { a: 1 } } }) !== undefined };`, sandbox);
   return sandbox.__k;
 }
 
@@ -46,4 +46,9 @@ test('draft key: per-visit session params do not change the key', () => {
     keys('https://jobs.example/apply?id=1&sessionId=abc&token=t1').page,
     keys('https://jobs.example/apply?id=1&sessionId=zzz&token=t2').page,
   );
+});
+
+test('legacy query-less draft is shown without a query but not with a real query param', () => {
+  assert.equal(keys('https://jobs.example/apply?utm_source=x').found, true);
+  assert.equal(keys('https://jobs.example/apply?id=2').found, false);
 });
