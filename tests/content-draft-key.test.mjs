@@ -40,3 +40,10 @@ test('draft key: no query keeps the old-format key', () => {
 test('draft key: legacy key stays the query-less path for migration reads', () => {
   assert.equal(keys('https://jobs.example/apply?id=1').legacy, 'https://jobs.example/apply');
 });
+
+test('draft key: per-visit session params do not change the key', () => {
+  assert.equal(
+    keys('https://jobs.example/apply?id=1&sessionId=abc&token=t1').page,
+    keys('https://jobs.example/apply?id=1&sessionId=zzz&token=t2').page,
+  );
+});

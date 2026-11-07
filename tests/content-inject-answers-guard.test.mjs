@@ -70,3 +70,46 @@ test('inject: same-origin child frame with matching referrer fills', async () =>
   const res = await f.send(msg(), { id: 'ext-id' });
   assert.equal(res.success, true);
 });
+
+test('sendToActiveTab routes injection to the verified document, once, including after lazy injection', async () => {
+  const prior = globalThis.chrome;
+  const url = 'https://jobs.example/apply?id=1';
+  const sent = [];
+  let injected = 0;
+  globalThis.chrome = {
+    runtime: { lastError: null },
+    tabs: {
+      async query() { return [{ id: 7, url }]; },
+      async get() { return { url }; },
+      sendMessage(_tab, message, options, cb) {
+        sent.push({ message, documentId: options.documentId });
+        if (options.documentId === 'top-doc' && injected === 0) {
+          globalThis.chrome.runtime.lastError = { message: 'Could not establish connection. Receiving end does not exist.' };
+          cb();
+          globalThis.chrome.runtime.lastError = null;
+          return;
+        }
+        cb({ success: true, filled: 0 });
+      },
+    },
+    scripting: {
+      async executeScript(opts) {
+        if (opts.files) { injected += 1; return []; }
+        return [
+          { frameId: 0, documentId: 'top-doc', result: { href: url } },
+          { frameId: 3, documentId: 'child-doc', result: { href: 'https://jobs.example/embedded' } },
+        ];
+      },
+    },
+  };
+  try {
+    const { sendToActiveTab } = await import('../lib/utils.js');
+    const res = await sendToActiveTab({ type: 'INJECT_ANSWERS', payload: { a: 1 } });
+    assert.equal(res.success, true);
+    assert.equal(injected, 1);
+    assert.ok(sent.every((s) => s.message.type === 'INJECT_ANSWERS' && s.message.expectedUrl === url && s.message.payload.a === 1));
+    assert.deepEqual(sent.map((s) => s.documentId), ['top-doc', 'top-doc'], 'second frame is never offered the answers');
+  } finally {
+    if (prior === undefined) delete globalThis.chrome; else globalThis.chrome = prior;
+  }
+});

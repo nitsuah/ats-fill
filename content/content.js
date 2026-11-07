@@ -1682,7 +1682,7 @@ function isDraftableField(el) {
   return true;
 }
 
-const DRAFT_TRACKING_PARAMS = /^(utm_.*|gclid|dclid|fbclid|msclkid|mc_cid|mc_eid|_ga|_gl|_hsenc|_hsmi|gh_src|li_fat_id|igshid)$/i;
+const DRAFT_TRACKING_PARAMS = /^(utm_.*|gclid|dclid|fbclid|msclkid|mc_cid|mc_eid|_ga|_gl|_hsenc|_hsmi|gh_src|li_fat_id|igshid|session(_?id)?|sid|jsessionid|token|nonce|timestamp|ts|_t)$/i;
 
 /** Page key without the query string (format used before queries were keyed). */
 function getLegacyDraftPageKey() {
