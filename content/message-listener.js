@@ -40,7 +40,7 @@ async function handleMessage(msg, sendResponse) {
     case 'GET_JOB_INFO':
       return handleGetJobInfo();
     case 'DETECT_ATS':
-      return { ats: detectAts() };
+      return { ats: detectAts(), url: location.href };
     case 'FOCUS_FIELD':
       return handleFocusField(msg.payload);
     case 'FETCH_LINKEDIN_JOBS':

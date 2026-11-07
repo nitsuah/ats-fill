@@ -52,15 +52,21 @@ test('inject: sender from another extension or page is declined', async () => {
   assert.equal(f.injected.length, 0);
 });
 
-test('inject: top frame without a URL binds to itself; child frame without one is declined', async () => {
+test('inject: a message with no expectedUrl is refused in every frame', async () => {
   const top = load();
-  assert.equal((await top.send(msg({ expectedUrl: undefined }), { id: 'ext-id' })).success, true);
+  assert.equal(await top.send(msg({ expectedUrl: undefined }), { id: 'ext-id' }), 'declined');
   const child = load({ frameUrl: 'https://jobs.example/embedded', top: false });
   assert.equal(await child.send(msg({ expectedUrl: undefined }), { id: 'ext-id' }), 'declined');
-  assert.equal(child.injected.length, 0);
+  assert.equal(top.injected.length + child.injected.length, 0);
 });
 
-test('inject: mismatched expected URL is declined', async () => {
+test('inject: DETECT_ATS reports the frame URL used as expectedUrl', async () => {
+  const f = load();
+  const res = await f.send({ type: 'DETECT_ATS' }, { id: 'ext-id' });
+  assert.equal(res.url, EXPECTED);
+});
+
+test('inject: expectedUrl that differs from location.href is refused', async () => {
   const f = load();
   assert.equal(await f.send(msg({ expectedUrl: 'https://jobs.example/apply?id=2' }), { id: 'ext-id' }), 'declined');
   assert.equal(f.injected.length, 0);

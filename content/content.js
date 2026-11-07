@@ -75,12 +75,6 @@ function matchesExpectedFillDocument(expectedUrl) {
   }
 }
 
-/** Same guard as a fill; the top frame may omit the URL and is then bound to itself. */
-function matchesInjectDocument(msg) {
-  const expected = msg.expectedUrl === undefined && IS_TOP_FRAME ? location.href : msg.expectedUrl;
-  return matchesExpectedFillDocument(expected);
-}
-
 /**
  * With `all_frames: true`, the same content script runs in the top document and
  * in every (same- or cross-origin) iframe — e.g. the iCIMS application form,
@@ -96,13 +90,13 @@ function frameOwnsMessage(msg) {
   switch (msg?.type) {
     case 'FILL_FORM':
       // Reject stale or unbound fill messages before reading questions or writing fields.
-      if (!matchesInjectDocument(msg)) return false;
+      if (!matchesExpectedFillDocument(msg.expectedUrl)) return false;
       return getFillableInputs().length > 0 && (!IS_TOP_FRAME || !pageEmbedsAtsFrame());
     case 'INJECT_ANSWERS':
       // Same document guard as a normal fill. The frame that actually contains
       // the application fields fills them; a host page that embeds an ATS form
       // defers to that iframe, so the fill comes from one frame only.
-      if (!matchesInjectDocument(msg)) return false;
+      if (!matchesExpectedFillDocument(msg.expectedUrl)) return false;
       return getFillableInputs().length > 0 && (!IS_TOP_FRAME || !pageEmbedsAtsFrame());
     case 'FOCUS_FIELD':
       return !!findFieldForReviewTarget(msg.payload || {});
@@ -153,12 +147,12 @@ async function handleMessage(msg, sendResponse) {
     case 'FILL_FORM':
       return handleFillForm(msg.expectedUrl);
     case 'INJECT_ANSWERS':
-      if (!matchesInjectDocument(msg)) throw new Error('The application page navigated or changed. Try again on the intended tab.');
+      if (!matchesExpectedFillDocument(msg.expectedUrl)) throw new Error('The application page navigated or changed. Try again on the intended tab.');
       return handleInjectAnswers(msg.payload);
     case 'GET_JOB_INFO':
       return handleGetJobInfo();
     case 'DETECT_ATS':
-      return { ats: detectAts() };
+      return { ats: detectAts(), url: location.href };
     case 'FOCUS_FIELD':
       return handleFocusField(msg.payload);
     case 'FETCH_LINKEDIN_JOBS': {

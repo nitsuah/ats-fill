@@ -52,3 +52,15 @@ test('legacy query-less draft is shown without a query but not with a real query
   assert.equal(keys('https://jobs.example/apply?utm_source=x').found, true);
   assert.equal(keys('https://jobs.example/apply?id=2').found, false);
 });
+
+test('draft-key code is identical in content.js and form-filler.js', () => {
+  const FILLER_JS = readFileSync(new URL('../content/form-filler.js', import.meta.url), 'utf8');
+  const grab = (src, re) => { const m = src.match(re); assert.ok(m, `missing ${re}`); return m[0]; };
+  const parts = [
+    /const DRAFT_TRACKING_PARAMS = [^\n]*\n/,
+    /function getLegacyDraftPageKey\(\) \{[\s\S]*?\n\}\n/,
+    /function findDraftForPage\(drafts\) \{[\s\S]*?\n\}\n/,
+    /function getDraftPageKey\(\) \{[\s\S]*?\n\}\n/,
+  ];
+  for (const re of parts) assert.equal(grab(CONTENT_JS, re), grab(FILLER_JS, re));
+});
