@@ -765,7 +765,12 @@
               <span class="config-badge hidden" data-config-badge>Configured</span>
             </summary>
             <div class="collapsible-body">
-            <p class="helper-text">Point Job Search at any RSS-based board the built-in list doesn't cover — a state workforce board (e.g. JOBS4TN.gov), an internal careers feed, or any other job RSS URL. Your search terms are appended as a <code>?q=</code> param when the feed doesn't already encode a query. The extension will ask for one-time permission to read that site.</p>
+            <p class="helper-text">Point Job Search at any RSS-based board the built-in list doesn't cover — a state workforce board (e.g. JOBS4TN.gov), an internal careers feed, or any other job RSS URL. Your search terms are appended as a <code>?q=</code> param when the feed doesn't already encode a query. The extension will ask for one-time permission to read that site. Feeds must use https://.</p>
+            <label class="checkbox-row" for="allow-local-network-feeds">
+              <input type="checkbox" id="allow-local-network-feeds" />
+              <span>Allow local-network feeds</span>
+            </label>
+            <p class="helper-text">Off by default. When on, feeds on this computer or your local network (for example localhost, 192.168.x.x or an .intranet name) can be added and fetched, over http:// as well as https://. Only turn it on for feeds you trust.</p>
             <ul id="custom-job-sources-list" class="custom-source-list"></ul>
             <label for="custom-source-name" class="visually-hidden">Custom source name</label>
             <input type="text" id="custom-source-name" placeholder="Source name (e.g. JOBS4TN)" autocomplete="off" />

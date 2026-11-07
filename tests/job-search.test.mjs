@@ -688,7 +688,7 @@ test('searchJobs fetches and normalizes results from a custom RSS source', async
   const fetchImpl = async (url) => {
     const u = new URL(url);
     if (u.hostname === 'jobs4tn.gov' || u.hostname.endsWith('.jobs4tn.gov')) {
-      return { ok: true, url, headers: { get: () => null }, text: async () => rssXml };
+      return { ok: true, url, headers: { get: (n) => ({ 'content-type': 'application/rss+xml', 'content-length': String(rssXml.length) })[n.toLowerCase()] ?? null }, text: async () => rssXml };
     }
     return { ok: true, json: async () => ({ jobs: [], data: [] }) };
   };
@@ -724,7 +724,7 @@ test('custom RSS fetch stops reading and cancels the stream once the byte budget
   const fetchImpl = async () => ({
     ok: true,
     url: 'https://jobs4tn.gov/rss',
-    headers: { get: () => null },
+    headers: { get: (n) => (n.toLowerCase() === 'content-type' ? 'application/rss+xml' : null) },
     body,
     text: async () => { textCalled = true; return ''; },
   });

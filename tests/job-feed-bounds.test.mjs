@@ -21,11 +21,11 @@ function ok(body, tracker = { reads: 0 }, headers = {}) {
   return {
     ok: true,
     status: 200,
-    headers: { get: (name) => headers[name.toLowerCase()] ?? null },
+    headers: { get: (name) => ({ 'content-type': 'application/rss+xml', 'content-length': String(Buffer.byteLength(body)), ...headers })[name.toLowerCase()] ?? null },
     text: async () => { tracker.reads += 1; return body; },
   };
 }
-const notFound = () => ({ ok: false, status: 404, headers: { get: () => null }, text: async () => '' });
+const notFound = () => ({ ok: false, status: 404, headers: { get: (n) => (n.toLowerCase() === 'content-type' ? 'application/rss+xml' : null) }, text: async () => '' });
 const redirectTo = (location) => ({
   ok: false,
   status: 302,
@@ -129,7 +129,7 @@ test('custom feed with a non-https URL is never registered or fetched', async ()
   assert.equal(calls.length, 0, 'no request may be sent for a non-https feed');
 });
 
-test('custom feeds on blocked addresses and internal names are not registered', () => {
+test('custom feeds on local-network addresses are refused at fetch time while the setting is off', async () => {
   const blocked = [
     'https://127.0.0.1/rss',
     'https://10.0.0.5/rss',
@@ -149,11 +149,11 @@ test('custom feeds on blocked addresses and internal names are not registered', 
     'https://printer.local./rss',
   ];
   for (const url of blocked) {
-    assert.deepEqual(
-      buildCustomJobSources([{ id: 'custom-blocked', label: 'Blocked', url }]),
-      [],
-      `${url} must not be registered`
-    );
+    const { fetchImpl, calls } = recordingFetch(() => ok(RSS));
+    const config = { customSources: [{ id: 'custom-blocked', label: 'Blocked', url }] };
+    const outcome = await searchJobs('analyst', { fetchImpl, config, sources: ['custom-blocked'] }).catch((e) => e.message);
+    assert.match(String(outcome), /unavailable/i, `${url} must not return jobs`);
+    assert.equal(calls.length, 0, `${url} must not be requested`);
   }
   assert.deepEqual(
     buildCustomJobSources([{ id: 'custom-ok', label: 'OK', url: 'https://jobs4tn.gov/rss' }]).map((e) => e.id),
@@ -257,7 +257,7 @@ function streamedResponse(status, headers, tracker) {
   return {
     ok: status >= 200 && status < 300,
     status,
-    headers: { get: (name) => headers[name.toLowerCase()] ?? null },
+    headers: { get: (name) => ({ 'content-type': 'application/rss+xml', 'content-length': String(Buffer.byteLength(body)), ...headers })[name.toLowerCase()] ?? null },
     body: new ReadableStream({
       start(controller) { controller.enqueue(new TextEncoder().encode(RSS)); },
       cancel() { tracker.cancelled = true; },
@@ -287,7 +287,7 @@ test('a text-only response is measured in bytes, so multibyte text over the cap 
     ok: true,
     status: 200,
     url: 'https://jobs4tn.gov/rss',
-    headers: { get: () => null },
+    headers: { get: (n) => ({ 'content-type': 'application/rss+xml', 'content-length': '1000' })[n.toLowerCase()] ?? null },
     text: async () => { reads.reads += 1; return big; },
   });
   await assert.rejects(

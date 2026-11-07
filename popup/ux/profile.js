@@ -54,6 +54,8 @@ export function applyStateToSetupForm(state = {}) {
   set('google-client-id', settings.google_client_id || '');
   set('google-client-secret', settings.google_client_secret || '');
   renderCustomJobSourcesList(settings.custom_job_sources || []);
+  const allowLocalFeeds = $('allow-local-network-feeds');
+  if (allowLocalFeeds) allowLocalFeeds.checked = settings.allow_local_network_feeds === true;
   syncSettingsCardsFromState(settings, !!state.hasApiKey);
   const privacyConsent = $('privacy-consent');
   if (privacyConsent) {
