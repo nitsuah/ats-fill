@@ -137,10 +137,26 @@ export async function findExtensionId(cdp, env = process.env) {
     .filter((t) => t.type === 'service_worker' && /^chrome-extension:\/\/[a-p]{32}\/background\/service-worker\.js$/.test(t.url))
     .map((t) => t.url.slice('chrome-extension://'.length, 'chrome-extension://'.length + 32)))];
   if (ids.includes(STORE_EXTENSION_ID)) return STORE_EXTENSION_ID;
-  // An unpacked dev build has its own ID; the path match is specific enough
-  // when it is the only candidate.
-  if (ids.length === 1) return ids[0];
-  return STORE_EXTENSION_ID;
+  // An unpacked dev build has its own ID; accept the sole candidate only when
+  // its manifest name matches this extension.
+  if (ids.length === 1 && await extensionNameMatches(cdp, targetInfos, ids[0])) return ids[0];
+  throw new Error('Could not identify the ats-fill extension. Set ATS_FILL_EXTENSION_ID to its ID.');
+}
+
+async function extensionNameMatches(cdp, targetInfos, id) {
+  const worker = targetInfos.find((t) => t.type === 'service_worker' && t.url.startsWith(`chrome-extension://${id}/`));
+  if (!worker) return false;
+  try {
+    const { sessionId } = await cdp.send('Target.attachToTarget', { targetId: worker.targetId, flatten: true });
+    try {
+      const result = await cdp.send('Runtime.evaluate', {
+        expression: 'chrome.runtime.getManifest().name', returnByValue: true,
+      }, sessionId);
+      return /ats[\s-]?fill/i.test(String(result?.result?.value || ''));
+    } finally {
+      await cdp.send('Target.detachFromTarget', { sessionId }).catch(() => {});
+    }
+  } catch { return false; }
 }
 
 /**

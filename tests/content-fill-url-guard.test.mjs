@@ -16,7 +16,7 @@ test('fill receiver requires the exact selected URL in the top-level document', 
 
 test('fill receiver checks full referrers and accepts browsers that reduce cross-origin referrers to origin', () => {
   const top = globalThis.window;
-  globalThis.window = { top, location: { href: 'https://forms.example/embedded' } };
+  globalThis.window = { top, location: new URL('https://jobs.example/embedded') };
   globalThis.document = { referrer: 'https://jobs.example/application?id=1' };
   assert.equal(matchesExpectedFillDocument({ type: 'FILL_FORM', expectedUrl: 'https://jobs.example/application?id=1' }), true);
   globalThis.document.referrer = 'https://jobs.example/application?id=2';

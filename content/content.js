@@ -59,6 +59,12 @@ function matchesExpectedFillDocument(expectedUrl) {
   if (expected.protocol !== 'https:' && expected.protocol !== 'http:') return false;
   if (IS_TOP_FRAME) return location.href === expected.href;
   if (expected.hash) return false;
+  // Child frames fill only when same-origin with the top-level page or hosted on a known ATS domain.
+  const ownHost = location.hostname.toLowerCase();
+  const knownAtsFrame = location.protocol === 'https:'
+    && ['greenhouse.io', 'ashbyhq.com', 'ashby.io', 'lever.co', 'workday.com', 'myworkdayjobs.com', 'icims.com', 'jobvite.com']
+      .some((domain) => ownHost === domain || ownHost.endsWith(`.${domain}`));
+  if (location.origin !== expected.origin && !knownAtsFrame) return false;
   try {
     const referrer = new URL(document.referrer);
     if (referrer.origin !== expected.origin) return false;

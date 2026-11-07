@@ -288,12 +288,13 @@ export function applyProfileOverrides(resume, profile = {}, settings = {}) {
   next.linkedin = firstNonEmpty(profile.linkedin, next.linkedin);
   next.github = firstNonEmpty(profile.github, next.github);
   next.portfolio = firstNonEmpty(profile.portfolio, next.portfolio);
-  next.pronouns = firstNonEmpty(profile.pronouns, profile.pronouns_sensitive, next.pronouns);
+  next.pronouns = firstNonEmpty(profile.pronouns, next.pronouns);
   next.sensitive_optin = profile.sensitive_optin === true;
   next.gender = next.sensitive_optin ? firstNonEmpty(profile.gender, next.gender) : '';
   next.race = next.sensitive_optin ? firstNonEmpty(profile.race, next.race) : '';
   next.veteran = next.sensitive_optin ? firstNonEmpty(profile.veteran, next.veteran) : '';
   next.disability = next.sensitive_optin ? firstNonEmpty(profile.disability, next.disability) : '';
+  if (next.sensitive_optin && !next.pronouns) next.pronouns = firstNonEmpty(profile.pronouns_sensitive, next.pronouns_sensitive);
   next.pronouns_sensitive = next.sensitive_optin ? firstNonEmpty(profile.pronouns_sensitive, next.pronouns_sensitive) : '';
   next.current_company = firstNonEmpty(profile.current_company, next.current_company, next.experience?.[0]?.company);
   next.current_title = firstNonEmpty(profile.current_title, next.current_title, next.experience?.[0]?.title);
