@@ -22,6 +22,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- Settings, stored-credential and key-spending messages are accepted only from the extension's own pages, and page scripts no longer receive the saved settings. Custom RSS job feeds and the Hackajob sitemap and detail pages go through one bounded fetch: the requested URL and the final URL after redirects must be allowed https hosts (a disallowed final host is refused before its body is read), with size and time limits.
+
 - HTML entity decoders now accept uppercase `X` in hexadecimal numeric references across job and page extraction.
 
 - **Fixed:** CDP tracker helper no longer passes credential-named fields through

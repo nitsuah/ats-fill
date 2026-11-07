@@ -65,7 +65,8 @@ test('service worker registers a message listener on import', () => {
 });
 
 /** Sends a message through the captured listener like Chrome would. */
-function send(msg, sender = { id: EXT_ID }) {
+// Default sender is the popup page, the only extension context that may send settings messages.
+function send(msg, sender = { id: EXT_ID, url: `chrome-extension://${EXT_ID}/popup/popup.html` }) {
   return new Promise((resolve) => {
     messageListener(msg, sender, resolve);
   });

@@ -46,6 +46,37 @@ import {
 } from './modules/handlers/index.js';
 
 /**
+ * Messages that read or change settings, or use stored credentials. Only the
+ * extension's own pages may send them. Content scripts run in web pages and
+ * must not reach them. GENERATE_ANSWERS, LOG_APPLICATION, SAVE_LEARNED_DEFAULTS,
+ * GET_FIELD_MAP, GET_RESUME_ATTACHMENT and ATS_DETECTED stay open because the
+ * content script sends them during fill.
+ */
+const EXTENSION_PAGE_ONLY_TYPES = new Set([
+  'GET_STATE',
+  'SAVE_SETTINGS_ONLY',
+  'SAVE_SETUP',
+  'RESET_ALL_DATA',
+  'SUMMARIZE_JD',
+  'GENERATE_INTERVIEW_QUESTIONS',
+  'GENERATE_INTERVIEW_ANSWER',
+  'LINKEDIN_CONNECT',
+  'GOOGLE_CONNECT',
+]);
+
+/**
+ * Fail-closed: true only for a sender whose origin is this extension's
+ * origin (or, when no origin is reported, whose page URL is under it).
+ * Content scripts report the web page's origin and URL, so they fail.
+ * @param {chrome.runtime.MessageSender} sender
+ */
+export function isExtensionPageSender(sender) {
+  const extensionOrigin = `chrome-extension://${chrome.runtime.id}`;
+  if (typeof sender?.origin === 'string') return sender.origin === extensionOrigin;
+  return typeof sender?.url === 'string' && sender.url.startsWith(`${extensionOrigin}/`);
+}
+
+/**
  * Map of message type to handler function.
  * Adding new message types is now a single-line addition here.
  */
@@ -110,6 +141,11 @@ export function setupMessageRouter() {
 
     if (!msg || typeof msg !== 'object' || typeof msg.type !== 'string') {
       sendResponse({ success: false, error: 'Invalid message.' });
+      return false;
+    }
+
+    if (EXTENSION_PAGE_ONLY_TYPES.has(msg.type) && !isExtensionPageSender(sender)) {
+      sendResponse({ success: false, error: 'This message is only accepted from extension pages.' });
       return false;
     }
 
