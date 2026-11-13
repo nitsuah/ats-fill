@@ -342,7 +342,7 @@ docker compose -f config/docker-compose.yml run --rm e2e
 
 # Nightly journeys: "AI user" paths with visual baselines (Linux, Playwright image only; see tests/journeys/README.md).
 # Run nightly by .github/workflows/journeys.yml; failures file bot:journey issues and BUGS.md on bot/journeys lists them.
-docker run --rm -v "$PWD:/w" -w /w mcr.microsoft.com/playwright:v1.64.0-jammy sh -c "npm ci && npm run test:journeys"
+docker run --rm -v "$PWD:/w" -w /w mcr.microsoft.com/playwright:v1.65.0-jammy sh -c "npm ci && npm run test:journeys"
 
 # Coverage
 docker compose -f config/docker-compose.yml run --rm coverage

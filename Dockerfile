@@ -9,7 +9,7 @@ FROM deps AS test
 COPY . .
 CMD ["npm", "test"]
 
-FROM mcr.microsoft.com/playwright:v1.62.1-noble AS e2e
+FROM mcr.microsoft.com/playwright:v1.65.0-noble AS e2e
 WORKDIR /app
 COPY package.json package-lock.json* ./
 RUN npm ci
