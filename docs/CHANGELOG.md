@@ -9,6 +9,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Security
+
+- Content-script messages are now allow-listed (was deny-list); only `GENERATE_ANSWERS`, `LOG_APPLICATION`, `SAVE_LEARNED_DEFAULTS`, `GET_FIELD_MAP`, `GET_RESUME_ATTACHMENT`, `ATS_DETECTED` accepted from content scripts; all other types refused unless from extension pages.
+
 ### Changed
 
 - CI: repo-health shared kit pinned to `nitsuah/.github@a0df883` (was `7d3c243`), which no longer ships the stale `msgpack` advisory row.

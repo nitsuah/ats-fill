@@ -157,3 +157,15 @@ test('messages the content script needs during fill are not refused by the sende
   const answers = await send({ type: 'GENERATE_ANSWERS', payload: { jd: '', customQuestions: [] } }, CONTENT);
   assert.doesNotMatch(String(answers.error || ''), ONLY_EXTENSION_PAGES);
 });
+
+test('content scripts may send only the fill-time types; every other type is refused', async () => {
+  seed();
+  storageState.applications = [{ id: 'a1', company: 'X' }];
+  for (const type of ['DELETE_APPLICATION', 'CLEAR_TEMP_DATA', 'GET_LAST_ANSWERS', 'GET_LEARNED_DEFAULTS',
+    'OPEN_APPLICATION_TAB', 'FILL_APPLICATION_TAB', 'SEARCH_JOBS', 'GET_OAUTH_INFO', 'NATIVE_BRIDGE_ENABLE']) {
+    const response = await send({ type, payload: { id: 'a1', url: 'https://x.example/' } }, CONTENT);
+    assert.equal(response.success, false, `${type} must be refused`);
+    assert.match(response.error, ONLY_EXTENSION_PAGES, `${type} must be refused by the sender check`);
+  }
+  assert.equal(storageState.applications.length, 1, 'refused DELETE_APPLICATION must not delete');
+});
