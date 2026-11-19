@@ -46,22 +46,20 @@ import {
 } from './modules/handlers/index.js';
 
 /**
- * Messages that read or change settings, or use stored credentials. Only the
- * extension's own pages may send them. Content scripts run in web pages and
- * must not reach them. GENERATE_ANSWERS, LOG_APPLICATION, SAVE_LEARNED_DEFAULTS,
- * GET_FIELD_MAP, GET_RESUME_ATTACHMENT and ATS_DETECTED stay open because the
- * content script sends them during fill.
+ * Messages that content scripts are allowed to send during fill.
+ * All other message types require an extension-page sender (popup, side panel, etc.).
+ * This allow-list inverts the previous deny-list so a compromised content script
+ * cannot invoke privileged handlers (DELETE_APPLICATION, CLEAR_TEMP_DATA,
+ * GET_LAST_ANSWERS, GET_LEARNED_DEFAULTS, OPEN_APPLICATION_TAB, FILL_APPLICATION_TAB,
+ * SEARCH_JOBS, GET_OAUTH_INFO, NATIVE_BRIDGE_ENABLE, etc.).
  */
-const EXTENSION_PAGE_ONLY_TYPES = new Set([
-  'GET_STATE',
-  'SAVE_SETTINGS_ONLY',
-  'SAVE_SETUP',
-  'RESET_ALL_DATA',
-  'SUMMARIZE_JD',
-  'GENERATE_INTERVIEW_QUESTIONS',
-  'GENERATE_INTERVIEW_ANSWER',
-  'LINKEDIN_CONNECT',
-  'GOOGLE_CONNECT',
+const CONTENT_SCRIPT_TYPES = new Set([
+  'GENERATE_ANSWERS',
+  'LOG_APPLICATION',
+  'SAVE_LEARNED_DEFAULTS',
+  'GET_FIELD_MAP',
+  'GET_RESUME_ATTACHMENT',
+  'ATS_DETECTED',
 ]);
 
 /**
@@ -144,7 +142,7 @@ export function setupMessageRouter() {
       return false;
     }
 
-    if (EXTENSION_PAGE_ONLY_TYPES.has(msg.type) && !isExtensionPageSender(sender)) {
+    if (!CONTENT_SCRIPT_TYPES.has(msg.type) && !isExtensionPageSender(sender)) {
       sendResponse({ success: false, error: 'This message is only accepted from extension pages.' });
       return false;
     }
