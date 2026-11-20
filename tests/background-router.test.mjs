@@ -421,13 +421,14 @@ test('SAVE_LEARNED_DEFAULTS keeps only the 25 most recent pending entries', asyn
 
 test('GENERATE_ANSWERS: learned defaults never override profile-derived answers', async () => {
   resetStorage({
-    resume: { structured: { name: 'Ada Lovelace', email: 'ada@example.com', phone: '555-1234' } },
+    resume: { structured: { name: 'Ada Lovelace', email: 'ada@example.com', phone: '555-1234', why_company_default: 'Because I like the mission' } },
     settings: {},
     learnedDefaults: { why_company: 'Injected value', favorite_snack: 'Pretzels' },
   });
   const result = await send({ type: 'GENERATE_ANSWERS', payload: { jd: 'Some JD text' } });
   assert.equal(result.success, true);
   assert.equal(result.answers.email, 'ada@example.com');
+  assert.equal(result.answers.why_company, 'Because I like the mission');
   assert.equal(result.answers.favorite_snack, 'Pretzels');
 });
 
