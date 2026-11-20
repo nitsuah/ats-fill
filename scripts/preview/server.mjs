@@ -30,28 +30,53 @@ const INJECT = [
   '<script type="module" src="/scripts/preview/router.mjs"></script>',
 ].join('\n  ');
 
-http.createServer(async (req, res) => {
-  const { pathname } = new URL(req.url, 'http://localhost');
-  if (pathname === '/') {
-    res.writeHead(302, { location: '/popup/popup.html?standalone=1' });
-    return res.end();
-  }
-  const file = path.join(ROOT, decodeURIComponent(pathname));
-  if (!file.startsWith(ROOT)) {
-    res.writeHead(403);
-    return res.end();
-  }
-  try {
-    let body = await fs.readFile(file);
-    if (pathname === '/popup/popup.html') {
-      body = body.toString().replace('<script type="module" src="popup.js"></script>', `${INJECT}\n  <script type="module" src="popup.js"></script>`);
+export function createPreviewServer() {
+  return http.createServer(async (req, res) => {
+    try {
+      const { pathname } = new URL(req.url, 'http://localhost');
+      if (pathname === '/') {
+        res.writeHead(302, { location: '/popup/popup.html?standalone=1' });
+        return res.end();
+      }
+      let decoded;
+      try {
+        decoded = decodeURIComponent(pathname);
+      } catch {
+        res.writeHead(400);
+        return res.end('Bad request');
+      }
+      if (decoded.includes('\0')) {
+        res.writeHead(400);
+        return res.end('Bad request');
+      }
+      const file = path.resolve(ROOT, '.' + path.sep + decoded);
+      const rel = path.relative(ROOT, file);
+      if (!rel || rel === '..' || rel.startsWith('..' + path.sep) || path.isAbsolute(rel)) {
+        res.writeHead(403);
+        return res.end();
+      }
+      try {
+        let body = await fs.readFile(file);
+        if (pathname === '/popup/popup.html') {
+          body = body.toString().replace('<script type="module" src="popup.js"></script>', `${INJECT}
+  <script type="module" src="popup.js"></script>`);
+        }
+        res.writeHead(200, { 'content-type': TYPES[path.extname(file)] || 'application/octet-stream', 'cache-control': 'no-store' });
+        res.end(body);
+      } catch {
+        res.writeHead(404);
+        res.end('Not found');
+      }
+    } catch {
+      if (!res.headersSent) res.writeHead(400);
+      res.end();
     }
-    res.writeHead(200, { 'content-type': TYPES[path.extname(file)] || 'application/octet-stream', 'cache-control': 'no-store' });
-    res.end(body);
-  } catch {
-    res.writeHead(404);
-    res.end('Not found');
-  }
-}).listen(PORT, () => {
-  console.log(`ats-fill preview → http://localhost:${PORT}/popup/popup.html?standalone=1`);
-});
+  });
+}
+
+if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
+  const HOST = process.env.HOST || '127.0.0.1';
+  createPreviewServer().listen(PORT, HOST, () => {
+    console.log(`ats-fill preview → http://localhost:${PORT}/popup/popup.html?standalone=1`);
+  });
+}
