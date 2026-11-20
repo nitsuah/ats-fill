@@ -14,6 +14,12 @@ export async function renderLearnedDefaults() {
   const resp = await sendMessage({ type: 'GET_LEARNED_DEFAULTS' });
   const allMemory = Array.isArray(resp?.items) ? resp.items : (resp?.memory || []);
   const allIgnored = Array.isArray(resp?.ignoredItems) ? resp.ignoredItems : (resp?.ignored || []);
+  const pendingItems = Array.isArray(resp?.pendingItems) ? resp.pendingItems : [];
+
+  const pendingContainer = $('pending-memory-list');
+  if (pendingContainer) renderPendingMemoryGroup(pendingContainer, pendingItems);
+  const pendingBadge = $('pending-memory-count');
+  if (pendingBadge) pendingBadge.textContent = `${pendingItems.length} to review`;
 
   // Split regular vs sensitive
   const regularMemory = allMemory.filter(item => !isSensitiveMemoryQuestion(item.question));
@@ -38,6 +44,28 @@ export async function renderLearnedDefaults() {
   if (ignoredCountBadge) ignoredCountBadge.textContent = `${allIgnored.length} ignored`;
   const sensitiveCountBadge = $('sensitive-memory-count');
   if (sensitiveCountBadge) sensitiveCountBadge.textContent = `${sensitiveMemory.length} guarded`;
+}
+
+/**
+ * Answers captured from pages wait here until the user approves or discards them.
+ */
+export function renderPendingMemoryGroup(container, items) {
+  if (!items.length) {
+    container.innerHTML = '<p class="empty-msg">Nothing waiting for review.</p>';
+    return;
+  }
+  container.innerHTML = items.map(item => `
+    <div class="memory-item pending-memory-item" data-question="${escAttr(item.question)}">
+      <div class="memory-card-copy">
+        <div class="memory-item-label">Suggested</div>
+        <div class="memory-item-question">${esc(item.question)}</div>
+        <textarea class="memory-answer-input" rows="2">${esc(item.answer || '')}</textarea>
+      </div>
+      <div class="memory-item-actions">
+        <button type="button" class="btn btn-ghost btn-xs memory-approve-btn" data-question="${escAttr(item.question)}">Approve</button>
+        <button type="button" class="btn btn-ghost btn-xs memory-discard-btn" data-question="${escAttr(item.question)}">Discard</button>
+      </div>
+    </div>`).join('');
 }
 
 /**
@@ -141,8 +169,28 @@ export function initMemoryHandlers() {
     const ignoreBtn = event.target.closest('.memory-ignore-btn');
     const deleteBtn = event.target.closest('.memory-delete-btn');
     const restoreBtn = event.target.closest('.memory-restore-btn');
+    const approveBtn = event.target.closest('.memory-approve-btn');
+    const discardBtn = event.target.closest('.memory-discard-btn');
 
     try {
+      if (approveBtn) {
+        const question = approveBtn.dataset.question || '';
+        const answer = approveBtn.closest('.memory-item')?.querySelector('.memory-answer-input')?.value?.trim() || '';
+        if (!question || !answer) return;
+        await sendMessage({ type: 'APPROVE_PENDING_LEARNED_DEFAULT', payload: { question, answer } });
+        await renderLearnedDefaults();
+        setStatus('setup-status', '✅ Memory saved.', 'success');
+        return;
+      }
+
+      if (discardBtn) {
+        const question = discardBtn.dataset.question || '';
+        if (!question) return;
+        await sendMessage({ type: 'DISCARD_PENDING_LEARNED_DEFAULT', payload: { question } });
+        await renderLearnedDefaults();
+        return;
+      }
+
       if (expandBtn) {
         // The button is either a contracted chip (data-question on itself) or
         // the summary of an expanded card (data-question on the parent item).
@@ -209,6 +257,7 @@ export function initMemoryHandlers() {
   };
 
   // Bind to all memory list containers
+  $('pending-memory-list')?.addEventListener('click', handleMemoryClick);
   $('learned-defaults-list')?.addEventListener('click', handleMemoryClick);
   $('ignored-memory-list')?.addEventListener('click', handleMemoryClick);
   $('sensitive-memory-list')?.addEventListener('click', handleMemoryClick);

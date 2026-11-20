@@ -122,9 +122,17 @@ function buildDeterministicAnswers({ resume, settings, customQuestions = [], lea
     requires_sponsorship: profile.requires_sponsorship || '',
   };
 
+  // Profile and settings answers are authoritative; learned values only fill gaps.
+  const learnedFillIns = Object.fromEntries(
+    Object.entries(safeLearnedDefaults).filter(([key]) => {
+      const existing = baseAnswers[key];
+      return existing === undefined || existing === null || String(existing).trim() === '';
+    })
+  );
+
   return {
     ...baseAnswers,
-    ...safeLearnedDefaults,
+    ...learnedFillIns,
     custom_answers: buildDefaultCustomAnswers(customQuestions, baseAnswers, safeLearnedDefaults),
   };
 }

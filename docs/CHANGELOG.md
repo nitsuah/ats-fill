@@ -12,6 +12,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Security
 
 - Preview server checks path containment with `path.relative`, answers malformed URLs with 400, and binds to loopback by default (override with `HOST`).
+- Answers captured from pages are staged for review and only learned after approval in the Memory section; only fields you edited yourself are captured, and learned answers no longer override profile or settings answers.
 - Content-script messages are now allow-listed (was deny-list); only `GENERATE_ANSWERS`, `LOG_APPLICATION`, `SAVE_LEARNED_DEFAULTS`, `GET_FIELD_MAP`, `GET_RESUME_ATTACHMENT`, `ATS_DETECTED` accepted from content scripts; all other types refused unless from extension pages.
 
 ### Changed

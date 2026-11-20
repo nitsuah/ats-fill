@@ -22,41 +22,76 @@ function findStoredLearnedEntry(map = {}, question = '') {
   return { question: exact[0], answer: String(exact[1] || '').trim() };
 }
 
-/** @param {{ entries: Record<string, string> }} payload Question→answer pairs to remember.
- * @returns {Promise<{success: true, saved: number}>} `saved` counts entries that survive trimming to the cap. */
+const MAX_PENDING_LEARNED = 25;
+
+/**
+ * Stage page-captured answers for review. Nothing captured from a page is
+ * stored as a learned default until the user approves it from the extension UI.
+ * @param {{ entries: Record<string, string> }} payload Question→answer pairs proposed by a page.
+ * @returns {Promise<{success: true, saved: 0, pending: number}>} `pending` is the staged count.
+ */
 export async function handleSaveLearnedDefaults({ entries } = {}) {
   const incomingEntries = entries && typeof entries === 'object' ? entries : {};
-  const data = await chrome.storage.local.get(['learnedDefaults', 'ignoredLearnedDefaults']);
+  const data = await chrome.storage.local.get(['learnedDefaults', 'ignoredLearnedDefaults', 'pendingLearnedDefaults']);
   const ignoredLearnedDefaults = sanitizeIgnoredLearnedDefaultsMap(data.ignoredLearnedDefaults || {});
-  const learnedDefaults = sanitizeLearnedDefaultsMap({
-    ...(data.learnedDefaults || {}),
-  }, ignoredLearnedDefaults);
+  const learnedDefaults = sanitizeLearnedDefaultsMap(data.learnedDefaults || {}, ignoredLearnedDefaults);
+  const pending = sanitizePendingMap(data.pendingLearnedDefaults);
 
-  const acceptedQuestions = [];
   for (const [label, value] of Object.entries(incomingEntries)) {
     const question = String(label || '').trim();
     const answer = String(value || '').trim();
     if (!shouldPersistLearnedValue(question, answer)) continue;
     if (isIgnoredLearnedPrompt(question, ignoredLearnedDefaults)) continue;
+    const stored = findStoredLearnedEntry(learnedDefaults, question);
+    if (stored && stored.answer === answer) continue;
 
-    delete learnedDefaults[question];
-    learnedDefaults[question] = answer;
-    acceptedQuestions.push(question);
+    delete pending[question];
+    pending[question] = answer;
   }
 
-  const trimmedLearnedDefaults = trimLearnedDefaultsMap(sanitizeLearnedDefaultsMap(learnedDefaults, ignoredLearnedDefaults));
-  await chrome.storage.local.set({
-    learnedDefaults: trimmedLearnedDefaults,
-    ignoredLearnedDefaults: trimIgnoredLearnedDefaultsMap(ignoredLearnedDefaults),
-  });
-  // Count only entries that actually survived trimming to the retention cap,
-  // not just the ones accepted before trimming.
-  const saved = acceptedQuestions.filter((q) => Object.hasOwn(trimmedLearnedDefaults, q)).length;
-  return { success: true, saved };
+  const trimmedPending = trimPendingMap(pending);
+  await chrome.storage.local.set({ pendingLearnedDefaults: trimmedPending });
+  return { success: true, saved: 0, pending: Object.keys(trimmedPending).length };
+}
+
+function sanitizePendingMap(map) {
+  const out = {};
+  if (!map || typeof map !== 'object') return out;
+  for (const [question, answer] of Object.entries(map)) {
+    if (typeof answer === 'string' && shouldPersistLearnedValue(question, answer)) out[question] = answer;
+  }
+  return out;
+}
+
+function trimPendingMap(map = {}) {
+  return Object.fromEntries(Object.entries(map).slice(-MAX_PENDING_LEARNED));
+}
+
+/** Approve a staged answer (optionally edited) so it becomes a learned default. */
+export async function handleApprovePendingLearnedDefault({ question, answer } = {}) {
+  const key = String(question || '').trim();
+  const data = await chrome.storage.local.get('pendingLearnedDefaults');
+  const pending = sanitizePendingMap(data.pendingLearnedDefaults);
+  if (!Object.hasOwn(pending, key)) throw new Error('That suggestion is no longer pending.');
+  const value = String(answer === undefined ? pending[key] : answer).trim();
+  await handleUpdateLearnedDefault({ question: key, answer: value });
+  delete pending[key];
+  await chrome.storage.local.set({ pendingLearnedDefaults: pending });
+  return { success: true };
+}
+
+/** Drop a staged answer without saving it. */
+export async function handleDiscardPendingLearnedDefault({ question } = {}) {
+  const key = String(question || '').trim();
+  const data = await chrome.storage.local.get('pendingLearnedDefaults');
+  const pending = sanitizePendingMap(data.pendingLearnedDefaults);
+  delete pending[key];
+  await chrome.storage.local.set({ pendingLearnedDefaults: pending });
+  return { success: true };
 }
 
 export async function handleGetLearnedDefaults() {
-  const data = await chrome.storage.local.get(['learnedDefaults', 'ignoredLearnedDefaults']);
+  const data = await chrome.storage.local.get(['learnedDefaults', 'ignoredLearnedDefaults', 'pendingLearnedDefaults']);
   const ignoredLearnedDefaults = sanitizeIgnoredLearnedDefaultsMap(data.ignoredLearnedDefaults || {});
   const learnedDefaults = sanitizeLearnedDefaultsMap(data.learnedDefaults || {}, ignoredLearnedDefaults);
 
@@ -68,6 +103,7 @@ export async function handleGetLearnedDefaults() {
   return {
     success: true,
     items: Object.entries(learnedDefaults).map(([question, answer]) => ({ question, answer })),
+    pendingItems: Object.entries(sanitizePendingMap(data.pendingLearnedDefaults)).map(([question, answer]) => ({ question, answer })),
     ignoredItems: Object.values(trimIgnoredLearnedDefaultsMap(ignoredLearnedDefaults)),
   };
 }
