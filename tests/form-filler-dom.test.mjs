@@ -172,6 +172,27 @@ test('Ashby Yes/No button groups are answered by clicking the matching button', 
   assert.equal(result.preserved, 1);
 });
 
+test('Yes/No groups never click submit or untyped buttons', () => {
+  setupDom(`
+    <form>
+      <div class="ashby-application-form-field-entry">
+        <label>Are you located within the United States?</label>
+        <div class="ashby-application-form-input-yesno">
+          <button type="submit" data-option="yes">Yes</button>
+          <button data-option="no">No</button>
+        </div>
+      </div>
+    </form>
+  `);
+  let clicks = 0;
+  for (const button of document.querySelectorAll('button')) button.addEventListener('click', () => clicks++);
+
+  const result = fillForm({ 'Are you located within the United States?': 'Yes' }, {}, { highlight: false });
+
+  assert.equal(clicks, 0);
+  assert.equal(result.filled, 0);
+});
+
 test('parseYesNoAnswer only commits to clear answers', () => {
   assert.equal(parseYesNoAnswer('Yes, I am'), 'yes');
   assert.equal(parseYesNoAnswer('No sponsorship required'), 'no');
