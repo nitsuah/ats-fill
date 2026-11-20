@@ -1259,7 +1259,7 @@ function fillYesNoButtonGroups(answers = {}, fieldMap = {}) {
 
 // Only plain type="button" controls are clicked; submit/reset buttons are never triggered.
 function isChoiceButton(button) {
-  return button.getAttribute('type') === 'button' && !button.disabled;
+  return button.type === 'button' && !button.disabled;
 }
 
 function getYesNoGroupLabel(group) {

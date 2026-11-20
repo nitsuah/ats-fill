@@ -7,6 +7,10 @@
  * the real popup (HTML, CSS, JS, background handlers) runs as a normal web page
  * against fictional demo data. Use it for UI work; e2e tests still load the
  * real extension.
+ *
+ * Binds to 127.0.0.1 by default. To preview from inside Docker (so the host
+ * can reach the published port), run with HOST=0.0.0.0 and publish the port
+ * to loopback only, e.g. `docker run -e HOST=0.0.0.0 -p 127.0.0.1:4173:4173 ...`.
  */
 
 import http from 'node:http';
