@@ -381,6 +381,11 @@ const DRAFT_STORAGE_KEY = 'applicationDrafts';
 let draftSaveTimer = null;
 let draftRestoreTimer = null;
 let draftPersistenceStarted = false;
+// Fields the user changed themselves (trusted events). Only these may be offered as learned answers.
+const userEditedFields = new WeakSet();
+function markUserEdited(el) {
+  userEditedFields.add(el);
+}
 
 function initDraftPersistence() {
   if (draftPersistenceStarted) return;
@@ -389,6 +394,7 @@ function initDraftPersistence() {
   const handleFieldEvent = (event) => {
     const target = event.target;
     if (isDraftableField(target)) {
+      if (event.isTrusted && event.type !== 'blur') markUserEdited(target);
       queueDraftSave();
     }
   };
@@ -600,6 +606,7 @@ function collectLearnedAnswerEntries() {
       const radios = el.name
         ? Array.from(document.querySelectorAll(`input[type="radio"][name="${CSS.escape(el.name)}"]`))
         : [el];
+      if (!radios.some((radio) => userEditedFields.has(radio))) continue;
       const checked = radios.find((radio) => radio.checked);
       if (checked) entries[label] = getChoiceIdentity(checked);
       continue;
@@ -608,6 +615,7 @@ function collectLearnedAnswerEntries() {
     if (type === 'checkbox') {
       processedGroups.add(key);
       const members = getCheckboxGroupMembers(el);
+      if (!members.some((member) => userEditedFields.has(member))) continue;
       if (members.length > 1) {
         const selected = members.filter((member) => member.checked).map(getChoiceIdentity).filter(Boolean);
         if (selected.length) entries[label] = selected.join(', ');
@@ -617,6 +625,7 @@ function collectLearnedAnswerEntries() {
       continue;
     }
 
+    if (!userEditedFields.has(el)) continue;
     const value = String(el.value || '').trim();
     if (value) entries[label] = value;
   }

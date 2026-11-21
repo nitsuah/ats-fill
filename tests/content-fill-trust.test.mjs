@@ -46,6 +46,9 @@ test('values ats-fill typed are not learned until the user changes them', () => 
   assert.deepEqual({ ...window.collectLearnedAnswerEntries() }, {});
 
   document.getElementById('hear').value = 'Jobicy';
+  assert.deepEqual({ ...window.collectLearnedAnswerEntries() }, {}, 'a value no trusted event produced is not captured');
+
+  window.markUserEdited(document.getElementById('hear'));
   assert.deepEqual({ ...window.collectLearnedAnswerEntries() }, {
     'Where did you hear about this vacancy?': 'Jobicy',
   });
@@ -77,10 +80,21 @@ test('radio groups are learned under their question, not the option label', () =
     </fieldset>
   `);
   window.document.getElementById('r2').checked = true;
+  window.markUserEdited(window.document.getElementById('r2'));
 
   assert.deepEqual({ ...window.collectLearnedAnswerEntries() }, {
     'Are you open to relocation?': 'No',
   });
+  window.close();
+});
+
+test('script-dispatched input events do not mark a field as user-edited', () => {
+  const window = load('<form><label for="hear">Where did you hear about this vacancy?</label><input id="hear" /></form>');
+  const input = window.document.getElementById('hear');
+  window.document.dispatchEvent(new window.Event('input'));
+  input.value = 'Injected';
+  input.dispatchEvent(new window.Event('input', { bubbles: true }));
+  assert.deepEqual({ ...window.collectLearnedAnswerEntries() }, {});
   window.close();
 });
 
