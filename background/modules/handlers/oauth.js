@@ -145,6 +145,7 @@ export async function handleLinkedInConnect() {
   const token = await tokenRes.json();
   if (!token.access_token) throw new Error('LinkedIn did not return an access token.');
 
+  // The access token is used once for the userinfo call and never stored.
   const userRes = await fetch(LINKEDIN_USERINFO_URL, {
     headers: { Authorization: `Bearer ${token.access_token}` },
   });
@@ -206,6 +207,7 @@ export async function handleGoogleConnect() {
   const token = await tokenRes.json();
   if (!token.access_token) throw new Error('Google did not return an access token.');
 
+  // The access token is used once for the userinfo call and never stored.
   const userRes = await fetch(GOOGLE_USERINFO_URL, {
     headers: { Authorization: `Bearer ${token.access_token}` },
   });

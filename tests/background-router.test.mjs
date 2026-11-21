@@ -7,6 +7,7 @@
  */
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import { LINKEDIN_TOKEN_URL, GOOGLE_TOKEN_URL } from '../lib/oauth.js';
 
 const EXT_ID = 'test-extension-id';
 
@@ -346,6 +347,65 @@ test('OAuth state is stored in session storage and consumed single-use', async (
     delete globalThis.chrome.storage.session;
   }
 });
+
+// Every write to chrome.storage (local, session, sync) is recorded and scanned,
+// so the check holds no matter which key a future change might use (#176).
+for (const provider of [
+  { name: 'LinkedIn', type: 'LINKEDIN_CONNECT', settings: { linkedin_client_id: 'id', linkedin_client_secret: 'secret' }, tokenUrl: LINKEDIN_TOKEN_URL },
+  { name: 'Google', type: 'GOOGLE_CONNECT', settings: { google_client_id: 'id', google_client_secret: 'secret' }, tokenUrl: GOOGLE_TOKEN_URL },
+]) {
+  test(`${provider.name} access token is never written to any chrome.storage area`, async () => {
+    const SENTINEL = 'ACCESS-TOKEN-SENTINEL-0001';
+    resetStorage({ settings: provider.settings });
+    const writes = [];
+    const area = (backing) => ({
+      async get(keys) {
+        if (keys == null) return { ...backing };
+        const list = Array.isArray(keys) ? keys : [keys];
+        return Object.fromEntries(list.map((k) => [k, backing[k]]));
+      },
+      async set(values) {
+        writes.push(JSON.stringify(values));
+        Object.assign(backing, values);
+      },
+      async remove(keys) {
+        for (const k of Array.isArray(keys) ? keys : [keys]) delete backing[k];
+      },
+    });
+    const prev = { local: globalThis.chrome.storage.local, session: globalThis.chrome.storage.session, sync: globalThis.chrome.storage.sync };
+    globalThis.chrome.storage.local = area(storageState);
+    globalThis.chrome.storage.session = area({});
+    globalThis.chrome.storage.sync = area({});
+
+    let tokenExchanged = false;
+    globalThis.fetch = async (url) => {
+      if (String(url) === provider.tokenUrl) {
+        tokenExchanged = true;
+        return { ok: true, json: async () => ({ access_token: SENTINEL }) };
+      }
+      return { ok: true, json: async () => ({ sub: '1', name: 'Test User', email: 'test@example.com', picture: '' }) };
+    };
+    globalThis.chrome.identity.launchWebAuthFlow = async ({ url }) => {
+      const state = new URL(url).searchParams.get('state');
+      return `${new URL(url).origin}/callback?code=authcode&state=${state}`;
+    };
+
+    try {
+      const result = await send({ type: provider.type });
+      assert.equal(result.success, true, JSON.stringify(result));
+      assert.ok(tokenExchanged, 'the token exchange ran');
+      assert.ok(writes.length > 0, 'the flow wrote to storage (state), so the scan is meaningful');
+      assert.ok(writes.every((w) => !w.includes(SENTINEL)), 'no storage write contains the access token');
+      assert.ok(!JSON.stringify(result).includes(SENTINEL), 'the response does not carry the access token');
+    } finally {
+      globalThis.chrome.storage.local = prev.local;
+      if (prev.session === undefined) delete globalThis.chrome.storage.session;
+      else globalThis.chrome.storage.session = prev.session;
+      if (prev.sync === undefined) delete globalThis.chrome.storage.sync;
+      else globalThis.chrome.storage.sync = prev.sync;
+    }
+  });
+}
 
 test('missing OAuth state deletes record and requires expired error', async () => {
   resetStorage({
