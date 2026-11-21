@@ -12,6 +12,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Security
 
 - Preview server checks path containment with `path.relative`, answers malformed URLs with 400, and binds to loopback by default (override with `HOST`).
+- Yes/No button groups only click explicit `type="button"` controls, never submit or untyped buttons.
 - Content-script messages are now allow-listed (was deny-list); only `GENERATE_ANSWERS`, `LOG_APPLICATION`, `SAVE_LEARNED_DEFAULTS`, `GET_FIELD_MAP`, `GET_RESUME_ATTACHMENT`, `ATS_DETECTED` accepted from content scripts; all other types refused unless from extension pages.
 - Harden the LinkedIn and Google profile-import sign-in: Google uses PKCE (S256), both flows use single-use state kept in session storage, and access tokens are used once and never stored (#176).
 - OAuth state records are now keyed by the state value itself (`oauth_state:${state}`), single-use per attempt, with a 10-minute prune, so overlapping sign-ins no longer invalidate each other (#176).
