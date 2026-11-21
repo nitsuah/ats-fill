@@ -464,7 +464,7 @@ test('OAuth access token is used once for userinfo and never persisted to storag
   };
 
   let tokenExchangeCalled = false;
-  globalThis.fetch = async (url, opts) => {
+  globalThis.fetch = async (url, _opts) => {
     if (String(url).includes('accessToken')) {
       tokenExchangeCalled = true;
       return { ok: true, json: async () => ({ access_token: 'secret-token-123' }) };
