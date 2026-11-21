@@ -15,6 +15,26 @@ import {
   syncDemoChips,
 } from '../forms/forms.js';
 import { renderCustomJobSourcesList, syncSettingsCardsFromState } from '../ai/ai.js';
+import { decryptSecret, encryptSecret } from '../../lib/secret-box.js';
+
+const OAUTH_SECRET_FIELDS = [
+  ['linkedin_client_secret', 'linkedin-client-secret'],
+  ['google_client_secret', 'google-client-secret'],
+];
+
+/** Fill the OAuth secret inputs; migrate legacy plaintext values to the encrypted format. */
+async function loadOauthSecrets(settings, set) {
+  const migrated = {};
+  for (const [field, inputId] of OAUTH_SECRET_FIELDS) {
+    const stored = settings[field];
+    const plain = stored ? await decryptSecret(stored) : null;
+    set(inputId, plain || '');
+    if (typeof stored === 'string' && stored) migrated[field] = await encryptSecret(stored);
+  }
+  if (Object.keys(migrated).length) {
+    await sendMessage({ type: 'SAVE_SETTINGS_ONLY', payload: { settings: migrated } });
+  }
+}
 
 // Re-export for consumers
 export { readSettingsForm };
@@ -50,9 +70,14 @@ export function applyStateToSetupForm(state = {}) {
   set('reed-api-key', settings.reed_api_key || '');
   set('jooble-api-key', settings.jooble_api_key || '');
   set('linkedin-client-id', settings.linkedin_client_id || '');
-  set('linkedin-client-secret', settings.linkedin_client_secret || '');
   set('google-client-id', settings.google_client_id || '');
-  set('google-client-secret', settings.google_client_secret || '');
+
+  // Secrets are stored encrypted; decrypting is async, so fill those two
+  // fields when it finishes (and re-encrypt any legacy plaintext value).
+  loadOauthSecrets(settings, set).catch(() => {
+    set('linkedin-client-secret', '');
+    set('google-client-secret', '');
+  });
   renderCustomJobSourcesList(settings.custom_job_sources || []);
   const allowLocalFeeds = $('allow-local-network-feeds');
   if (allowLocalFeeds) allowLocalFeeds.checked = settings.allow_local_network_feeds === true;

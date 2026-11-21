@@ -5,10 +5,11 @@ import { $, sendMessage } from '../../lib/utils.js';
 import { showScreen } from '../ux/navigation.js';
 import { setStatus } from '../ux/state.js';
 import { checkFeedUrl } from '../../lib/feed-hosts.js';
+import { encryptSecret } from '../../lib/secret-box.js';
 
 /** Read only the settings fields that live on the AI panel. */
-function readAiSettings() {
-  return {
+async function readAiSettings() {
+  const settings = {
     gemini_api_key: $('api-key-input')?.value.trim() || '',
     gemini_model: $('gemini-model')?.value || 'auto',
     adzuna_app_id: $('adzuna-app-id')?.value.trim() || '',
@@ -19,12 +20,20 @@ function readAiSettings() {
     reed_api_key: $('reed-api-key')?.value.trim() || '',
     jooble_api_key: $('jooble-api-key')?.value.trim() || '',
     linkedin_client_id: $('linkedin-client-id')?.value.trim() || '',
-    linkedin_client_secret: $('linkedin-client-secret')?.value.trim() || '',
     google_client_id: $('google-client-id')?.value.trim() || '',
-    google_client_secret: $('google-client-secret')?.value.trim() || '',
     custom_job_sources: customJobSources.slice(),
     allow_local_network_feeds: $('allow-local-network-feeds')?.checked === true,
   };
+
+  // Encrypt OAuth client secrets before saving
+  const linkedinSecret = $('linkedin-client-secret')?.value.trim() || '';
+  const googleSecret = $('google-client-secret')?.value.trim() || '';
+
+  // An empty field saves '' so a secret can be cleared.
+  settings.linkedin_client_secret = linkedinSecret ? await encryptSecret(linkedinSecret) : '';
+  settings.google_client_secret = googleSecret ? await encryptSecret(googleSecret) : '';
+
+  return settings;
 }
 
 // ── Settings cards: collapse into a compact summary once configured ────────
@@ -247,7 +256,7 @@ async function connectLinkedIn() {
   try {
     // Persist the latest Client ID/Secret so the service worker can read them.
     setStatus('linkedin-status', '⏳ Saving credentials…');
-    await sendMessage({ type: 'SAVE_SETTINGS_ONLY', payload: { settings: readAiSettings() } });
+    await sendMessage({ type: 'SAVE_SETTINGS_ONLY', payload: { settings: await readAiSettings() } });
 
     setStatus('linkedin-status', '⏳ Opening LinkedIn sign-in…');
     const resp = await sendMessage({ type: 'LINKEDIN_CONNECT' });
@@ -270,7 +279,7 @@ async function connectGoogle() {
   if (btn) btn.disabled = true;
   try {
     setStatus('google-status', '⏳ Saving credentials…');
-    await sendMessage({ type: 'SAVE_SETTINGS_ONLY', payload: { settings: readAiSettings() } });
+    await sendMessage({ type: 'SAVE_SETTINGS_ONLY', payload: { settings: await readAiSettings() } });
 
     setStatus('google-status', '⏳ Opening Google sign-in…');
     const resp = await sendMessage({ type: 'GOOGLE_CONNECT' });
@@ -293,7 +302,7 @@ async function connectGoogle() {
  */
 export async function handleSaveAiSettings() {
   try {
-    const settings = readAiSettings();
+    const settings = await readAiSettings();
     const resp = await sendMessage({
       type: 'SAVE_SETTINGS_ONLY',
       payload: { settings },

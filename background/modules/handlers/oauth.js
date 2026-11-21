@@ -13,6 +13,7 @@ import {
   GOOGLE_TOKEN_URL,
   GOOGLE_USERINFO_URL,
 } from '../../../lib/oauth.js';
+import { decryptSecret } from '../../../lib/secret-box.js';
 
 function getOauthRedirectUri() {
   try {
@@ -40,7 +41,8 @@ export async function handleLinkedInConnect() {
   const data = await chrome.storage.local.get('settings');
   const settings = data.settings || {};
   const clientId = settings.linkedin_client_id;
-  const clientSecret = settings.linkedin_client_secret;
+  const encryptedSecret = settings.linkedin_client_secret;
+  const clientSecret = encryptedSecret ? await decryptSecret(encryptedSecret) : '';
   if (!clientId || !clientSecret) {
     throw new Error('Add your LinkedIn app Client ID and Client Secret in the AI panel first.');
   }
@@ -92,7 +94,8 @@ export async function handleGoogleConnect() {
   const data = await chrome.storage.local.get('settings');
   const settings = data.settings || {};
   const clientId = settings.google_client_id;
-  const clientSecret = settings.google_client_secret;
+  const encryptedSecret = settings.google_client_secret;
+  const clientSecret = encryptedSecret ? await decryptSecret(encryptedSecret) : '';
   if (!clientId || !clientSecret) {
     throw new Error('Add your Google OAuth Client ID and Client Secret in the AI panel first.');
   }
