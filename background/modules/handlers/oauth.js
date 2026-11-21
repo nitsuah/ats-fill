@@ -12,7 +12,11 @@ import {
   buildGoogleAuthUrl,
   GOOGLE_TOKEN_URL,
   GOOGLE_USERINFO_URL,
+  generateCodeVerifier,
+  deriveCodeChallenge,
 } from '../../../lib/oauth.js';
+
+const OAUTH_STATE_PREFIX = 'oauth_state_';
 
 function getOauthRedirectUri() {
   try {
@@ -20,6 +24,30 @@ function getOauthRedirectUri() {
   } catch {
     return '';
   }
+}
+
+/**
+ * Store a single-use OAuth state in chrome.storage.session.
+ * @param {string} provider - 'linkedin' or 'google'
+ * @param {string} state - The state value
+ * @param {string} codeVerifier - PKCE code verifier
+ * @returns {Promise<void>}
+ */
+async function storeOAuthState(provider, state, codeVerifier) {
+  const key = `${OAUTH_STATE_PREFIX}${provider}`;
+  await chrome.storage.session.set({ [key]: { state, codeVerifier, createdAt: Date.now() } });
+}
+
+/**
+ * Retrieve and delete a single-use OAuth state from chrome.storage.session.
+ * @param {string} provider - 'linkedin' or 'google'
+ * @returns {Promise<{state:string, codeVerifier:string}|null>}
+ */
+async function consumeOAuthState(provider) {
+  const key = `${OAUTH_STATE_PREFIX}${provider}`;
+  const data = await chrome.storage.session.get(key);
+  await chrome.storage.session.remove(key);
+  return data[key] || null;
 }
 
 export async function handleGetOauthInfo() {
@@ -47,6 +75,10 @@ export async function handleLinkedInConnect() {
 
   const redirectUri = getOauthRedirectUri();
   const state = crypto.randomUUID();
+  // LinkedIn's standard (non-native) OAuth does not accept PKCE parameters, so
+  // LinkedIn keeps the client-secret exchange with single-use state only.
+  await storeOAuthState('linkedin', state, null);
+
   const authUrl = buildLinkedInAuthUrl({ clientId, redirectUri, state });
 
   const redirectResponse = await chrome.identity.launchWebAuthFlow({ url: authUrl, interactive: true });
@@ -55,7 +87,10 @@ export async function handleLinkedInConnect() {
   const returnedState = responseUrl.searchParams.get('state');
   const oauthError = responseUrl.searchParams.get('error_description') || responseUrl.searchParams.get('error');
   if (oauthError) throw new Error(`LinkedIn sign-in failed: ${oauthError}`);
-  if (returnedState !== state) throw new Error('OAuth state mismatch — please try again.');
+
+  const stored = await consumeOAuthState('linkedin');
+  if (!stored) throw new Error('OAuth session expired — please try again.');
+  if (returnedState !== stored.state) throw new Error('OAuth state mismatch — please try again.');
   if (!code) throw new Error('LinkedIn did not return an authorization code.');
 
   const tokenRes = await fetch(LINKEDIN_TOKEN_URL, {
@@ -99,7 +134,11 @@ export async function handleGoogleConnect() {
 
   const redirectUri = getOauthRedirectUri();
   const state = crypto.randomUUID();
-  const authUrl = buildGoogleAuthUrl({ clientId, redirectUri, state });
+  const codeVerifier = await generateCodeVerifier();
+  const codeChallenge = await deriveCodeChallenge(codeVerifier);
+  await storeOAuthState('google', state, codeVerifier);
+
+  const authUrl = buildGoogleAuthUrl({ clientId, redirectUri, state, codeChallenge, codeChallengeMethod: 'S256' });
 
   const redirectResponse = await chrome.identity.launchWebAuthFlow({ url: authUrl, interactive: true });
   const responseUrl = new URL(redirectResponse);
@@ -107,7 +146,10 @@ export async function handleGoogleConnect() {
   const returnedState = responseUrl.searchParams.get('state');
   const oauthError = responseUrl.searchParams.get('error_description') || responseUrl.searchParams.get('error');
   if (oauthError) throw new Error(`Google sign-in failed: ${oauthError}`);
-  if (returnedState !== state) throw new Error('OAuth state mismatch — please try again.');
+
+  const stored = await consumeOAuthState('google');
+  if (!stored) throw new Error('OAuth session expired — please try again.');
+  if (returnedState !== stored.state) throw new Error('OAuth state mismatch — please try again.');
   if (!code) throw new Error('Google did not return an authorization code.');
 
   const tokenRes = await fetch(GOOGLE_TOKEN_URL, {
@@ -119,6 +161,7 @@ export async function handleGoogleConnect() {
       redirect_uri: redirectUri,
       client_id: clientId,
       client_secret: clientSecret,
+      code_verifier: stored.codeVerifier,
     }).toString(),
   });
   if (!tokenRes.ok) {
