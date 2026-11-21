@@ -16,39 +16,100 @@ concurrency:
   cancel-in-progress: false
 
 permissions:
-  contents: write
+  contents: read
 
 jobs:
+  resolve:
+    name: Resolve release commit
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    outputs:
+      tag: ${{ steps.release.outputs.tag }}
+      version: ${{ steps.release.outputs.version }}
+      sha: ${{ steps.release.outputs.sha }}
+    steps:
+      - name: Checkout default branch history
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          fetch-depth: 0
+          fetch-tags: true
+          persist-credentials: false
+
+      - name: Resolve and verify release tag
+        id: release
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          INPUT_TAG: ${{ inputs.tag }}
+          EVENT_REF: ${{ github.ref }}
+          EVENT_REF_NAME: ${{ github.ref_name }}
+          DEFAULT_BRANCH: ${{ github.event.repository.default_branch }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [ "$EVENT_NAME" = "workflow_dispatch" ]; then
+            if [ "$EVENT_REF" != "refs/heads/$DEFAULT_BRANCH" ]; then
+              echo "::error::Run this workflow from the default branch."
+              exit 1
+            fi
+            TAG="$INPUT_TAG"
+          else
+            case "$EVENT_REF" in
+              refs/tags/v*) ;;
+              *) echo "::error::Release runs require a refs/tags/v* ref."; exit 1 ;;
+            esac
+            TAG="$EVENT_REF_NAME"
+          fi
+          if [[ ! $TAG =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "::error::Release tag must look like vX.Y.Z."
+            exit 1
+          fi
+          git fetch --no-tags origin "refs/tags/$TAG:refs/tags/$TAG"
+          SHA="$(git rev-parse "refs/tags/$TAG^{commit}")"
+          if [ "$EVENT_NAME" != "workflow_dispatch" ] && [ "$SHA" != "$GITHUB_SHA" ]; then
+            echo "::error::Tag no longer points at the commit that triggered this run."
+            exit 1
+          fi
+          git fetch --no-tags origin "+refs/heads/$DEFAULT_BRANCH:refs/remotes/origin/$DEFAULT_BRANCH"
+          if ! git merge-base --is-ancestor "$SHA" "refs/remotes/origin/$DEFAULT_BRANCH"; then
+            echo "::error::Release tag is not part of the default branch history."
+            exit 1
+          fi
+          {
+            echo "tag=$TAG"
+            echo "version=${TAG#v}"
+            echo "sha=$SHA"
+          } >> "$GITHUB_OUTPUT"
+
   package:
     name: Validate, test, package
+    needs: resolve
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
     steps:
       - name: Checkout exact release
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         with:
-          ref: ${{ github.event_name == 'workflow_dispatch' && inputs.tag || github.ref }}
-
-      - name: Resolve release tag
-        id: release
-        env:
-          EVENT_TAG: ${{ github.event_name == 'workflow_dispatch' && inputs.tag || github.ref_name }}
-        run: |
-          echo "tag=$EVENT_TAG" >> "$GITHUB_OUTPUT"
-          echo "version=${EVENT_TAG#v}" >> "$GITHUB_OUTPUT"
+          ref: ${{ needs.resolve.outputs.sha }}
 
       - name: Validate release tag
-        run: node scripts/validate-release-version.mjs "${{ steps.release.outputs.tag }}"
+        env:
+          TAG: ${{ needs.resolve.outputs.tag }}
+        run: node scripts/validate-release-version.mjs "$TAG"
 
       - name: Validate manifest
         run: node scripts/validate-manifest.mjs
 
       - name: Build and package
-        run: node scripts/package-extension.mjs "ats-fill-${{ steps.release.outputs.tag }}.zip"
+        env:
+          TAG: ${{ needs.resolve.outputs.tag }}
+        run: node scripts/package-extension.mjs "ats-fill-${TAG}.zip"
 
       - name: Verify package contents
         env:
-          RELEASE_VERSION: ${{ steps.release.outputs.version }}
-          PACKAGE: ats-fill-${{ steps.release.outputs.tag }}.zip
+          RELEASE_VERSION: ${{ needs.resolve.outputs.version }}
+          PACKAGE: ats-fill-${{ needs.resolve.outputs.tag }}.zip
         run: |
           unzip -t "$PACKAGE"
           unzip -p "$PACKAGE" manifest.json > /tmp/manifest.json
@@ -56,7 +117,7 @@ jobs:
 
       - name: SHA-256
         env:
-          PACKAGE: ats-fill-${{ steps.release.outputs.tag }}.zip
+          PACKAGE: ats-fill-${{ needs.resolve.outputs.tag }}.zip
         run: sha256sum "$PACKAGE" > SHA256SUMS.txt
 
       - name: Upload verified package
@@ -64,21 +125,22 @@ jobs:
         with:
           name: release-package
           path: |
-            ats-fill-${{ steps.release.outputs.tag }}.zip
+            ats-fill-${{ needs.resolve.outputs.tag }}.zip
             SHA256SUMS.txt
           retention-days: 7
 
       - name: GitHub Release
         env:
           GH_TOKEN: ${{ github.token }}
-          TAG: ${{ steps.release.outputs.tag }}
-          PACKAGE: ats-fill-${{ steps.release.outputs.tag }}.zip
+          TAG: ${{ needs.resolve.outputs.tag }}
+          SHA: ${{ needs.resolve.outputs.sha }}
+          PACKAGE: ats-fill-${{ needs.resolve.outputs.tag }}.zip
         run: |
           if gh release view "$TAG" >/dev/null 2>&1; then
             echo "Release $TAG already exists; updating its verified assets."
             gh release upload "$TAG" "$PACKAGE" SHA256SUMS.txt --clobber
           else
-            gh release create "$TAG" "$PACKAGE" SHA256SUMS.txt --title "$TAG" --generate-notes
+            gh release create "$TAG" "$PACKAGE" SHA256SUMS.txt --title "$TAG" --generate-notes --verify-tag --target "$SHA"
           fi
 
   # The Chrome Web Store API (v2) only uploads and publishes the package; it has
@@ -87,7 +149,7 @@ jobs:
   # the Developer Dashboard upload is a one-step drag-and-drop for this version.
   store-assets:
     name: Store listing assets
-    needs: package
+    needs: [resolve, package]
     runs-on: ubuntu-latest
     timeout-minutes: 30
     permissions:
@@ -96,20 +158,14 @@ jobs:
       - name: Checkout exact release
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         with:
-          ref: ${{ github.event_name == 'workflow_dispatch' && inputs.tag || github.ref }}
-
-      - name: Resolve release tag
-        id: release
-        env:
-          EVENT_TAG: ${{ github.event_name == 'workflow_dispatch' && inputs.tag || github.ref_name }}
-        run: echo "tag=$EVENT_TAG" >> "$GITHUB_OUTPUT"
+          ref: ${{ needs.resolve.outputs.sha }}
 
       # Tags cut before the listing-asset tooling landed (#112) have no spec to run,
       # which made this job fail with 'No tests found'. Skip those with a notice.
       - name: Check the tag has the listing-asset tooling
         id: tooling
         env:
-          TAG: ${{ steps.release.outputs.tag }}
+          TAG: ${{ needs.resolve.outputs.tag }}
         run: |
           if [ -f tests/e2e/store-assets.spec.mjs ] && [ -f scripts/validate-store-assets.mjs ]; then
             echo "available=true" >> "$GITHUB_OUTPUT"
@@ -128,7 +184,7 @@ jobs:
           rm -rf store-assets
           mkdir -p store-assets
           docker run --rm \
-            -v "${{ github.workspace }}/store-assets:/app/store-assets" \
+            -v "$GITHUB_WORKSPACE/store-assets:/app/store-assets" \
             ats-fill:e2e \
             sh -c "xvfb-run --server-args='-screen 0 1400x900x24' npx playwright test --config config/playwright.config.mjs tests/e2e/store-assets.spec.mjs"
 
@@ -140,7 +196,7 @@ jobs:
         if: steps.tooling.outputs.available == 'true'
         env:
           GH_TOKEN: ${{ github.token }}
-          TAG: ${{ steps.release.outputs.tag }}
+          TAG: ${{ needs.resolve.outputs.tag }}
         run: |
           BUNDLE="ats-fill-${TAG}-store-assets.zip"
           cp docs/CHROME_WEB_STORE_ASSETS.md store-assets/README.md
@@ -164,7 +220,7 @@ jobs:
 
   publish:
     name: Publish to Chrome Web Store
-    needs: package
+    needs: [resolve, package]
     runs-on: ubuntu-latest
     environment:
       name: production
@@ -174,14 +230,7 @@ jobs:
       - name: Checkout exact release
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         with:
-          ref: ${{ github.event_name == 'workflow_dispatch' && inputs.tag || github.ref }}
-
-      - name: Resolve release tag
-        id: release
-        env:
-          EVENT_TAG: ${{ github.event_name == 'workflow_dispatch' && inputs.tag || github.ref_name }}
-        run: |
-          echo "tag=$EVENT_TAG" >> "$GITHUB_OUTPUT"
+          ref: ${{ needs.resolve.outputs.sha }}
 
       - name: Download verified package
         uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
@@ -190,7 +239,7 @@ jobs:
 
       - name: Verify downloaded checksum
         env:
-          PACKAGE: ats-fill-${{ steps.release.outputs.tag }}.zip
+          PACKAGE: ats-fill-${{ needs.resolve.outputs.tag }}.zip
         run: sha256sum -c SHA256SUMS.txt
 
       - name: Publish
@@ -200,5 +249,5 @@ jobs:
           CWS_REFRESH_TOKEN: ${{ secrets.CWS_REFRESH_TOKEN }}
           CWS_PUBLISHER_ID: ${{ secrets.CWS_PUBLISHER_ID }}
           CWS_EXTENSION_ID: ${{ secrets.CWS_EXTENSION_ID }}
-          PACKAGE: ats-fill-${{ steps.release.outputs.tag }}.zip
+          PACKAGE: ats-fill-${{ needs.resolve.outputs.tag }}.zip
         run: node scripts/publish-chrome-web-store.mjs "$PACKAGE"
