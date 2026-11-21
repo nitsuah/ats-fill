@@ -6,7 +6,7 @@
 
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { encryptSecret, decryptSecret, isEncryptedFormat, __resetForTesting, __setKeyStoreForTesting } from '../lib/secret-box.js';
+import { encryptSecret, decryptSecret, isEncryptedFormat, clearKey, __resetForTesting, __setKeyStoreForTesting } from '../lib/secret-box.js';
 
 // Simple in-memory key store for testing
 function createKeyStore() {
@@ -153,4 +153,96 @@ test('secret-box: key persists across operations', async () => {
   // Key should be stored in our key store
   const storedKey = await keyStore.get('ats-fill-secret-key');
   assert.ok(storedKey, 'Key should be stored in key store');
+});
+// --- IndexedDB path -------------------------------------------------------
+// A small fake IndexedDB: transactions run one at a time (as readwrite
+// transactions on one store do), requests settle asynchronously, and
+// oncomplete fires after every queued request has run.
+function fakeIndexedDB() {
+  const data = new Map();
+  let chain = Promise.resolve();
+  const db = {
+    objectStoreNames: { contains: () => true },
+    createObjectStore() {},
+    transaction() {
+      const queue = [];
+      const tx = { oncomplete: null, onabort: null, onerror: null, error: null };
+      const request = (fn) => {
+        const r = {};
+        queue.push(() => {
+          r.result = fn();
+          if (r.onsuccess) r.onsuccess();
+        });
+        return r;
+      };
+      const store = {
+        get: (k) => request(() => data.get(k)),
+        add: (v, k) => request(() => {
+          if (data.has(k)) throw new Error('ConstraintError');
+          data.set(k, v);
+        }),
+        put: (v, k) => request(() => { data.set(k, v); }),
+        delete: (k) => request(() => { data.delete(k); }),
+      };
+      tx.objectStore = () => store;
+      chain = chain.then(() => new Promise((done) => {
+        setTimeout(() => {
+          while (queue.length) queue.shift()();
+          if (tx.oncomplete) tx.oncomplete();
+          done();
+        }, 0);
+      }));
+      return tx;
+    },
+  };
+  return {
+    data,
+    open() {
+      const r = {};
+      setTimeout(() => {
+        r.result = db;
+        if (r.onsuccess) r.onsuccess();
+      }, 0);
+      return r;
+    },
+  };
+}
+
+test('secret-box: two contexts racing on an empty store share one key', async () => {
+  __setKeyStoreForTesting(null);
+  const fake = fakeIndexedDB();
+  const prev = globalThis.indexedDB;
+  globalThis.indexedDB = fake;
+  try {
+    __resetForTesting();
+    const a = encryptSecret('from-context-a');
+    __resetForTesting(); // a second extension context with its own module state
+    const b = encryptSecret('from-context-b');
+    const [ca, cb] = await Promise.all([a, b]);
+
+    __resetForTesting(); // a third context reads both back
+    assert.equal(await decryptSecret(ca), 'from-context-a');
+    assert.equal(await decryptSecret(cb), 'from-context-b');
+    assert.equal(fake.data.size, 1);
+  } finally {
+    globalThis.indexedDB = prev;
+  }
+});
+
+test('secret-box: clearKey deletes the stored key', async () => {
+  __setKeyStoreForTesting(null);
+  const fake = fakeIndexedDB();
+  const prev = globalThis.indexedDB;
+  globalThis.indexedDB = fake;
+  try {
+    __resetForTesting();
+    const stored = await encryptSecret('to-be-orphaned');
+    assert.equal(fake.data.size, 1);
+    await clearKey();
+    assert.equal(fake.data.size, 0);
+    // Without the old key the ciphertext reads as unset
+    assert.equal(await decryptSecret(stored), null);
+  } finally {
+    globalThis.indexedDB = prev;
+  }
 });

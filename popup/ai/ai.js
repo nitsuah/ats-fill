@@ -6,6 +6,7 @@ import { showScreen } from '../ux/navigation.js';
 import { setStatus } from '../ux/state.js';
 import { checkFeedUrl } from '../../lib/feed-hosts.js';
 import { encryptSecret } from '../../lib/secret-box.js';
+import { OAUTH_SECRET_FIELDS, whenSecretsLoaded, secretValueToSave } from '../ux/secret-fields.js';
 
 /** Read only the settings fields that live on the AI panel. */
 async function readAiSettings() {
@@ -25,13 +26,14 @@ async function readAiSettings() {
     allow_local_network_feeds: $('allow-local-network-feeds')?.checked === true,
   };
 
-  // Encrypt OAuth client secrets before saving
-  const linkedinSecret = $('linkedin-client-secret')?.value.trim() || '';
-  const googleSecret = $('google-client-secret')?.value.trim() || '';
-
-  // An empty field saves '' so a secret can be cleared.
-  settings.linkedin_client_secret = linkedinSecret ? await encryptSecret(linkedinSecret) : '';
-  settings.google_client_secret = googleSecret ? await encryptSecret(googleSecret) : '';
+  // Encrypt OAuth client secrets before saving, once their load has finished.
+  // A cleared field saves '' (removes the secret); a field that never loaded is
+  // omitted so the stored secret is kept.
+  await whenSecretsLoaded();
+  for (const [field, inputId] of OAUTH_SECRET_FIELDS) {
+    const value = await secretValueToSave($(inputId), encryptSecret);
+    if (value !== undefined) settings[field] = value;
+  }
 
   return settings;
 }
