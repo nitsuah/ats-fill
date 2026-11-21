@@ -73,8 +73,9 @@ async function consumeOAuthState(state) {
  * Verify that the consumed OAuth state record's provider matches the expected one.
  * Throws if no record found or provider mismatch (single-use: record deleted after read).
  */
-async function verifyConsumedOAuthState(provider, expectedProvider) {
-  const stored = await consumeOAuthState(provider);
+async function verifyConsumedOAuthState(returnedState, expectedProvider) {
+  if (!returnedState) throw new Error('OAuth state expired — please try again.');
+  const stored = await consumeOAuthState(returnedState);
   if (!stored) throw new Error('OAuth state expired — please try again.');
   if (stored.provider !== expectedProvider) {
     throw new Error('OAuth state provider mismatch — possible overlapping sign-in.');
