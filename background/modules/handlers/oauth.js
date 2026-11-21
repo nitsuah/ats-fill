@@ -16,13 +16,31 @@ import {
   deriveCodeChallenge,
 } from '../../../lib/oauth.js';
 
-const OAUTH_STATE_PREFIX = 'oauth_state_';
-
 function getOauthRedirectUri() {
   try {
     return chrome.identity?.getRedirectURL ? chrome.identity.getRedirectURL() : '';
   } catch {
     return '';
+  }
+}
+
+/**
+ * Prune OAuth state records older than 10 minutes from chrome.storage.session.
+ */
+async function pruneOldOAuthStates() {
+  const data = await chrome.storage.session.get(null);
+  const now = Date.now();
+  const tenMin = 10 * 60 * 1000;
+  const keysToDelete = [];
+  for (const [key, value] of Object.entries(data)) {
+    if (key.startsWith('oauth_state:') && value && typeof value.createdAt === 'number') {
+      if (now - value.createdAt > tenMin) {
+        keysToDelete.push(key);
+      }
+    }
+  }
+  if (keysToDelete.length > 0) {
+    await chrome.storage.session.remove(keysToDelete);
   }
 }
 
@@ -34,20 +52,34 @@ function getOauthRedirectUri() {
  * @returns {Promise<void>}
  */
 async function storeOAuthState(provider, state, codeVerifier) {
-  const key = `${OAUTH_STATE_PREFIX}${provider}`;
-  await chrome.storage.session.set({ [key]: { state, codeVerifier, createdAt: Date.now() } });
+  const key = `oauth_state:${state}`;
+  await chrome.storage.session.set({ [key]: { provider, state, codeVerifier, createdAt: Date.now() } });
+  await pruneOldOAuthStates();
 }
 
 /**
- * Retrieve and delete a single-use OAuth state from chrome.storage.session.
- * @param {string} provider - 'linkedin' or 'google'
- * @returns {Promise<{state:string, codeVerifier:string}|null>}
+ * Retrieve and delete a single-use OAuth state from chrome.storage.session by state value.
+ * @param {string} state - The state value returned from the OAuth callback
+ * @returns {Promise<{state:string, codeVerifier:string, provider:string}|null>}
  */
-async function consumeOAuthState(provider) {
-  const key = `${OAUTH_STATE_PREFIX}${provider}`;
+async function consumeOAuthState(state) {
+  const key = `oauth_state:${state}`;
   const data = await chrome.storage.session.get(key);
   await chrome.storage.session.remove(key);
   return data[key] || null;
+}
+
+/**
+ * Verify that the consumed OAuth state record's provider matches the expected one.
+ * Throws if no record found or provider mismatch (single-use: record deleted after read).
+ */
+async function verifyConsumedOAuthState(provider, expectedProvider) {
+  const stored = await consumeOAuthState(provider);
+  if (!stored) throw new Error('OAuth state expired — please try again.');
+  if (stored.provider !== expectedProvider) {
+    throw new Error('OAuth state provider mismatch — possible overlapping sign-in.');
+  }
+  return stored;
 }
 
 export async function handleGetOauthInfo() {
@@ -88,7 +120,7 @@ export async function handleLinkedInConnect() {
   const oauthError = responseUrl.searchParams.get('error_description') || responseUrl.searchParams.get('error');
   if (oauthError) throw new Error(`LinkedIn sign-in failed: ${oauthError}`);
 
-  const stored = await consumeOAuthState('linkedin');
+  const stored = await verifyConsumedOAuthState(returnedState, 'linkedin');
   if (!stored) throw new Error('OAuth session expired — please try again.');
   if (returnedState !== stored.state) throw new Error('OAuth state mismatch — please try again.');
   if (!code) throw new Error('LinkedIn did not return an authorization code.');
@@ -147,7 +179,7 @@ export async function handleGoogleConnect() {
   const oauthError = responseUrl.searchParams.get('error_description') || responseUrl.searchParams.get('error');
   if (oauthError) throw new Error(`Google sign-in failed: ${oauthError}`);
 
-  const stored = await consumeOAuthState('google');
+  const stored = await verifyConsumedOAuthState(returnedState, 'google');
   if (!stored) throw new Error('OAuth session expired — please try again.');
   if (returnedState !== stored.state) throw new Error('OAuth state mismatch — please try again.');
   if (!code) throw new Error('Google did not return an authorization code.');

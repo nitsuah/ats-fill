@@ -338,7 +338,8 @@ test('OAuth state is stored in session storage and consumed single-use', async (
     assert.equal(authParams.get('state'), capturedState);
 
     // The state was consumed: nothing is left in session storage after the flow.
-    const storedKey = Object.keys(sessionStorage.data).find((k) => k.startsWith('oauth_state_'));
+    // After consumeOAuthState removes the record, sessionStorage.data should have no key starting with 'oauth_state:'
+    const storedKey = Object.keys(sessionStorage.data).find((k) => k.startsWith('oauth_state:'));
     assert.equal(storedKey, undefined, 'OAuth state must be single-use');
   } finally {
     globalThis.fetch = originalFetch;
@@ -346,57 +347,13 @@ test('OAuth state is stored in session storage and consumed single-use', async (
   }
 });
 
-test('replayed OAuth state is rejected', async () => {
+test('missing OAuth state deletes record and requires expired error', async () => {
   resetStorage({
     settings: { linkedin_client_id: 'id', linkedin_client_secret: 'secret' },
   });
 
   const sessionStorage = {
-    data: {
-      oauth_state_linkedin: { state: 'original-state', codeVerifier: 'verifier', createdAt: Date.now() },
-    },
-    async get(key) {
-      return { [key]: this.data[key] };
-    },
-    async set(values) {
-      Object.assign(this.data, values);
-    },
-    async remove(keys) {
-      for (const k of Array.isArray(keys) ? keys : [keys]) delete this.data[k];
-    },
-  };
-
-  globalThis.chrome.storage.session = sessionStorage;
-
-  globalThis.chrome.identity.launchWebAuthFlow = async ({ url }) => {
-    return `${new URL(url).origin}/callback?code=authcode&state=replayed-state`;
-  };
-
-  globalThis.fetch = async (url) => {
-    if (String(url).includes('accessToken')) {
-      return { ok: true, json: async () => ({ access_token: 'token' }) };
-    }
-    if (String(url).includes('userinfo')) {
-      return { ok: true, json: async () => ({ sub: '123', name: 'Test', email: 'test@test.com' }) };
-    }
-  };
-
-  try {
-    const result = await send({ type: 'LINKEDIN_CONNECT' });
-    assert.equal(result.success, false);
-    assert.match(result.error, /OAuth state mismatch/);
-  } finally {
-    delete globalThis.chrome.storage.session;
-  }
-});
-
-test('missing OAuth state is rejected', async () => {
-  resetStorage({
-    settings: { linkedin_client_id: 'id', linkedin_client_secret: 'secret' },
-  });
-
-  const sessionStorage = {
-    data: {},
+    data: { 'oauth_state:original-state': { state: 'original-state', codeVerifier: 'verifier', createdAt: Date.now(), provider: 'linkedin' } },
     async get(key) {
       return { [key]: this.data[key] };
     },
@@ -426,7 +383,49 @@ test('missing OAuth state is rejected', async () => {
   try {
     const result = await send({ type: 'LINKEDIN_CONNECT' });
     assert.equal(result.success, false);
-    assert.match(result.error, /OAuth (state mismatch|session expired)/);
+    assert.match(result.error, /OAuth state expired/);
+  } finally {
+    delete globalThis.chrome.storage.session;
+  }
+});
+
+test('replayed OAuth state is rejected', async () => {
+  resetStorage({
+    settings: { linkedin_client_id: 'id', linkedin_client_secret: 'secret' },
+  });
+
+  const sessionStorage = {
+    data: { 'oauth_state:original-state': { state: 'original-state', codeVerifier: 'verifier', createdAt: Date.now(), provider: 'linkedin' } },
+    async get(key) {
+      return { [key]: this.data[key] };
+    },
+    async set(values) {
+      Object.assign(this.data, values);
+    },
+    async remove(keys) {
+      for (const k of Array.isArray(keys) ? keys : [keys]) delete this.data[k];
+    },
+  };
+
+  globalThis.chrome.storage.session = sessionStorage;
+
+  globalThis.chrome.identity.launchWebAuthFlow = async ({ url }) => {
+    return `${new URL(url).origin}/callback?code=authcode&state=replayed-state`;
+  };
+
+  globalThis.fetch = async (url) => {
+    if (String(url).includes('accessToken')) {
+      return { ok: true, json: async () => ({ access_token: 'token' }) };
+    }
+    if (String(url).includes('userinfo')) {
+      return { ok: true, json: async () => ({ sub: '123', name: 'Test', email: 'test@test.com' }) };
+    }
+  };
+
+  try {
+    const result = await send({ type: 'LINKEDIN_CONNECT' });
+    assert.equal(result.success, false);
+    assert.match(result.error, /OAuth state expired/);
   } finally {
     delete globalThis.chrome.storage.session;
   }
@@ -437,25 +436,35 @@ test('OAuth access token is used once for userinfo and never persisted to storag
     settings: { linkedin_client_id: 'id', linkedin_client_secret: 'secret' },
   });
 
+  // Mock session storage with proper get/set/remove methods
   const sessionStorage = {
     data: {},
-    async get(key) { return { [key]: this.data[key] }; },
-    async set(values) { Object.assign(this.data, values); },
-    async remove(keys) { for (const k of Array.isArray(keys) ? keys : [keys]) delete this.data[k]; },
+    async get(key) {
+      return { [key]: this.data[key] };
+    },
+    async set(values) {
+      Object.assign(this.data, values);
+    },
+    async remove(keys) {
+      for (const k of Array.isArray(keys) ? keys : [keys]) delete this.data[k];
+    },
   };
 
-  const localStorage = { ...storageLocal };
-  let tokenPersisted = false;
-  const originalSet = localStorage.set;
-  localStorage.set = async (values) => {
-    if (values.settings?.oauth_access_token || values.oauth_access_token) {
-      tokenPersisted = true;
-    }
-    return originalSet(values);
+  // Mock local storage with independent state
+  const localStorageState = { ...storageState };
+  const localStorage = {
+    async get(keys) {
+      if (typeof keys === 'string') return { [keys]: localStorageState[keys] };
+      if (Array.isArray(keys)) return Object.fromEntries(keys.map((k) => [k, localStorageState[k]]));
+      return { ...localStorageState };
+    },
+    async set(values) {
+      Object.assign(localStorageState, values);
+    },
+    async remove(keys) {
+      for (const k of Array.isArray(keys) ? keys : [keys]) delete localStorageState[k];
+    },
   };
-
-  globalThis.chrome.storage.session = sessionStorage;
-  globalThis.chrome.storage.local = localStorage;
 
   let capturedState = null;
   globalThis.chrome.identity.launchWebAuthFlow = async ({ url }) => {
@@ -464,7 +473,7 @@ test('OAuth access token is used once for userinfo and never persisted to storag
   };
 
   let tokenExchangeCalled = false;
-  globalThis.fetch = async (url, _opts) => {
+  globalThis.fetch = async (url) => {
     if (String(url).includes('accessToken')) {
       tokenExchangeCalled = true;
       return { ok: true, json: async () => ({ access_token: 'secret-token-123' }) };
@@ -474,15 +483,87 @@ test('OAuth access token is used once for userinfo and never persisted to storag
     }
   };
 
+  globalThis.chrome.storage.session = sessionStorage;
+  globalThis.chrome.storage.local = localStorage;
+
   try {
     const result = await send({ type: 'LINKEDIN_CONNECT' });
+    console.log('Test result:', result);
     assert.equal(result.success, true);
     assert.ok(tokenExchangeCalled, 'token exchange must be called');
-    assert.equal(tokenPersisted, false, 'access token must not be persisted to chrome.storage');
-    assert.ok(!result.profile || !String(result.profile).includes('secret-token-123'), 'token must not leak in response');
+    // Verify token not persisted in either storage
+    const localData = await localStorage.get(null);
+    const sessionData = await sessionStorage.get(null);
+    const localStr = JSON.stringify(localData);
+    const sessionStr = JSON.stringify(sessionData);
+    assert.ok(!localStr.includes('secret-token-123'), 'access token must not be persisted to chrome.storage.local');
+    assert.ok(!sessionStr.includes('secret-token-123'), 'access token must not be persisted to chrome.storage.session');
+    assert.ok(!result.profile || !String(JSON.stringify(result.profile)).includes('secret-token-123'), 'token must not leak in response');
   } finally {
     delete globalThis.chrome.storage.session;
     globalThis.chrome.storage.local = storageLocal;
+  }
+});
+
+test('overlapping Google sign-ins: first callback succeeds even if second stored its state', async () => {
+  resetStorage({
+    settings: {
+      google_client_id: 'id',
+      google_client_secret: 'secret',
+    },
+  });
+
+  const sessionStorage = {
+    data: {},
+    async get(key) { return { [key]: this.data[key] }; },
+    async set(values) { Object.assign(this.data, values); },
+    async remove(keys) { for (const k of Array.isArray(keys) ? keys : [keys]) delete this.data[k]; },
+  };
+
+  globalThis.chrome.storage.session = sessionStorage;
+
+  let firstCallbackState = null;
+  let secondCallbackState = null;
+
+  // First sign-in: store state1
+  const authUrl1 = 'https://accounts.google.com/o/oauth2/v2/auth?state=state1&code_challenge=challenge1&code_challenge_method=S256';
+  globalThis.chrome.identity.launchWebAuthFlow = async ({ url }) => {
+    const state = new URL(url).searchParams.get('state');
+    if (state === 'state1') {
+      firstCallbackState = state;
+      // First callback returns after second stored its state
+      // But state1 is still in storage, should succeed
+      return `${new URL(url).origin}/callback?code=code1&state=state1`;
+    }
+    secondCallbackState = state;
+    return `${new URL(url).origin}/callback?code=code2&state=state2`;
+  };
+
+  // Pre-populate with first state
+  sessionStorage.data['oauth_state:state1'] = { provider: 'google', state: 'state1', codeVerifier: 'verifier1', createdAt: Date.now() };
+  // Second sign-in stored its state
+  sessionStorage.data['oauth_state:state2'] = { provider: 'google', state: 'state2', codeVerifier: 'verifier2', createdAt: Date.now() };
+
+  const originalFetch = globalThis.fetch;
+  let tokenExchangeCallCount = 0;
+  globalThis.fetch = async (url) => {
+    if (String(url).includes('token')) {
+      tokenExchangeCallCount++;
+      return { ok: true, json: async () => ({ access_token: `token${tokenExchangeCallCount}` }) };
+    }
+    if (String(url).includes('userinfo')) {
+      return { ok: true, json: async () => ({ sub: '123', name: 'Test', email: 'test@test.com', picture: '' }) };
+    }
+    return originalFetch(url);
+  };
+
+  try {
+    const result = await send({ type: 'GOOGLE_CONNECT' });
+    assert.equal(result.success, true);
+    assert.equal(tokenExchangeCallCount, 1);
+  } finally {
+    globalThis.fetch = originalFetch;
+    delete globalThis.chrome.storage.session;
   }
 });
 

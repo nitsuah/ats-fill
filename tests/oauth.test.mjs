@@ -132,3 +132,13 @@ test('buildGoogleAuthUrl includes PKCE params when provided', () => {
   assert.equal(params.get('code_challenge'), 'challenge123');
   assert.equal(params.get('code_challenge_method'), 'S256');
 });
+
+// RFC 7636 Appendix B known-answer test:
+// verifier "dBjftJeZ4CVP-mB92K27uhbUJU1p1r_wW1gFWFOEjXk"
+// must give challenge "E9Melhoa2OwvFrEMTJguCHaoeK1t8URWbuGJSstw-cM"
+test('deriveCodeChallenge matches RFC 7636 Appendix B known answer', async () => {
+  const verifier = 'dBjftJeZ4CVP-mB92K27uhbUJU1p1r_wW1gFWFOEjXk';
+  const expectedChallenge = 'E9Melhoa2OwvFrEMTJguCHaoeK1t8URWbuGJSstw-cM';
+  const challenge = await deriveCodeChallenge(verifier);
+  assert.equal(challenge, expectedChallenge);
+});
