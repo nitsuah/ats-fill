@@ -11,6 +11,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Security
 
+- OAuth client secrets you enter for LinkedIn and Google are stored encrypted on this device (AES-GCM with a non-exportable browser key); existing values are re-encrypted the next time the popup opens (#176).
 - Preview server checks path containment with `path.relative`, answers malformed URLs with 400, and binds to loopback by default (override with `HOST`).
 - Content-script messages are now allow-listed (was deny-list); only `GENERATE_ANSWERS`, `LOG_APPLICATION`, `SAVE_LEARNED_DEFAULTS`, `GET_FIELD_MAP`, `GET_RESUME_ATTACHMENT`, `ATS_DETECTED` accepted from content scripts; all other types refused unless from extension pages.
 - Harden the LinkedIn and Google profile-import sign-in: Google uses PKCE (S256), both flows use single-use state kept in session storage, and access tokens are used once and never stored (#176).
