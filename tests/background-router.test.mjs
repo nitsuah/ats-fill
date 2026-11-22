@@ -709,28 +709,109 @@ test('MARK_LAST_SUBMITTED errors when there is no recent autofill session', asyn
 
 // ── Learned defaults ───────────────────────────────────────────────────────
 
-test('SAVE_LEARNED_DEFAULTS then GET_LEARNED_DEFAULTS round-trips an entry', async () => {
+test('SAVE_LEARNED_DEFAULTS only stages page entries; nothing is learned until approved', async () => {
   const saveResult = await send({
     type: 'SAVE_LEARNED_DEFAULTS',
     payload: { entries: { 'What is your favorite color?': 'Blue' } },
-  });
+  }, { id: EXT_ID, url: 'https://jobs.example/apply', origin: 'https://jobs.example' });
   assert.equal(saveResult.success, true);
-  assert.equal(saveResult.saved, 1);
+  assert.equal(saveResult.saved, 0);
+  assert.equal(saveResult.pending, 1);
 
-  const getResult = await send({ type: 'GET_LEARNED_DEFAULTS' });
-  assert.equal(getResult.success, true);
-  assert.deepEqual(getResult.items, [{ question: 'What is your favorite color?', answer: 'Blue' }]);
+  const staged = await send({ type: 'GET_LEARNED_DEFAULTS' });
+  assert.deepEqual(staged.items, []);
+  assert.deepEqual(staged.pendingItems, [{ question: 'What is your favorite color?', answer: 'Blue' }]);
+  assert.deepEqual((await storageLocal.get('learnedDefaults')).learnedDefaults ?? {}, {});
 });
 
-test('SAVE_LEARNED_DEFAULTS reports only the count that survives the 75-entry retention cap', async () => {
+test('APPROVE_PENDING_LEARNED_DEFAULT moves a staged entry into learned defaults', async () => {
+  await send({ type: 'SAVE_LEARNED_DEFAULTS', payload: { entries: { 'What is your favorite color?': 'Blue' } } });
+  const approved = await send({
+    type: 'APPROVE_PENDING_LEARNED_DEFAULT',
+    payload: { question: 'What is your favorite color?', answer: 'Green' },
+  });
+  assert.equal(approved.success, true);
+  const got = await send({ type: 'GET_LEARNED_DEFAULTS' });
+  assert.deepEqual(got.items, [{ question: 'What is your favorite color?', answer: 'Green' }]);
+  assert.deepEqual(got.pendingItems, []);
+});
+
+test('DISCARD_PENDING_LEARNED_DEFAULT drops a staged entry without saving it', async () => {
+  await send({ type: 'SAVE_LEARNED_DEFAULTS', payload: { entries: { 'What is your favorite color?': 'Blue' } } });
+  const discarded = await send({ type: 'DISCARD_PENDING_LEARNED_DEFAULT', payload: { question: 'What is your favorite color?' } });
+  assert.equal(discarded.success, true);
+  const got = await send({ type: 'GET_LEARNED_DEFAULTS' });
+  assert.deepEqual(got.items, []);
+  assert.deepEqual(got.pendingItems, []);
+});
+
+test('content scripts cannot approve or discard pending learned defaults', async () => {
+  await send({ type: 'SAVE_LEARNED_DEFAULTS', payload: { entries: { 'What is your favorite color?': 'Blue' } } });
+  const page = { id: EXT_ID, url: 'https://jobs.example/apply', origin: 'https://jobs.example' };
+  for (const type of ['APPROVE_PENDING_LEARNED_DEFAULT', 'DISCARD_PENDING_LEARNED_DEFAULT']) {
+    const response = await send({ type, payload: { question: 'What is your favorite color?' } }, page);
+    assert.equal(response.success, false, type);
+  }
+  assert.deepEqual((await storageLocal.get('learnedDefaults')).learnedDefaults ?? {}, {});
+});
+
+test('SAVE_LEARNED_DEFAULTS keeps only the 25 most recent pending entries', async () => {
   const entries = {};
-  for (let i = 0; i < 80; i++) {
+  for (let i = 0; i < 40; i++) {
     entries[`Custom onboarding question number ${i}?`] = `Answer number ${i}`;
   }
   const result = await send({ type: 'SAVE_LEARNED_DEFAULTS', payload: { entries } });
   assert.equal(result.success, true);
-  assert.equal(result.saved, 75);
-  assert.equal(Object.keys((await storageLocal.get('learnedDefaults')).learnedDefaults).length, 75);
+  assert.equal(result.pending, 25);
+});
+
+test('GENERATE_ANSWERS: learned defaults never override profile-derived answers', async () => {
+  resetStorage({
+    resume: { structured: { name: 'Ada Lovelace', email: 'ada@example.com', phone: '555-1234', why_company_default: 'Because I like the mission' } },
+    settings: {},
+    learnedDefaults: { why_company: 'Injected value', favorite_snack: 'Pretzels' },
+  });
+  const result = await send({ type: 'GENERATE_ANSWERS', payload: { jd: 'Some JD text' } });
+  assert.equal(result.success, true);
+  assert.equal(result.answers.email, 'ada@example.com');
+  assert.equal(result.answers.why_company, 'Because I like the mission');
+  assert.equal(result.answers.favorite_snack, 'Pretzels');
+});
+
+test('SAVE_LEARNED_DEFAULTS drops a suggestion once the answer is back to the stored value', async () => {
+  resetStorage({ learnedDefaults: { 'What is your favorite color?': 'Blue' } });
+  await send({ type: 'SAVE_LEARNED_DEFAULTS', payload: { entries: { 'What is your favorite color?': 'Green' } } });
+  assert.equal((await send({ type: 'GET_LEARNED_DEFAULTS' })).pendingItems.length, 1);
+  await send({ type: 'SAVE_LEARNED_DEFAULTS', payload: { entries: { 'What is your favorite color?': 'Blue' } } });
+  assert.deepEqual((await send({ type: 'GET_LEARNED_DEFAULTS' })).pendingItems, []);
+});
+
+test('GENERATE_ANSWERS: a profile answer beats a learned one in custom_answers too', async () => {
+  resetStorage({
+    resume: { structured: { name: 'Ada Lovelace' } },
+    settings: { work_authorization: 'US Citizen' },
+    learnedDefaults: { 'What is your work authorization status?': 'Learned value' },
+  });
+  const result = await send({
+    type: 'GENERATE_ANSWERS',
+    payload: { customQuestions: ['What is your work authorization status?', 'How did you hear about us?'] },
+  });
+  assert.equal(result.answers.custom_answers['What is your work authorization status?'], 'US Citizen');
+  // A generic default is still used when nothing better exists.
+  assert.equal(result.answers.custom_answers['How did you hear about us?'], 'Company careers page');
+});
+
+test('GENERATE_ANSWERS: a learned answer beats a generic default in custom_answers', async () => {
+  resetStorage({
+    resume: { structured: { name: 'Ada Lovelace' } },
+    settings: {},
+    learnedDefaults: { 'How did you hear about us?': 'A friend' },
+  });
+  const result = await send({
+    type: 'GENERATE_ANSWERS',
+    payload: { customQuestions: ['How did you hear about us?'] },
+  });
+  assert.equal(result.answers.custom_answers['How did you hear about us?'], 'A friend');
 });
 
 test('UPDATE_LEARNED_DEFAULT rejects a value that is not eligible for storage', async () => {

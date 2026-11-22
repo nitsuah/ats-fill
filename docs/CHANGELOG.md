@@ -14,6 +14,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - LinkedIn and Google sign-in use the OAuth access token once for the profile lookup and never store it; a test scans every `chrome.storage` write for both providers (#176).
 - OAuth client secrets you enter for LinkedIn and Google are stored encrypted on this device (AES-GCM with a non-exportable browser key); existing values are re-encrypted the next time the popup opens (#176).
 - Preview server checks path containment with `path.relative`, answers malformed URLs with 400, and binds to loopback by default (override with `HOST`).
+- Answers captured from pages are staged for review and only learned after approval in the Memory section; only fields you edited yourself are captured, and learned answers no longer override profile or settings answers.
 - Yes/No button groups only click explicit `type="button"` controls, never submit or untyped buttons.
 - Release workflow resolves the tag once from default-branch history, passes the commit between jobs, reads inputs through env vars, and uses least-privilege permissions.
 - Gemini API key is sent in the `x-goog-api-key` header instead of the request URL.

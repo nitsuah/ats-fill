@@ -381,6 +381,21 @@ const DRAFT_STORAGE_KEY = 'applicationDrafts';
 let draftSaveTimer = null;
 let draftRestoreTimer = null;
 let draftPersistenceStarted = false;
+// Fields the user changed themselves (trusted events). Only these may be offered as learned answers.
+const userEditedFields = new WeakMap();
+function markUserEdited(el) {
+  userEditedFields.set(el, fieldSignature(el));
+}
+// What a field holds: its checked state for choices, else its value.
+function fieldSignature(el) {
+  const type = ((el.getAttribute && el.getAttribute('type')) || '').toLowerCase();
+  return type === 'radio' || type === 'checkbox' ? `checked:${Boolean(el.checked)}` : `value:${String(el.value ?? '')}`;
+}
+// True only while the field still holds what the user's own edit left in it,
+// so a value the page swapped in afterwards is not learned.
+function isUserValue(el) {
+  return userEditedFields.has(el) && userEditedFields.get(el) === fieldSignature(el);
+}
 
 function initDraftPersistence() {
   if (draftPersistenceStarted) return;
@@ -389,6 +404,7 @@ function initDraftPersistence() {
   const handleFieldEvent = (event) => {
     const target = event.target;
     if (isDraftableField(target)) {
+      if (event.isTrusted && event.type !== 'blur') markUserEdited(target);
       queueDraftSave();
     }
   };
@@ -600,6 +616,7 @@ function collectLearnedAnswerEntries() {
       const radios = el.name
         ? Array.from(document.querySelectorAll(`input[type="radio"][name="${CSS.escape(el.name)}"]`))
         : [el];
+      if (!radios.some((radio) => isUserValue(radio))) continue;
       const checked = radios.find((radio) => radio.checked);
       if (checked) entries[label] = getChoiceIdentity(checked);
       continue;
@@ -608,6 +625,7 @@ function collectLearnedAnswerEntries() {
     if (type === 'checkbox') {
       processedGroups.add(key);
       const members = getCheckboxGroupMembers(el);
+      if (!members.some((member) => isUserValue(member))) continue;
       if (members.length > 1) {
         const selected = members.filter((member) => member.checked).map(getChoiceIdentity).filter(Boolean);
         if (selected.length) entries[label] = selected.join(', ');
@@ -617,6 +635,7 @@ function collectLearnedAnswerEntries() {
       continue;
     }
 
+    if (!isUserValue(el)) continue;
     const value = String(el.value || '').trim();
     if (value) entries[label] = value;
   }

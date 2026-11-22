@@ -10,6 +10,21 @@ const DRAFT_STORAGE_KEY = 'applicationDrafts';
 let draftSaveTimer = null;
 let draftRestoreTimer = null;
 let draftPersistenceStarted = false;
+// Fields the user changed themselves (trusted events). Only these may be offered as learned answers.
+const userEditedFields = new WeakMap();
+function markUserEdited(el) {
+  userEditedFields.set(el, fieldSignature(el));
+}
+// What a field holds: its checked state for choices, else its value.
+function fieldSignature(el) {
+  const type = ((el.getAttribute && el.getAttribute('type')) || '').toLowerCase();
+  return type === 'radio' || type === 'checkbox' ? `checked:${Boolean(el.checked)}` : `value:${String(el.value ?? '')}`;
+}
+// True only while the field still holds what the user's own edit left in it,
+// so a value the page swapped in afterwards is not learned.
+function isUserValue(el) {
+  return userEditedFields.has(el) && userEditedFields.get(el) === fieldSignature(el);
+}
 
 function hasExtensionContext() {
   return !!(globalThis.chrome?.runtime?.id && globalThis.chrome?.storage?.local);
@@ -1697,6 +1712,7 @@ function initDraftPersistence() {
   const handleFieldEvent = (event) => {
     const target = event.target;
     if (isDraftableField(target)) {
+      if (event.isTrusted && event.type !== 'blur') markUserEdited(target);
       queueDraftSave();
     }
   };
@@ -1914,6 +1930,7 @@ function collectLearnedAnswerEntries() {
         ? (el.name ? Array.from(document.querySelectorAll(`input[type="radio"][name="${CSS.escape(el.name)}"]`)) : [el])
         : getCheckboxGroupMembers(el);
       if (isUntouchedAutofillGroup(members)) continue;
+      if (!members.some((member) => isUserValue(member))) continue;
       // A group is learned under its question. A single checkbox's own label
       // is the question; for a multi-option group the option label is not.
       const label = type === 'radio' || members.length > 1 ? getChoiceGroupLabel(el) : describeField(el);
@@ -1933,6 +1950,7 @@ function collectLearnedAnswerEntries() {
 
     const label = describeField(el);
     if (!label || label === 'unlabeled field' || isUntouchedAutofill(el)) continue;
+    if (!isUserValue(el)) continue;
     const value = String(el.value || '').trim();
     if (value) entries[label] = value;
   }

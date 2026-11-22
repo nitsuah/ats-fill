@@ -122,9 +122,17 @@ function buildDeterministicAnswers({ resume, settings, customQuestions = [], lea
     requires_sponsorship: profile.requires_sponsorship || '',
   };
 
+  // Profile and settings answers are authoritative; learned values only fill gaps.
+  const learnedFillIns = Object.fromEntries(
+    Object.entries(safeLearnedDefaults).filter(([key]) => {
+      const existing = baseAnswers[key];
+      return existing === undefined || existing === null || String(existing).trim() === '';
+    })
+  );
+
   return {
     ...baseAnswers,
-    ...safeLearnedDefaults,
+    ...learnedFillIns,
     custom_answers: buildDefaultCustomAnswers(customQuestions, baseAnswers, safeLearnedDefaults),
   };
 }
@@ -144,12 +152,10 @@ function buildDefaultCustomAnswers(customQuestions = [], baseAnswers = {}, learn
   for (const question of customQuestions) {
     const text = String(question || '').trim();
     const lower = text.toLowerCase();
-    let answer = findLearnedAnswer(text, learnedDefaults);
-
-    if (answer) {
-      customAnswers[text] = answer;
-      continue;
-    }
+    // Precedence matches the top-level answers: a nonblank profile/settings
+    // answer wins, then a learned answer, then the generic defaults below.
+    let answer;
+    let fallback;
 
     if (/legally authorized|authorized to work|eligible to work|work authorization/.test(lower)) {
       answer = wantsBinaryAnswer(lower) ? 'Yes' : baseAnswers.work_authorization;
@@ -179,9 +185,9 @@ function buildDefaultCustomAnswers(customQuestions = [], baseAnswers = {}, learn
     } else if (/cybersecurity saas/.test(lower)) {
       answer = wantsBinaryAnswer(lower) ? 'Yes' : baseAnswers.why_role;
     } else if (/size of company|most recently worked for/.test(lower)) {
-      answer = '101-999';
+      fallback = '101-999';
     } else if (/what brought you to this job posting|how did you hear/.test(lower)) {
-      answer = 'Company careers page';
+      fallback = 'Company careers page';
     } else if (/current job title|job title/.test(lower)) {
       answer = baseAnswers.current_title;
     } else if (/current company|current employer|most recently/.test(lower)) {
@@ -195,11 +201,13 @@ function buildDefaultCustomAnswers(customQuestions = [], baseAnswers = {}, learn
     } else if (/additional information|accommodations/.test(lower)) {
       answer = baseAnswers.additional_information;
     } else if (/background check|recruiting privacy|i understand|i agree/.test(lower)) {
-      answer = wantsBinaryAnswer(lower) ? 'Yes' : 'I understand';
+      fallback = wantsBinaryAnswer(lower) ? 'Yes' : 'I understand';
     }
 
-    if (answer) {
-      customAnswers[text] = answer;
+    const hasProfileAnswer = answer !== undefined && answer !== null && String(answer).trim() !== '';
+    const chosen = hasProfileAnswer ? answer : (findLearnedAnswer(text, learnedDefaults) || fallback);
+    if (chosen) {
+      customAnswers[text] = chosen;
     }
   }
 
