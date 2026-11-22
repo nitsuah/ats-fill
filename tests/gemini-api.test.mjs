@@ -341,3 +341,27 @@ test('serializeUntrustedPromptData is exported for shared prompt builders', () =
   assert.ok(endIndex >= 0);
   assert.equal(serialized.indexOf(UNTRUSTED_DATA_END, endIndex + 1), -1);
 });
+
+test('callGemini sends the API key in a header, not the URL', async () => {
+  const calls = [];
+  const responses = [
+    jsonResponse(200, { models: [{ name: 'models/gemini-2.5-flash', supportedGenerationMethods: ['generateContent'] }] }),
+    jsonResponse(200, { candidates: [{ content: { parts: [{ text: '{"ok":true}' }] } }] }),
+  ];
+  const originalFetch = global.fetch;
+  global.fetch = async (url, init) => {
+    calls.push({ url: String(url), headers: init?.headers || {} });
+    return responses.shift();
+  };
+  try {
+    await callGemini('api-key-header-check', 'hello', { model: 'auto' });
+  } finally {
+    global.fetch = originalFetch;
+  }
+  assert.ok(calls.length >= 2);
+  for (const call of calls) {
+    assert.ok(!call.url.includes('key='), call.url);
+    assert.ok(!call.url.includes('api-key-header-check'), call.url);
+    assert.equal(call.headers['x-goog-api-key'], 'api-key-header-check');
+  }
+});

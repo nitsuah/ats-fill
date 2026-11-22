@@ -159,6 +159,11 @@ test('http is allowed only for local-network hosts, and only with the setting on
   assert.equal(checkFeedUrl('http://hr.intranet/rss').ok, false);
 });
 
+test('http is rejected for remote/public hosts regardless of local-network setting', () => {
+  assert.equal(checkFeedUrl('http://jobs4tn.gov/rss', { allowLocalNetwork: true }).ok, false);
+  assert.equal(checkFeedUrl('http://example.com/rss').ok, false);
+});
+
 test('other schemes, embedded credentials and non-URLs are refused', () => {
   const opts = { allowLocalNetwork: true };
   for (const url of ['ftp://jobs4tn.gov/rss', 'file:///etc/passwd', 'javascript:alert(1)', 'https://user:pw@jobs4tn.gov/rss',

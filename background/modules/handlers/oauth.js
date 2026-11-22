@@ -12,7 +12,10 @@ import {
   buildGoogleAuthUrl,
   GOOGLE_TOKEN_URL,
   GOOGLE_USERINFO_URL,
+  generateCodeVerifier,
+  deriveCodeChallenge,
 } from '../../../lib/oauth.js';
+import { decryptSecret } from '../../../lib/secret-box.js';
 
 function getOauthRedirectUri() {
   try {
@@ -20,6 +23,65 @@ function getOauthRedirectUri() {
   } catch {
     return '';
   }
+}
+
+/**
+ * Prune OAuth state records older than 10 minutes from chrome.storage.session.
+ */
+async function pruneOldOAuthStates() {
+  const data = await chrome.storage.session.get(null);
+  const now = Date.now();
+  const tenMin = 10 * 60 * 1000;
+  const keysToDelete = [];
+  for (const [key, value] of Object.entries(data)) {
+    if (key.startsWith('oauth_state:') && value && typeof value.createdAt === 'number') {
+      if (now - value.createdAt > tenMin) {
+        keysToDelete.push(key);
+      }
+    }
+  }
+  if (keysToDelete.length > 0) {
+    await chrome.storage.session.remove(keysToDelete);
+  }
+}
+
+/**
+ * Store a single-use OAuth state in chrome.storage.session.
+ * @param {string} provider - 'linkedin' or 'google'
+ * @param {string} state - The state value
+ * @param {string} codeVerifier - PKCE code verifier
+ * @returns {Promise<void>}
+ */
+async function storeOAuthState(provider, state, codeVerifier) {
+  const key = `oauth_state:${state}`;
+  await chrome.storage.session.set({ [key]: { provider, state, codeVerifier, createdAt: Date.now() } });
+  await pruneOldOAuthStates();
+}
+
+/**
+ * Retrieve and delete a single-use OAuth state from chrome.storage.session by state value.
+ * @param {string} state - The state value returned from the OAuth callback
+ * @returns {Promise<{state:string, codeVerifier:string, provider:string}|null>}
+ */
+async function consumeOAuthState(state) {
+  const key = `oauth_state:${state}`;
+  const data = await chrome.storage.session.get(key);
+  await chrome.storage.session.remove(key);
+  return data[key] || null;
+}
+
+/**
+ * Verify that the consumed OAuth state record's provider matches the expected one.
+ * Throws if no record found or provider mismatch (single-use: record deleted after read).
+ */
+async function verifyConsumedOAuthState(returnedState, expectedProvider) {
+  if (!returnedState) throw new Error('OAuth state expired — please try again.');
+  const stored = await consumeOAuthState(returnedState);
+  if (!stored) throw new Error('OAuth state expired — please try again.');
+  if (stored.provider !== expectedProvider) {
+    throw new Error('OAuth state provider mismatch — possible overlapping sign-in.');
+  }
+  return stored;
 }
 
 export async function handleGetOauthInfo() {
@@ -40,13 +102,18 @@ export async function handleLinkedInConnect() {
   const data = await chrome.storage.local.get('settings');
   const settings = data.settings || {};
   const clientId = settings.linkedin_client_id;
-  const clientSecret = settings.linkedin_client_secret;
+  const encryptedSecret = settings.linkedin_client_secret;
+  const clientSecret = encryptedSecret ? await decryptSecret(encryptedSecret) : '';
   if (!clientId || !clientSecret) {
     throw new Error('Add your LinkedIn app Client ID and Client Secret in the AI panel first.');
   }
 
   const redirectUri = getOauthRedirectUri();
   const state = crypto.randomUUID();
+  // LinkedIn's standard (non-native) OAuth does not accept PKCE parameters, so
+  // LinkedIn keeps the client-secret exchange with single-use state only.
+  await storeOAuthState('linkedin', state, null);
+
   const authUrl = buildLinkedInAuthUrl({ clientId, redirectUri, state });
 
   const redirectResponse = await chrome.identity.launchWebAuthFlow({ url: authUrl, interactive: true });
@@ -55,7 +122,10 @@ export async function handleLinkedInConnect() {
   const returnedState = responseUrl.searchParams.get('state');
   const oauthError = responseUrl.searchParams.get('error_description') || responseUrl.searchParams.get('error');
   if (oauthError) throw new Error(`LinkedIn sign-in failed: ${oauthError}`);
-  if (returnedState !== state) throw new Error('OAuth state mismatch — please try again.');
+
+  const stored = await verifyConsumedOAuthState(returnedState, 'linkedin');
+  if (!stored) throw new Error('OAuth session expired — please try again.');
+  if (returnedState !== stored.state) throw new Error('OAuth state mismatch — please try again.');
   if (!code) throw new Error('LinkedIn did not return an authorization code.');
 
   const tokenRes = await fetch(LINKEDIN_TOKEN_URL, {
@@ -75,6 +145,7 @@ export async function handleLinkedInConnect() {
   const token = await tokenRes.json();
   if (!token.access_token) throw new Error('LinkedIn did not return an access token.');
 
+  // The access token is used once for the userinfo call and never stored.
   const userRes = await fetch(LINKEDIN_USERINFO_URL, {
     headers: { Authorization: `Bearer ${token.access_token}` },
   });
@@ -92,14 +163,19 @@ export async function handleGoogleConnect() {
   const data = await chrome.storage.local.get('settings');
   const settings = data.settings || {};
   const clientId = settings.google_client_id;
-  const clientSecret = settings.google_client_secret;
+  const encryptedSecret = settings.google_client_secret;
+  const clientSecret = encryptedSecret ? await decryptSecret(encryptedSecret) : '';
   if (!clientId || !clientSecret) {
     throw new Error('Add your Google OAuth Client ID and Client Secret in the AI panel first.');
   }
 
   const redirectUri = getOauthRedirectUri();
   const state = crypto.randomUUID();
-  const authUrl = buildGoogleAuthUrl({ clientId, redirectUri, state });
+  const codeVerifier = await generateCodeVerifier();
+  const codeChallenge = await deriveCodeChallenge(codeVerifier);
+  await storeOAuthState('google', state, codeVerifier);
+
+  const authUrl = buildGoogleAuthUrl({ clientId, redirectUri, state, codeChallenge, codeChallengeMethod: 'S256' });
 
   const redirectResponse = await chrome.identity.launchWebAuthFlow({ url: authUrl, interactive: true });
   const responseUrl = new URL(redirectResponse);
@@ -107,7 +183,10 @@ export async function handleGoogleConnect() {
   const returnedState = responseUrl.searchParams.get('state');
   const oauthError = responseUrl.searchParams.get('error_description') || responseUrl.searchParams.get('error');
   if (oauthError) throw new Error(`Google sign-in failed: ${oauthError}`);
-  if (returnedState !== state) throw new Error('OAuth state mismatch — please try again.');
+
+  const stored = await verifyConsumedOAuthState(returnedState, 'google');
+  if (!stored) throw new Error('OAuth session expired — please try again.');
+  if (returnedState !== stored.state) throw new Error('OAuth state mismatch — please try again.');
   if (!code) throw new Error('Google did not return an authorization code.');
 
   const tokenRes = await fetch(GOOGLE_TOKEN_URL, {
@@ -119,6 +198,7 @@ export async function handleGoogleConnect() {
       redirect_uri: redirectUri,
       client_id: clientId,
       client_secret: clientSecret,
+      code_verifier: stored.codeVerifier,
     }).toString(),
   });
   if (!tokenRes.ok) {
@@ -127,6 +207,7 @@ export async function handleGoogleConnect() {
   const token = await tokenRes.json();
   if (!token.access_token) throw new Error('Google did not return an access token.');
 
+  // The access token is used once for the userinfo call and never stored.
   const userRes = await fetch(GOOGLE_USERINFO_URL, {
     headers: { Authorization: `Bearer ${token.access_token}` },
   });
