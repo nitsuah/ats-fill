@@ -1231,7 +1231,7 @@ function fillYesNoButtonGroups(answers = {}, fieldMap = {}) {
   const unresolved = [];
 
   for (const group of document.querySelectorAll(YES_NO_GROUP_SELECTOR)) {
-    const buttons = Array.from(group.querySelectorAll('button'));
+    const buttons = Array.from(group.querySelectorAll('button')).filter(isChoiceButton);
     const label = getYesNoGroupLabel(group);
     if (!buttons.length || !label) continue;
 
@@ -1260,6 +1260,11 @@ function fillYesNoButtonGroups(answers = {}, fieldMap = {}) {
   }
 
   return { filled, preserved, unresolved };
+}
+
+// Only plain type="button" controls are clicked; submit/reset buttons are never triggered.
+function isChoiceButton(button) {
+  return button.type === 'button' && !button.disabled;
 }
 
 function getYesNoGroupLabel(group) {
