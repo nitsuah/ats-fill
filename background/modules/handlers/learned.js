@@ -43,7 +43,11 @@ export async function handleSaveLearnedDefaults({ entries } = {}) {
     if (!shouldPersistLearnedValue(question, answer)) continue;
     if (isIgnoredLearnedPrompt(question, ignoredLearnedDefaults)) continue;
     const stored = findStoredLearnedEntry(learnedDefaults, question);
-    if (stored && stored.answer === answer) continue;
+    if (stored && stored.answer === answer) {
+      // Back to the stored answer: drop any suggestion it replaced.
+      delete pending[question];
+      continue;
+    }
 
     delete pending[question];
     pending[question] = answer;

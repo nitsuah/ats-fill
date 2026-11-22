@@ -778,6 +778,42 @@ test('GENERATE_ANSWERS: learned defaults never override profile-derived answers'
   assert.equal(result.answers.favorite_snack, 'Pretzels');
 });
 
+test('SAVE_LEARNED_DEFAULTS drops a suggestion once the answer is back to the stored value', async () => {
+  resetStorage({ learnedDefaults: { 'What is your favorite color?': 'Blue' } });
+  await send({ type: 'SAVE_LEARNED_DEFAULTS', payload: { entries: { 'What is your favorite color?': 'Green' } } });
+  assert.equal((await send({ type: 'GET_LEARNED_DEFAULTS' })).pendingItems.length, 1);
+  await send({ type: 'SAVE_LEARNED_DEFAULTS', payload: { entries: { 'What is your favorite color?': 'Blue' } } });
+  assert.deepEqual((await send({ type: 'GET_LEARNED_DEFAULTS' })).pendingItems, []);
+});
+
+test('GENERATE_ANSWERS: a profile answer beats a learned one in custom_answers too', async () => {
+  resetStorage({
+    resume: { structured: { name: 'Ada Lovelace' } },
+    settings: { work_authorization: 'US Citizen' },
+    learnedDefaults: { 'What is your work authorization status?': 'Learned value' },
+  });
+  const result = await send({
+    type: 'GENERATE_ANSWERS',
+    payload: { customQuestions: ['What is your work authorization status?', 'How did you hear about us?'] },
+  });
+  assert.equal(result.answers.custom_answers['What is your work authorization status?'], 'US Citizen');
+  // A generic default is still used when nothing better exists.
+  assert.equal(result.answers.custom_answers['How did you hear about us?'], 'Company careers page');
+});
+
+test('GENERATE_ANSWERS: a learned answer beats a generic default in custom_answers', async () => {
+  resetStorage({
+    resume: { structured: { name: 'Ada Lovelace' } },
+    settings: {},
+    learnedDefaults: { 'How did you hear about us?': 'A friend' },
+  });
+  const result = await send({
+    type: 'GENERATE_ANSWERS',
+    payload: { customQuestions: ['How did you hear about us?'] },
+  });
+  assert.equal(result.answers.custom_answers['How did you hear about us?'], 'A friend');
+});
+
 test('UPDATE_LEARNED_DEFAULT rejects a value that is not eligible for storage', async () => {
   const result = await send({ type: 'UPDATE_LEARNED_DEFAULT', payload: { question: '', answer: '' } });
   assert.equal(result.success, false);

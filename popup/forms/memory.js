@@ -5,6 +5,9 @@ import { $, esc, escAttr, sendMessage, isSensitiveMemoryQuestion } from '../../l
 import { setStatus } from '../ux/state.js';
 
 const expandedMemoryQuestions = new Set();
+// Unsaved edits to pending suggestions, by question, so a refresh after another
+// suggestion is approved or discarded does not reset them.
+const pendingDrafts = new Map();
 
 /**
  * Fetch and render learned defaults (memory) UI.
@@ -50,6 +53,14 @@ export async function renderLearnedDefaults() {
  * Answers captured from pages wait here until the user approves or discards them.
  */
 export function renderPendingMemoryGroup(container, items) {
+  for (const input of container.querySelectorAll('.pending-memory-item .memory-answer-input')) {
+    const question = input.closest('.memory-item')?.dataset.question;
+    if (question) pendingDrafts.set(question, input.value);
+  }
+  const stillPending = new Set(items.map((item) => item.question));
+  for (const question of [...pendingDrafts.keys()]) {
+    if (!stillPending.has(question)) pendingDrafts.delete(question);
+  }
   if (!items.length) {
     container.innerHTML = '<p class="empty-msg">Nothing waiting for review.</p>';
     return;
@@ -59,7 +70,7 @@ export function renderPendingMemoryGroup(container, items) {
       <div class="memory-card-copy">
         <div class="memory-item-label">Suggested</div>
         <div class="memory-item-question">${esc(item.question)}</div>
-        <textarea class="memory-answer-input" rows="2">${esc(item.answer || '')}</textarea>
+        <textarea class="memory-answer-input" rows="2">${esc(pendingDrafts.get(item.question) ?? item.answer ?? '')}</textarea>
       </div>
       <div class="memory-item-actions">
         <button type="button" class="btn btn-ghost btn-xs memory-approve-btn" data-question="${escAttr(item.question)}">Approve</button>
@@ -177,7 +188,13 @@ export function initMemoryHandlers() {
         const question = approveBtn.dataset.question || '';
         const answer = approveBtn.closest('.memory-item')?.querySelector('.memory-answer-input')?.value?.trim() || '';
         if (!question || !answer) return;
-        await sendMessage({ type: 'APPROVE_PENDING_LEARNED_DEFAULT', payload: { question, answer } });
+        const result = await sendMessage({ type: 'APPROVE_PENDING_LEARNED_DEFAULT', payload: { question, answer } });
+        if (result?.success !== true) {
+          // Keep the edited answer in place so the user can retry.
+          setStatus('setup-status', `Could not save memory: ${result?.error || 'no response'}`, 'error');
+          return;
+        }
+        pendingDrafts.delete(question);
         await renderLearnedDefaults();
         setStatus('setup-status', '✅ Memory saved.', 'success');
         return;
@@ -186,7 +203,12 @@ export function initMemoryHandlers() {
       if (discardBtn) {
         const question = discardBtn.dataset.question || '';
         if (!question) return;
-        await sendMessage({ type: 'DISCARD_PENDING_LEARNED_DEFAULT', payload: { question } });
+        const result = await sendMessage({ type: 'DISCARD_PENDING_LEARNED_DEFAULT', payload: { question } });
+        if (result?.success !== true) {
+          setStatus('setup-status', `Could not discard: ${result?.error || 'no response'}`, 'error');
+          return;
+        }
+        pendingDrafts.delete(question);
         await renderLearnedDefaults();
         return;
       }

@@ -69,7 +69,7 @@ test('user-edit trust tracking is identical in content.js and form-filler.js', (
   const FILLER_JS = readFileSync(new URL('../content/form-filler.js', import.meta.url), 'utf8');
   const grab = (src, re) => { const m = src.match(re); assert.ok(m, `missing ${re}`); return m[0]; };
   const parts = [
-    /const userEditedFields = new WeakSet\(\);\nfunction markUserEdited\(el\) \{[\s\S]*?\n\}\n/,
+    /const userEditedFields = new WeakMap\(\);\nfunction markUserEdited\(el\) \{[\s\S]*?\nfunction isUserValue\(el\) \{[\s\S]*?\n\}\n/,
     /const handleFieldEvent = \(event\) => \{[\s\S]*?\n  \};\n/,
   ];
   for (const re of parts) assert.equal(grab(CONTENT_JS, re), grab(FILLER_JS, re));
