@@ -9,6 +9,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.0.5] - 2026-11-22
+
 ### Security
 
 - LinkedIn and Google sign-in use the OAuth access token once for the profile lookup and never store it; a test scans every `chrome.storage` write for both providers (#176).
