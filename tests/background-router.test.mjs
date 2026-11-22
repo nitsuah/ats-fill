@@ -840,7 +840,7 @@ test('GENERATE_INTERVIEW_QUESTIONS calls Gemini and parses the returned question
   globalThis.fetch = async (url, options = {}) => {
     const urlText = String(url);
     calls.push({ url: urlText, options });
-    if (urlText.endsWith('/models?key=test-interview-questions-key')) {
+    if (urlText.endsWith('/models')) {
       return {
         ok: true,
         status: 200,
@@ -849,7 +849,7 @@ test('GENERATE_INTERVIEW_QUESTIONS calls Gemini and parses the returned question
         }),
       };
     }
-    assert.match(urlText, /\/gemini-2\.5-flash:generateContent\?key=test-interview-questions-key$/);
+    assert.match(urlText, /\/gemini-2\.5-flash:generateContent$/);
     assert.equal(options.method, 'POST');
     const request = JSON.parse(options.body);
     assert.match(request.contents[0].parts[0].text, /Generate 8-10 likely interview questions/);
@@ -898,7 +898,7 @@ test('GENERATE_INTERVIEW_ANSWER calls Gemini and returns the trimmed suggestion'
   globalThis.fetch = async (url, options = {}) => {
     const urlText = String(url);
     calls.push({ url: urlText, options });
-    if (urlText.endsWith('/models?key=test-interview-answer-key')) {
+    if (urlText.endsWith('/models')) {
       return {
         ok: true,
         status: 200,
@@ -907,7 +907,7 @@ test('GENERATE_INTERVIEW_ANSWER calls Gemini and returns the trimmed suggestion'
         }),
       };
     }
-    assert.match(urlText, /\/gemini-2\.5-flash:generateContent\?key=test-interview-answer-key$/);
+    assert.match(urlText, /\/gemini-2\.5-flash:generateContent$/);
     assert.equal(options.method, 'POST');
     const request = JSON.parse(options.body);
     const prompt = request.contents[0].parts[0].text;
