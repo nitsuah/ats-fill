@@ -22,7 +22,7 @@ Track every application on a board from draft to offer, import past applications
 Practice for interviews with questions generated for the specific job.
 Optional AI drafting and resume parsing use your own free Google Gemini key. Without a key, filling, tracking, search and analytics all still work.
 
-How to use it: accept the privacy notice, upload your resume and check the parsed details, fill in your preferences, then open an application page and press Fill. Review the form and submit it yourself. ats-fill never submits for you.
+How to use it: accept the privacy notice, upload your resume and check the parsed details, fill in your preferences, then open an application page and press Fill. Review the form and submit it yourself. ats-fill does not submit unless you turn on the optional Full auto submit setting (off by default), which only submits on a recognized job site after a 5-second countdown you can cancel, and never when anything needs review or a CAPTCHA is present.
 
 Privacy: everything is stored only in your browser on your device. There is no account, no server and no analytics. Data leaves your device only when you start a job search, an AI request with your own key, or an optional profile import, and when you submit an application yourself (the employer's site then receives the answers filled in and any resume attached). Sensitive demographic fields are off by default and never sent to AI.
 

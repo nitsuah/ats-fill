@@ -30,6 +30,7 @@ import {
   handleFindDuplicateApplications,
   handleRemoveDuplicateApplications,
   handleMarkLastSubmitted,
+  handleLogAutoSubmit,
   handleSaveLearnedDefaults,
   handleGetLearnedDefaults,
   handleApprovePendingLearnedDefault,
@@ -58,6 +59,7 @@ import {
 const CONTENT_SCRIPT_TYPES = new Set([
   'GENERATE_ANSWERS',
   'LOG_APPLICATION',
+  'LOG_AUTO_SUBMIT',
   'SAVE_LEARNED_DEFAULTS',
   'GET_FIELD_MAP',
   'GET_RESUME_ATTACHMENT',
@@ -105,6 +107,7 @@ const MESSAGE_HANDLERS = {
   FIND_DUPLICATE_APPLICATIONS: handleFindDuplicateApplications,
   REMOVE_DUPLICATE_APPLICATIONS: handleRemoveDuplicateApplications,
   MARK_LAST_SUBMITTED: handleMarkLastSubmitted,
+  LOG_AUTO_SUBMIT: handleLogAutoSubmit,
   SAVE_LEARNED_DEFAULTS: handleSaveLearnedDefaults,
   GET_LEARNED_DEFAULTS: handleGetLearnedDefaults,
   APPROVE_PENDING_LEARNED_DEFAULT: handleApprovePendingLearnedDefault,

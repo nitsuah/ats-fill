@@ -27,6 +27,7 @@ Focuses on reducing manual effort during the application process.
 - **Form Fill Automation**: Automatically fills supported application forms with candidate and job-specific data
 - **Supported ATS Platforms**: Works with supported applicant tracking systems used by common job portals and employer sites
 - **Resume Attach**: Attaches your saved resume PDF to Resume/CV upload fields when you fill (toggle under Profile → Saved local copy)
+- **Full Auto Submit (opt-in)**: A separate Settings toggle, off by default. After Fill it can press Submit on a recognized ATS after a 5-second countdown with Cancel, but never when a field needs review, a required field is empty, a CAPTCHA is present, or ats-fill answered a legal or demographic question; each auto-submit is logged to the tracker
 - **Type-Ahead Dropdowns**: Picks the matching option in searchable dropdowns (country, city, Yes/No, EEO lists) instead of leaving typed text behind; unmatched dropdowns are flagged for review
 - **Yes/No Button Questions**: Answers Ashby-style Yes/No button questions when the answer is an explicit yes or no; anything else is left for review
 - **Receiver Auto-Recovery**: Retries content-script injection automatically when a supported page initially has no active receiver
