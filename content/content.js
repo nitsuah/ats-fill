@@ -310,7 +310,231 @@ async function handleFillForm(expectedUrl, frameSrcs) {
     },
   });
 
-  return { success: true, filled: report.filled, company, title, warning, report };
+  // 7. Opt-in "Full auto": only ever after a normal fill, and only from this path.
+  const autoSubmit = await startAutoSubmitIfEnabled({ report, warning, expectedUrl, frameSrcs });
+
+  return { success: true, filled: report.filled, company, title, warning, report, autoSubmit };
+}
+
+// ── Full auto submit (opt-in) ─────────────────────────────────────────────────
+// Off by default (settings.full_auto_submit). When on, a normal fill may be
+// followed by a submit, but only after every guard passes and a visible
+// countdown the user can cancel. Any doubt means stop and leave the page alone.
+
+const AUTO_SUBMIT_COUNTDOWN_SECONDS = 5;
+// Hosts whose own pages we will submit on. LinkedIn is deliberately absent.
+const AUTO_SUBMIT_ATS_HOSTS = ['greenhouse.io', 'ashbyhq.com', 'ashby.io', 'lever.co', 'workday.com', 'myworkdayjobs.com', 'icims.com', 'jobvite.com', 'phenompeople.com'];
+// Legal, attestation and demographic questions are never answered unattended.
+const AUTO_SUBMIT_REVIEW_LABEL_RE = /gender|\brace\b|ethnic|hispanic|latino|disabilit|veteran|military|lgbt|transgender|sexual orientation|pronoun|demographic|criminal|convict|felony|attest|certif|\b(?:agree|acknowledge|consent)\b|\bterms\b|privacy (?:policy|notice)|background check|non-?compete|sponsor|authori[sz]ed to work|legally authori[sz]ed|work authori[sz]ation|right to work/i;
+const AUTO_SUBMIT_CAPTCHA_SELECTOR = [
+  'iframe[src*="recaptcha"]', 'iframe[src*="hcaptcha"]', 'iframe[src*="turnstile"]', 'iframe[src*="challenges.cloudflare.com"]',
+  '.g-recaptcha', '.h-captcha', '.cf-turnstile', '[data-sitekey]', 'textarea[name="g-recaptcha-response"]', '[name="cf-turnstile-response"]',
+].join(',');
+const AUTO_SUBMIT_BUTTON_RE = /^\s*(?:submit(?:\s+(?:my\s+)?application)?|apply(?:\s+now)?|send\s+application)\s*$/i;
+
+/** True when the hostname is a known ATS host that auto submit supports. */
+function isAutoSubmitAtsHost(hostname) {
+  const host = String(hostname || '').toLowerCase();
+  return AUTO_SUBMIT_ATS_HOSTS.some((domain) => host === domain || host.endsWith(`.${domain}`));
+}
+
+/**
+ * Pure decision: may this page be submitted without a human pressing the button?
+ * Every input is a plain value so the rule can be tested without a browser.
+ * @param {{enabled?: boolean, hostname?: string, hasCaptcha?: boolean, unresolvedCount?: number,
+ *   warning?: string|null, requiredEmpty?: string[], reviewAnswered?: string[], resumeMissing?: boolean,
+ *   submitCount?: number, formInvalid?: boolean}} facts
+ * @returns {{ok: boolean, reasons: string[]}}
+ */
+function evaluateAutoSubmit(facts = {}) {
+  if (facts.enabled !== true) return { ok: false, reasons: ['Full auto is off'] };
+  const reasons = [];
+  if (!isAutoSubmitAtsHost(facts.hostname)) reasons.push('This page is not a recognized application site');
+  if (facts.hasCaptcha) reasons.push('A CAPTCHA is on the page');
+  if (facts.unresolvedCount > 0) reasons.push(`${facts.unresolvedCount} field(s) need review`);
+  if (facts.warning) reasons.push('Answers were generated with a warning');
+  if (facts.requiredEmpty?.length) reasons.push(`Required field(s) empty: ${facts.requiredEmpty.slice(0, 5).join(', ')}`);
+  if (facts.formInvalid) reasons.push('The form reports invalid values');
+  if (facts.reviewAnswered?.length) reasons.push(`Legal or demographic question(s) answered: ${facts.reviewAnswered.slice(0, 5).join(', ')}`);
+  if (facts.resumeMissing) reasons.push('Resume is not attached');
+  if (facts.submitCount !== 1) reasons.push(facts.submitCount ? 'More than one possible Submit button' : 'No Submit button found');
+  return { ok: reasons.length === 0, reasons };
+}
+
+function isAutoSubmitVisible(el) {
+  const style = getComputedStyle(el);
+  return style.display !== 'none' && style.visibility !== 'hidden' && !el.hidden;
+}
+
+function findAutoSubmitButtons() {
+  return Array.from(document.querySelectorAll('button, input[type="submit"]')).filter((btn) => {
+    if (btn.disabled || !isAutoSubmitVisible(btn)) return false;
+    const type = (btn.getAttribute('type') || (btn.tagName === 'BUTTON' ? 'submit' : '')).toLowerCase();
+    if (type !== 'submit') return false;
+    const text = btn.tagName === 'INPUT' ? btn.value : btn.textContent;
+    return AUTO_SUBMIT_BUTTON_RE.test(String(text || ''));
+  });
+}
+
+function autoSubmitQuestionLabel(el) {
+  const type = (el.getAttribute('type') || '').toLowerCase();
+  const group = type === 'radio' || type === 'checkbox' ? getChoiceGroupLabel(el) : '';
+  return group || describeField(el);
+}
+
+/** Read the live page into the plain facts evaluateAutoSubmit needs. */
+function collectAutoSubmitFacts() {
+  const requiredEmpty = [];
+  const reviewAnswered = new Set();
+  const controls = Array.from(document.querySelectorAll('input:not([type="hidden"]), textarea, select'));
+  for (const el of controls) {
+    if (el.disabled || !isAutoSubmitVisible(el)) continue;
+    if (el.getAttribute('aria-hidden') === 'true' && el.tabIndex < 0) continue;
+    const type = (el.getAttribute('type') || '').toLowerCase();
+    if (['submit', 'button', 'reset'].includes(type)) continue;
+    const required = el.required || el.getAttribute('aria-required') === 'true';
+    const empty = type === 'file' ? !(el.files && el.files.length) : !hasMeaningfulValue(el);
+    if (required && empty) requiredEmpty.push(autoSubmitQuestionLabel(el));
+    // A legal/demographic answer that ats-fill wrote itself (and the user has not edited) blocks submit.
+    if (!empty && type !== 'file' && AUTO_SUBMIT_REVIEW_LABEL_RE.test(autoSubmitQuestionLabel(el)) && !isUserValue(el)) {
+      reviewAnswered.add(autoSubmitQuestionLabel(el));
+    }
+  }
+  for (const group of document.querySelectorAll(YES_NO_GROUP_SELECTOR)) {
+    const label = getYesNoGroupLabel(group);
+    if (label && AUTO_SUBMIT_REVIEW_LABEL_RE.test(label)) reviewAnswered.add(label);
+  }
+  const resumeInputs = Array.from(document.querySelectorAll('input[type="file"]')).filter(isResumeFileInput);
+  const form = findAutoSubmitButtons()[0]?.closest('form');
+  return {
+    hostname: location.hostname,
+    hasCaptcha: !!document.querySelector(AUTO_SUBMIT_CAPTCHA_SELECTOR),
+    requiredEmpty,
+    reviewAnswered: [...reviewAnswered],
+    resumeMissing: resumeInputs.some((input) => !(input.files && input.files.length)),
+    submitCount: findAutoSubmitButtons().length,
+    formInvalid: !!form && typeof form.checkValidity === 'function' && !form.checkValidity(),
+  };
+}
+
+async function startAutoSubmitIfEnabled({ report, warning, expectedUrl, frameSrcs }) {
+  let settings = {};
+  try {
+    settings = (await chrome.storage.local.get('settings')).settings || {};
+  } catch {
+    return { state: 'off', reasons: [] };
+  }
+  if (settings.full_auto_submit !== true) return { state: 'off', reasons: [] };
+  const decision = evaluateAutoSubmit({
+    enabled: true,
+    ...collectAutoSubmitFacts(),
+    unresolvedCount: report.unresolved?.length || 0,
+    warning,
+  });
+  if (!decision.ok) {
+    showAutoSubmitBanner({ reasons: decision.reasons });
+    return { state: 'blocked', reasons: decision.reasons };
+  }
+  runAutoSubmitCountdown({ report, expectedUrl, frameSrcs });
+  return { state: 'countdown', reasons: [], seconds: AUTO_SUBMIT_COUNTDOWN_SECONDS };
+}
+
+let autoSubmitBanner = null;
+
+function removeAutoSubmitBanner() {
+  autoSubmitBanner?.remove();
+  autoSubmitBanner = null;
+}
+
+/** Shadow-DOM banner so page CSS cannot hide or restyle it. Returns the live handles. */
+function showAutoSubmitBanner({ reasons = [], seconds = null, onCancel = null }) {
+  removeAutoSubmitBanner();
+  const host = document.createElement('div');
+  host.setAttribute('data-ats-fill-banner', seconds === null ? 'blocked' : 'countdown');
+  host.style.cssText = 'all:initial;position:fixed;top:0;left:0;right:0;z-index:2147483647;';
+  const root = host.attachShadow({ mode: 'open' });
+  const style = document.createElement('style');
+  style.textContent = '.bar{font:600 14px/1.4 system-ui,sans-serif;background:#7a1f1f;color:#fff;padding:12px 16px;display:flex;gap:12px;align-items:center;justify-content:center;flex-wrap:wrap}'
+    + '.bar.stop{background:#37474f}button{font:inherit;cursor:pointer;border:2px solid #fff;background:#fff;color:#7a1f1f;border-radius:6px;padding:6px 14px}';
+  const bar = document.createElement('div');
+  bar.className = seconds === null ? 'bar stop' : 'bar';
+  bar.setAttribute('role', 'alertdialog');
+  bar.setAttribute('aria-live', 'assertive');
+  const text = document.createElement('span');
+  const button = document.createElement('button');
+  button.type = 'button';
+  button.textContent = seconds === null ? 'Dismiss' : 'Cancel submit';
+  bar.append(text, button);
+  root.append(style, bar);
+  (document.body || document.documentElement).appendChild(host);
+  autoSubmitBanner = host;
+  const setText = (n) => {
+    text.textContent = seconds === null
+      ? `ats-fill Full auto did not submit. Review the form yourself. ${reasons.join('; ')}.`
+      : `ats-fill Full auto will submit this application in ${n}s.`;
+  };
+  setText(seconds);
+  button.addEventListener('click', () => { removeAutoSubmitBanner(); onCancel?.(); });
+  button.focus({ preventScroll: true });
+  return { setText, remove: removeAutoSubmitBanner };
+}
+
+function runAutoSubmitCountdown({ report, expectedUrl, frameSrcs }) {
+  let remaining = AUTO_SUBMIT_COUNTDOWN_SECONDS;
+  let timer = null;
+  const cleanup = () => {
+    clearInterval(timer);
+    document.removeEventListener('keydown', onKey, true);
+    document.removeEventListener('input', onEdit, true);
+    document.removeEventListener('pointerdown', onEdit, true);
+  };
+  const cancel = () => { cleanup(); removeAutoSubmitBanner(); };
+  // Any keystroke, edit or click by the user while counting down is a "wait".
+  const onKey = (event) => { if (event.isTrusted) cancel(); };
+  const onEdit = (event) => {
+    if (event.isTrusted && !autoSubmitBanner?.contains(event.target)) cancel();
+  };
+  const banner = showAutoSubmitBanner({ seconds: remaining, onCancel: cleanup });
+  document.addEventListener('keydown', onKey, true);
+  document.addEventListener('input', onEdit, true);
+  document.addEventListener('pointerdown', onEdit, true);
+  timer = setInterval(() => {
+    remaining -= 1;
+    if (remaining > 0) { banner.setText(remaining); return; }
+    cleanup();
+    finishAutoSubmit({ report, expectedUrl, frameSrcs }).catch((err) => warnIfRelevant('[apply-bot] auto submit', err));
+  }, 1000);
+}
+
+/** Re-check everything at the last moment, record the submit, then press the button. */
+async function finishAutoSubmit({ report, expectedUrl, frameSrcs }) {
+  const settings = (await chrome.storage.local.get('settings')).settings || {};
+  const decision = evaluateAutoSubmit({
+    enabled: settings.full_auto_submit === true,
+    ...collectAutoSubmitFacts(),
+    // Fields the fill left unresolved stay unresolved unless the user completed them since.
+    unresolvedCount: (report.unresolved || []).filter((item) => autoSubmitStillUnresolved(item)).length,
+  });
+  const stillHere = matchesExpectedFillDocument(expectedUrl, frameSrcs);
+  if (!decision.ok || !stillHere) {
+    showAutoSubmitBanner({ reasons: decision.ok ? ['The page changed'] : decision.reasons });
+    return;
+  }
+  const button = findAutoSubmitButtons()[0];
+  // Record first: the click may navigate away and end this script.
+  await chrome.runtime.sendMessage({
+    type: 'LOG_AUTO_SUBMIT',
+    payload: { url: jobPageUrl(), ats: detectAts(), filled: report.filled, resume_attached: report.resume?.attached || 0 },
+  });
+  removeAutoSubmitBanner();
+  button.click();
+}
+
+function autoSubmitStillUnresolved(item) {
+  const label = String(item?.label || '').trim().toLowerCase();
+  if (!label) return true;
+  const field = findFieldForReviewTarget(item);
+  return !field || !hasMeaningfulValue(field);
 }
 
 async function handleInjectAnswers(answers) {

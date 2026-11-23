@@ -59,6 +59,8 @@ export function applyStateToSetupForm(state = {}) {
   if (preferRemote) preferRemote.checked = settings.preferred_remote !== false;
   const autoAttachResume = $('auto-attach-resume');
   if (autoAttachResume) autoAttachResume.checked = settings.auto_attach_resume !== false;
+  const fullAuto = $('full-auto-submit');
+  if (fullAuto) fullAuto.checked = settings.full_auto_submit === true;
   set('adzuna-app-id', settings.adzuna_app_id || '');
   set('adzuna-app-key', settings.adzuna_app_key || '');
   if ($('adzuna-country')) $('adzuna-country').value = settings.adzuna_country || 'us';

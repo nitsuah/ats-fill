@@ -1,0 +1,38 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Northstar Labs — Platform Engineer</title>
+  <script type="application/ld+json">
+  {"@context":"https://schema.org","@type":"JobPosting","title":"Platform Engineer","description":"Build and run the platform that other engineers ship on.","datePosted":"2026-09-01","employmentType":"FULL_TIME","hiringOrganization":{"@type":"Organization","name":"Northstar Labs"}}
+  </script>
+  <style>body{font-family:system-ui,sans-serif;max-width:720px;margin:0 auto;padding:32px}label{display:block;font-weight:600;margin:14px 0 6px}input{display:block;width:100%;padding:10px;box-sizing:border-box}</style>
+</head>
+<body>
+  <main>
+    <h1>Platform Engineer</h1>
+    <p>Northstar Labs · Remote · Full-time</p>
+    <h2>Application</h2>
+    <form id="application-form">
+      <label for="first-name">First name</label>
+      <input id="first-name" name="firstName" autocomplete="given-name" required>
+      <label for="last-name">Last name</label>
+      <input id="last-name" name="lastName" autocomplete="family-name" required>
+      <label for="email">Email</label>
+      <input id="email" name="email" type="email" autocomplete="email" required>
+      <label for="phone">Phone</label>
+      <input id="phone" name="phone" type="tel" autocomplete="tel">
+      <!-- A field ats-fill has no saved answer for: keeps a "needs review" variant easy. -->
+      <div id="extra"></div>
+      <button type="submit" id="submit-btn">Submit application</button>
+    </form>
+  </main>
+  <script>
+    window.__submits = 0;
+    document.getElementById('application-form').addEventListener('submit', (event) => {
+      event.preventDefault();
+      window.__submits += 1;
+    });
+  </script>
+</body>
+</html>

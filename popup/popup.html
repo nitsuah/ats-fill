@@ -802,6 +802,19 @@
             </div>
           </details>
 
+          <details class="ai-panel-group profile-panel profile-section" id="full-auto-section">
+            <summary class="collapsible-summary profile-section-summary">
+              <span class="profile-section-title">Full auto submit (off by default)</span>
+            </summary>
+            <div class="collapsible-body">
+            <p class="helper-text"><strong>Warning: a submitted application cannot be undone.</strong> When on, Fill can press Submit for you on a recognized job site after a 5-second countdown you can cancel. It never submits if a required field is empty, a field needs review, a CAPTCHA is present, ats-fill answered a legal or demographic question, or the resume is missing. Each auto-submit is logged in your tracker. Nothing new is sent anywhere.</p>
+            <label class="checkbox-row">
+              <input type="checkbox" id="full-auto-submit" />
+              Let ats-fill submit applications after it fills them
+            </label>
+            </div>
+          </details>
+
           <div class="profile-save-bar ai-save-bar">
             <button id="save-ai-settings-btn" class="btn btn-primary btn-full">Save settings</button>
             <p id="ai-status" class="status-msg" role="status" aria-live="polite"></p>

@@ -65,8 +65,8 @@ authoritative for the corresponding release.</p>
   your device. There is no ats-fill account, server, or backend.</li>
 <li><strong>We never receive your data.</strong> We have no way to see, collect, store, or sell
   it — there is nothing to send to us.</li>
-<li><strong>Review-first.</strong> The extension drafts and fills fields. It never submits an
-  application for you.</li>
+<li><strong>Review-first.</strong> The extension drafts and fills fields. It submits an application only if you turn on
+  the optional Full auto submit setting, which is off by default.</li>
 <li><strong>Bring your own keys (BYOK).</strong> Optional AI and extra job sources use <em>your</em>
   own API keys/credentials, stored locally, used only for requests you trigger.</li>
 <li><strong>No tracking.</strong> No analytics, advertising, telemetry, or third-party tracking
@@ -76,9 +76,9 @@ authoritative for the corresponding release.</p>
 <h2 id="terms-of-use-eula">Terms of Use (EULA)</h2>
 <p>By accepting consent in the extension, you agree to the following:</p>
 <ol>
-<li><strong>Review before you submit.</strong> The extension only drafts and fills form
-   fields. It never submits an application on your behalf — you review every
-   field and click submit yourself.</li>
+<li><strong>Review before you submit.</strong> The extension drafts and fills form
+   fields. Unless you turn on the optional Full auto submit setting (off by default), you review every
+   field and click submit yourself. With it on, a visible countdown lets you cancel first.</li>
 <li><strong>You are responsible for accuracy.</strong> Auto-filled and AI-drafted answers are
    suggestions. You are solely responsible for the truthfulness and content of
    anything you submit to an employer.</li>
@@ -157,7 +157,7 @@ local data</strong> removes it.</p>
 <td>none — a one-time browser permission prompt scoped to that site</td>
 </tr>
 <tr>
-<td>Submitting an application (you press Submit; ats-fill never does)</td>
+<td>Submitting an application (you press Submit, or ats-fill does after a cancelable countdown if you turned on Full auto submit)</td>
 <td>that employer's application site</td>
 <td>the answers ats-fill filled in, including any opt-in disability, salary or location answers, and the attached resume file</td>
 <td>none — the employer's own form</td>

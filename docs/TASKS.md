@@ -52,13 +52,15 @@ _None._
   - Remaining: the e2e fixture with an embedded Greenhouse iframe from the acceptance criteria. Close this when it passes.
   - Found 2026-10-16 while battle-testing fill on live forms.
 
-- [ ] Add an opt-in "Full auto" fill mode (attach, fill, then submit) behind its own toggle.
+- [x] Add an opt-in "Full auto" fill mode (attach, fill, then submit) behind its own toggle.
   - Priority: P2
   - Type: Feature · Confidence: Medium
   - Problem: Fill now attaches the saved resume and answers Ashby Yes/No questions, but the user still has to review and press Submit on every application. The owner wants a separate, clearly labelled toggle, off by default, that submits once nothing needs review.
   - Approach: build on the fill report. Submit only when `unresolved` is empty, the resume is attached, the page's required fields are all set, and no legal/attestation or demographic question was answered by ats-fill; otherwise stop and show what needs review. Log every auto-submit to the tracker with the filled answers so it can be audited.
   - Also: keep more than one resume version (today one saved PDF is attached) and pick the version per application.
   - Acceptance Criteria: toggle in Settings, off by default, with a plain warning; journeys cover a form that auto-submits and one that stops for review; the store listing and CHROMEWEBSTORE.md stop saying ats-fill never submits only once this ships.
+  - Done 2026-11-23: Settings → "Full auto submit" (off by default, plain warning). After a normal Fill it submits only when the host is a known ATS, no CAPTCHA is present, nothing is unresolved or required-empty, the form validates, the resume is attached, no legal/demographic question was answered by ats-fill and exactly one Submit button exists; then a 5 s banner with Cancel (any keystroke or click also cancels) and a re-check before the click. Each auto-submit marks the tracker entry submitted with an `auto_submit` audit record. No new permissions or network calls. Covered by unit tests and a Playwright e2e on a fixture form (journeys not added).
+  - Remaining: keeping several resume versions and picking one per application (split out of this item); LinkedIn Easy Apply stays excluded.
   - Found 2026-10-16 while battle-testing fill on live Ashby forms (Supabase, Deepgram).
 
 _Other planned work is in `docs/ROADMAP.md` 2027 Q1: OAuth/sign-in for personalized job search (blocked on

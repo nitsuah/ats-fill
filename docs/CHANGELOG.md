@@ -9,6 +9,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- Opt-in "Full auto submit" (Settings, off by default): after Fill, submits on a known ATS only when nothing needs review, no CAPTCHA is present and the resume is attached, behind a 5-second Cancel banner; each auto-submit is recorded on the tracker entry.
+
 ### Changed
 
 - Refresh the Settings journey baselines after the profile-import card change (#243).

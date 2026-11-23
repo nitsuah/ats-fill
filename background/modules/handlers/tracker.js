@@ -126,6 +126,34 @@ export async function handleDeleteApplication({ id } = {}) {
   return { success: true, removed };
 }
 
+/**
+ * Record an application ats-fill submitted itself (opt-in "Full auto").
+ * Marks the entry from the last fill as submitted and keeps an audit record on it
+ * (when, which ATS, how many fields were filled) so the user can see what was sent.
+ * Only the entry the last fill created can be touched; the caller names no id.
+ */
+export async function handleLogAutoSubmit({ url, ats, filled, resume_attached } = {}) {
+  const data = await chrome.storage.local.get(['lastTrackedApplicationId', 'settings']);
+  if (data.settings?.full_auto_submit !== true) throw new Error('Full auto is off.');
+  const id = data.lastTrackedApplicationId;
+  if (!id) throw new Error('No recent autofill session to record a submit for.');
+  const updated = await updateApplication(id, { status: 'submitted' });
+  if (!updated) throw new Error('Could not find the recent application entry to update.');
+  const { applications = [] } = await chrome.storage.local.get('applications');
+  const entry = applications.find((item) => item.id === id);
+  if (entry) {
+    entry.auto_submit = {
+      at: new Date().toISOString(),
+      ats: String(ats || '').slice(0, 40),
+      url: String(url || '').slice(0, 500),
+      filled: Number(filled) || 0,
+      resume_attached: Number(resume_attached) || 0,
+    };
+    await chrome.storage.local.set({ applications });
+  }
+  return { success: true };
+}
+
 export async function handleMarkLastSubmitted() {
   const data = await chrome.storage.local.get('lastTrackedApplicationId');
   const id = data.lastTrackedApplicationId;

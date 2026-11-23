@@ -69,6 +69,7 @@ export function readSettingsForm() {
     work_authorization: $('work-auth')?.value || null,
     preferred_remote: $('prefer-remote')?.checked,
     auto_attach_resume: $('auto-attach-resume')?.checked !== false,
+    full_auto_submit: $('full-auto-submit')?.checked === true,
     adzuna_app_id: $('adzuna-app-id')?.value.trim() || '',
     adzuna_app_key: $('adzuna-app-key')?.value.trim() || '',
     adzuna_country: $('adzuna-country')?.value || 'us',

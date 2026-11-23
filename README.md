@@ -39,7 +39,7 @@ A Chrome extension that:
 1. Install from the [Chrome Web Store](https://chromewebstore.google.com/detail/ats-fill/amofaeopfmaicbiijgjaojenedkkadmn), or load it unpacked: clone this repo (or download the ZIP), open `chrome://extensions`, enable **Developer mode**, click **Load unpacked** and select the repo folder
 2. Click the extension icon → paste your [free Gemini API key](https://aistudio.google.com/app/apikey) and leave the model on **Auto**
 3. Upload your resume (PDF, DOCX, or paste text)
-4. Navigate to a job page → click the icon → **Fill Form**
+4. Navigate to a job page → click the icon → **Fill Form**. By default you review and submit yourself; the optional **Full auto submit** setting (Settings, off by default) can submit after a 5-second cancelable countdown when nothing needs review
 
 ---
 
