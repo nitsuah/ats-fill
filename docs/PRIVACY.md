@@ -19,8 +19,8 @@ authoritative for the corresponding release.
   your device. There is no ats-fill account, server, or backend.
 - **We never receive your data.** We have no way to see, collect, store, or sell
   it — there is nothing to send to us.
-- **Review-first.** The extension drafts and fills fields. It never submits an
-  application for you.
+- **Review-first.** The extension drafts and fills fields. It submits an application only if you turn on
+  the optional Full auto submit setting, which is off by default.
 - **Bring your own keys (BYOK).** Optional AI and extra job sources use *your*
   own API keys/credentials, stored locally, used only for requests you trigger.
 - **No tracking.** No analytics, advertising, telemetry, or third-party tracking
@@ -32,9 +32,9 @@ authoritative for the corresponding release.
 
 By accepting consent in the extension, you agree to the following:
 
-1. **Review before you submit.** The extension only drafts and fills form
-   fields. It never submits an application on your behalf — you review every
-   field and click submit yourself.
+1. **Review before you submit.** The extension drafts and fills form
+   fields. Unless you turn on the optional Full auto submit setting (off by default), you review every
+   field and click submit yourself. With it on, a visible countdown lets you cancel first.
 2. **You are responsible for accuracy.** Auto-filled and AI-drafted answers are
    suggestions. You are solely responsible for the truthfulness and content of
    anything you submit to an employer.
@@ -84,7 +84,7 @@ Data leaves your device **only** when *you* trigger an optional network action:
 | LinkedIn session job search (optional) | LinkedIn Voyager API | your search query, via your active browser session | your existing LinkedIn sign-in |
 | LinkedIn / Google profile import (optional) | LinkedIn or Google OAuth/OIDC | OAuth handshake | your own app credentials + your sign-in |
 | Custom job source fetch (optional) | whatever URL you add | your search query (appended as a param when the feed doesn't already encode one) | none — a one-time browser permission prompt scoped to that site |
-| Submitting an application (you press Submit; ats-fill never does) | that employer's application site | the answers ats-fill filled in, including any opt-in disability, salary or location answers, and the attached resume file | none — the employer's own form |
+| Submitting an application (you press Submit, or ats-fill does after a cancelable countdown if you turned on Full auto submit) | that employer's application site | the answers ats-fill filled in, including any opt-in disability, salary or location answers, and the attached resume file | none — the employer's own form |
 
 Without a Gemini key, autofill still works fully using deterministic, on-device
 logic and sends nothing anywhere. Each request sends only what is needed to

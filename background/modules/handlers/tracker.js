@@ -130,12 +130,13 @@ export async function handleDeleteApplication({ id } = {}) {
  * Record an application ats-fill submitted itself (opt-in "Full auto").
  * Marks the entry from the last fill as submitted and keeps an audit record on it
  * (when, which ATS, how many fields were filled) so the user can see what was sent.
- * Only the entry the last fill created can be touched; the caller names no id.
+ * The caller passes the id of the entry its own fill logged.
  */
-export async function handleLogAutoSubmit({ url, ats, filled, resume_attached } = {}) {
+export async function handleLogAutoSubmit({ id: requestedId, url, ats, filled, resume_attached } = {}) {
   const data = await chrome.storage.local.get(['lastTrackedApplicationId', 'settings']);
   if (data.settings?.full_auto_submit !== true) throw new Error('Full auto is off.');
-  const id = data.lastTrackedApplicationId;
+  // Bound to the entry the sending fill created, so a newer fill in another tab cannot redirect it.
+  const id = requestedId || data.lastTrackedApplicationId;
   if (!id) throw new Error('No recent autofill session to record a submit for.');
   const updated = await updateApplication(id, { status: 'submitted' });
   if (!updated) throw new Error('Could not find the recent application entry to update.');

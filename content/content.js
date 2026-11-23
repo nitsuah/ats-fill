@@ -292,7 +292,7 @@ async function handleFillForm(expectedUrl, frameSrcs) {
   report.resume = await attachSavedResume().catch((err) => ({ attached: 0, reason: 'error', error: err?.message }));
 
   // 6. Log the application
-  await chrome.runtime.sendMessage({
+  const logged = await chrome.runtime.sendMessage({
     type: 'LOG_APPLICATION',
     payload: {
       company,
@@ -311,7 +311,7 @@ async function handleFillForm(expectedUrl, frameSrcs) {
   });
 
   // 7. Opt-in "Full auto": only ever after a normal fill, and only from this path.
-  const autoSubmit = await startAutoSubmitIfEnabled({ report, warning, expectedUrl, frameSrcs });
+  const autoSubmit = await startAutoSubmitIfEnabled({ report, warning, expectedUrl, frameSrcs, applicationId: logged?.entry?.id || null });
 
   return { success: true, filled: report.filled, company, title, warning, report, autoSubmit };
 }
@@ -393,10 +393,11 @@ function collectAutoSubmitFacts() {
     const type = (el.getAttribute('type') || '').toLowerCase();
     if (['submit', 'button', 'reset'].includes(type)) continue;
     const required = el.required || el.getAttribute('aria-required') === 'true';
-    const empty = type === 'file' ? !(el.files && el.files.length) : !hasMeaningfulValue(el);
+    const comboSelected = el.matches(COMBOBOX_SELECTOR) ? getComboboxSelectedText(el) : '';
+    const empty = type === 'file' ? !(el.files && el.files.length) : !(hasMeaningfulValue(el) || comboSelected);
     if (required && empty) requiredEmpty.push(autoSubmitQuestionLabel(el));
     // A legal/demographic answer that ats-fill wrote itself (and the user has not edited) blocks submit.
-    if (!empty && type !== 'file' && AUTO_SUBMIT_REVIEW_LABEL_RE.test(autoSubmitQuestionLabel(el)) && !isUserValue(el)) {
+    if (!empty && type !== 'file' && AUTO_SUBMIT_REVIEW_LABEL_RE.test(autoSubmitQuestionLabel(el)) && (!isUserValue(el) || comboSelected)) {
       reviewAnswered.add(autoSubmitQuestionLabel(el));
     }
   }
@@ -417,7 +418,9 @@ function collectAutoSubmitFacts() {
   };
 }
 
-async function startAutoSubmitIfEnabled({ report, warning, expectedUrl, frameSrcs }) {
+async function startAutoSubmitIfEnabled({ report, warning, expectedUrl, frameSrcs, applicationId }) {
+  // A newer fill replaces any countdown still running from an earlier one.
+  cancelActiveAutoSubmit();
   let settings = {};
   try {
     settings = (await chrome.storage.local.get('settings')).settings || {};
@@ -435,7 +438,7 @@ async function startAutoSubmitIfEnabled({ report, warning, expectedUrl, frameSrc
     showAutoSubmitBanner({ reasons: decision.reasons });
     return { state: 'blocked', reasons: decision.reasons };
   }
-  runAutoSubmitCountdown({ report, expectedUrl, frameSrcs });
+  runAutoSubmitCountdown({ report, expectedUrl, frameSrcs, applicationId });
   return { state: 'countdown', reasons: [], seconds: AUTO_SUBMIT_COUNTDOWN_SECONDS };
 }
 
@@ -479,7 +482,15 @@ function showAutoSubmitBanner({ reasons = [], seconds = null, onCancel = null })
   return { setText, remove: removeAutoSubmitBanner };
 }
 
-function runAutoSubmitCountdown({ report, expectedUrl, frameSrcs }) {
+let activeAutoSubmit = null;
+
+/** Stop the running countdown, if any, so it can never reach its click. */
+function cancelActiveAutoSubmit() {
+  activeAutoSubmit?.cancel();
+  activeAutoSubmit = null;
+}
+
+function runAutoSubmitCountdown({ report, expectedUrl, frameSrcs, applicationId }) {
   let remaining = AUTO_SUBMIT_COUNTDOWN_SECONDS;
   let timer = null;
   const cleanup = () => {
@@ -488,13 +499,15 @@ function runAutoSubmitCountdown({ report, expectedUrl, frameSrcs }) {
     document.removeEventListener('input', onEdit, true);
     document.removeEventListener('pointerdown', onEdit, true);
   };
-  const cancel = () => { cleanup(); removeAutoSubmitBanner(); };
+  const run = { cancelled: false };
+  const cancel = () => { run.cancelled = true; cleanup(); removeAutoSubmitBanner(); };
+  activeAutoSubmit = { cancel };
   // Any keystroke, edit or click by the user while counting down is a "wait".
   const onKey = (event) => { if (event.isTrusted) cancel(); };
   const onEdit = (event) => {
     if (event.isTrusted && !autoSubmitBanner?.contains(event.target)) cancel();
   };
-  const banner = showAutoSubmitBanner({ seconds: remaining, onCancel: cleanup });
+  const banner = showAutoSubmitBanner({ seconds: remaining, onCancel: cancel });
   document.addEventListener('keydown', onKey, true);
   document.addEventListener('input', onEdit, true);
   document.addEventListener('pointerdown', onEdit, true);
@@ -502,30 +515,50 @@ function runAutoSubmitCountdown({ report, expectedUrl, frameSrcs }) {
     remaining -= 1;
     if (remaining > 0) { banner.setText(remaining); return; }
     cleanup();
-    finishAutoSubmit({ report, expectedUrl, frameSrcs }).catch((err) => warnIfRelevant('[apply-bot] auto submit', err));
+    finishAutoSubmit({ report, expectedUrl, frameSrcs, applicationId, run }).catch((err) => warnIfRelevant('[apply-bot] auto submit', err));
   }, 1000);
 }
 
 /** Re-check everything at the last moment, record the submit, then press the button. */
-async function finishAutoSubmit({ report, expectedUrl, frameSrcs }) {
-  const settings = (await chrome.storage.local.get('settings')).settings || {};
-  const decision = evaluateAutoSubmit({
-    enabled: settings.full_auto_submit === true,
-    ...collectAutoSubmitFacts(),
-    // Fields the fill left unresolved stay unresolved unless the user completed them since.
-    unresolvedCount: (report.unresolved || []).filter((item) => autoSubmitStillUnresolved(item)).length,
-  });
-  const stillHere = matchesExpectedFillDocument(expectedUrl, frameSrcs);
-  if (!decision.ok || !stillHere) {
-    showAutoSubmitBanner({ reasons: decision.ok ? ['The page changed'] : decision.reasons });
+async function finishAutoSubmit({ report, expectedUrl, frameSrcs, applicationId, run }) {
+  const check = async () => {
+    const settings = (await chrome.storage.local.get('settings')).settings || {};
+    return evaluateAutoSubmit({
+      enabled: settings.full_auto_submit === true,
+      ...collectAutoSubmitFacts(),
+      // Fields the fill left unresolved stay unresolved unless the user completed them since.
+      unresolvedCount: (report.unresolved || []).filter((item) => autoSubmitStillUnresolved(item)).length,
+    });
+  };
+  const stop = (reasons) => {
+    activeAutoSubmit = null;
+    showAutoSubmitBanner({ reasons });
+  };
+  let decision = await check();
+  if (run.cancelled) return;
+  if (!decision.ok || !matchesExpectedFillDocument(expectedUrl, frameSrcs)) {
+    stop(decision.ok ? ['The page changed'] : decision.reasons);
     return;
   }
-  const button = findAutoSubmitButtons()[0];
   // Record first: the click may navigate away and end this script.
-  await chrome.runtime.sendMessage({
+  const logged = await chrome.runtime.sendMessage({
     type: 'LOG_AUTO_SUBMIT',
-    payload: { url: jobPageUrl(), ats: detectAts(), filled: report.filled, resume_attached: report.resume?.attached || 0 },
+    payload: { id: applicationId, url: jobPageUrl(), ats: detectAts(), filled: report.filled, resume_attached: report.resume?.attached || 0 },
   });
+  if (run.cancelled) return;
+  if (!logged?.success) {
+    stop([logged?.error || 'Could not record the submit in your tracker']);
+    return;
+  }
+  // The audit round trip was a gap: re-check everything once more right before the click.
+  decision = await check();
+  if (run.cancelled) return;
+  const button = findAutoSubmitButtons()[0];
+  if (!decision.ok || !button || !matchesExpectedFillDocument(expectedUrl, frameSrcs)) {
+    stop(decision.ok ? ['The page changed'] : decision.reasons);
+    return;
+  }
+  activeAutoSubmit = null;
   removeAutoSubmitBanner();
   button.click();
 }
