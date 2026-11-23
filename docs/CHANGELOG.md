@@ -9,6 +9,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- Refresh the Settings journey baselines after the profile-import card change (#243).
+
 ## [1.0.5] - 2026-11-22
 
 ### Security
