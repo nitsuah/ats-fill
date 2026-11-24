@@ -15,6 +15,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- Refreshed the Settings journey baselines (`open-settings-and-the-custom-sources-card`, `open-the-google-import-card`) for the "Full auto submit" card added in #269, which had made the nightly journey fail with a visual diff (#243).
 - Refresh the Settings journey baselines after the profile-import card change (#243).
 
 ## [1.0.5] - 2026-11-22
