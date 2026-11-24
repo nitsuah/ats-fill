@@ -9,6 +9,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- The Journeys workflow now also runs on pull requests that touch `popup/**` or `manifest.json`, so a UI change that moves a visual baseline fails on its own PR instead of the next nightly. This was the cause of the reopened `bot:journey` issue #243: the Full auto submit card (#269) changed the Settings screen after the baselines were refreshed (#266), and the PR trigger didn't watch `popup/`. The baselines were refreshed in #271 and soak 5/5 on main in the pinned image.
+
 ### Added
 
 - Opt-in "Full auto submit" (Settings, off by default): after Fill, submits on a known ATS only when nothing needs review, no CAPTCHA is present and the resume is attached, behind a 5-second Cancel banner; each auto-submit is recorded on the tracker entry.

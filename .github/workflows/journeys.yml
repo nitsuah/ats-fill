@@ -16,6 +16,8 @@ on:
     branches: [main]
     paths:
       - 'tests/journeys/**'
+      - 'popup/**' # UI changes move the baselines: catch them on the PR, not the next nightly (#243)
+      - 'manifest.json'
       - 'config/playwright.journeys.config.mjs'
       - 'tests/e2e/helpers/**'
       - '.github/workflows/journeys.yml'
