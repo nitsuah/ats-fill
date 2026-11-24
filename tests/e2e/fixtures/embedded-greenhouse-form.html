@@ -1,0 +1,40 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Senior Systems Engineer — Northstar Labs</title>
+  <style>
+    body{font-family:system-ui,sans-serif;margin:0;padding:24px;color:#202124;background:#fff}
+    label{display:block;font-weight:600;margin:16px 0 6px}
+    input,textarea{display:block;width:100%;box-sizing:border-box;padding:10px;border:1px solid #c7ccd4;border-radius:6px;font:inherit}
+    .required{color:#b3261e}
+  </style>
+  <!-- Read when the form is served from the career site's own origin (no Remix data lookup). -->
+  <script type="application/ld+json">
+  {"@context":"https://schema.org","@type":"JobPosting","title":"Senior Systems Engineer","description":"Own cloud infrastructure.","datePosted":"2026-09-01","hiringOrganization":{"@type":"Organization","name":"Northstar Labs"}}
+  </script>
+  <script>
+    // Greenhouse's embedded application keeps the job in its Remix data.
+    window.__remixContext = {"state":{"loaderData":{"routes/embed.job_app":{"jobPost":{"post_type":"job_post","title":"Senior Systems Engineer","content":"<p>Own cloud infrastructure.</p>","public_url":"https://northstar.example.test/jobs/senior-systems-engineer","company_name":"Northstar Labs"}}}}};
+  </script>
+</head>
+<body>
+  <header id="header">
+    <div class="company-name">Northstar Labs</div>
+    <h1>Senior Systems Engineer</h1>
+  </header>
+  <form action="https://job-boards.greenhouse.io/embed/job_app" method="POST" id="application-form">
+    <input type="hidden" name="job_board" value="greenhouse">
+    <label for="first_name">First name <span class="required">*</span></label>
+    <input id="first_name" name="first_name" autocomplete="given-name" required>
+    <label for="last_name">Last name <span class="required">*</span></label>
+    <input id="last_name" name="last_name" autocomplete="family-name" required>
+    <label for="email">Email <span class="required">*</span></label>
+    <input id="email" name="email" type="email" autocomplete="email" required>
+    <label for="phone">Phone</label>
+    <input id="phone" name="phone" type="tel" autocomplete="tel">
+    <label for="linkedin_profile">LinkedIn profile</label>
+    <input id="linkedin_profile" name="linkedin_profile" autocomplete="url">
+  </form>
+</body>
+</html>
