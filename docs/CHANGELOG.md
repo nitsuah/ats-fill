@@ -13,6 +13,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Dedicated test file `tests/resume-parser.test.mjs` covering `structureResume` and `resumeDisplayName` behavior (#287).
 
+- Dedicated test file `tests/tracker-meta.test.mjs` covering `TRACKER_STATUS_META`, `TRACKER_STATUS_ORDER`, and `getTrackingStatusMeta` normalization and fallback behavior (#288).
+
 - Analytics panel now identifies response times estimated from `updated_at` because first-response dates were not recorded yet (#280).
 
 - Analytics: `getSourceNudge` in `lib/analytics.js` (pure helper; not shown in the popup yet).
