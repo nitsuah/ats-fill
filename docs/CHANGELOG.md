@@ -9,6 +9,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- Analytics: `getSourceNudge` in `lib/analytics.js` (pure helper; not shown in the popup yet).
+
 ### Fixed
 
 - The nightly Greenhouse journey failed about 5% of runs (105 px, Memory badge showing "Empty" instead of "6 saved"): the journey harness seeded demo state while the unseeded first popup load could still be writing storage, which wiped the seeded learned defaults. `openPopup` now waits for that first load to settle before seeding, and the journey asserts the seeded memory count. 80/80 clean in the pinned image.
