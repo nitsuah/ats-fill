@@ -245,6 +245,16 @@ test('untimeable responses are reported instead of silently dropped', () => {
   assert.equal(dist.medianDays, null);
 });
 
+test('responses without first_response_at are counted as estimated', () => {
+  const dist = computeResponseTimeDistribution([
+    { status: 'interview', date: '2026-01-01', updated_at: '2026-01-05T00:00:00.000Z' },
+    { status: 'offer', date: '2026-01-01', first_response_at: '2026-01-09T00:00:00.000Z' },
+  ]);
+
+  assert.equal(dist.timedCount, 2);
+  assert.equal(dist.estimatedTimingCount, 1);
+});
+
 test('an empty tracker produces zeroed, non-throwing timing stats', () => {
   const dist = computeResponseTimeDistribution([]);
   assert.equal(dist.totalSent, 0);
