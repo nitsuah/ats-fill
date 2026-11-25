@@ -11,6 +11,7 @@ import {
   getAnnualizedPay,
   getDaysToFirstResponse,
   getSalaryBucket,
+  getSourceNudge,
   hasEmployerResponse,
   isSentApplication,
 } from '../lib/analytics.js';
@@ -176,6 +177,38 @@ test('response rate by source groups sent applications and sorts by volume', () 
 test('response rate by source handles an empty tracker', () => {
   assert.deepEqual(computeResponseRateBySource([]), []);
   assert.deepEqual(computeResponseRateBySource(), []);
+});
+
+test('source nudge needs enough history and a clear advantage', () => {
+  const app = (n, host, status) => ({
+    id: String(n),
+    status,
+    url: 'https://' + host + '/job/' + n,
+    date: '2026-01-01',
+    first_response_at: status === 'interview' ? '2026-01-05T00:00:00.000Z' : undefined,
+  });
+
+  const data = [
+    app(1, 'boards.greenhouse.io', 'interview'),
+    app(2, 'boards.greenhouse.io', 'interview'),
+    app(3, 'boards.greenhouse.io', 'interview'),
+    app(4, 'boards.greenhouse.io', 'submitted'),
+    app(5, 'boards.greenhouse.io', 'submitted'),
+    app(6, 'jobs.lever.co', 'submitted'),
+    app(7, 'jobs.lever.co', 'submitted'),
+    app(8, 'jobs.lever.co', 'submitted'),
+    app(9, 'jobs.lever.co', 'submitted'),
+    app(10, 'jobs.lever.co', 'submitted'),
+  ];
+
+  assert.equal(
+    getSourceNudge(data, 'Greenhouse'),
+    'Greenhouse boards respond 2x more often than your average.'
+  );
+  assert.equal(getSourceNudge(data, 'Lever'), null);
+  assert.equal(getSourceNudge(data, 'Nowhere'), null);
+  assert.equal(getSourceNudge(data.slice(0, 4), 'Greenhouse'), null);
+  assert.equal(getSourceNudge([], 'Greenhouse'), null);
 });
 
 // ── Time to first response ───────────────────────────────────────────────────
