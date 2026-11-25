@@ -94,6 +94,10 @@ export function useExtension(test, { profile = 'journeys', pageFixtures = true }
     await page.setViewportSize(viewport);
     await page.emulateMedia({ reducedMotion: 'reduce', colorScheme });
     await page.goto(`chrome-extension://${state.extensionId}/popup/popup.html${standalone ? '?standalone=1' : ''}`);
+    // Let the unseeded first load finish (its GET_STATE can still be writing storage) before
+    // the seed clears and refills it; otherwise a late write can wipe the seeded learned defaults.
+    await expect(page.locator('.screen:not(.hidden)')).toBeVisible({ timeout: 30000 });
+    await page.waitForLoadState('networkidle');
     await seedDemoState(page);
     await page.reload();
     await expect(page.locator('.screen:not(.hidden)')).toBeVisible({ timeout: 30000 });

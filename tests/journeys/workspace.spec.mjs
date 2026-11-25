@@ -15,8 +15,7 @@ test('job seeker opens ats-fill on a Greenhouse page and sees what is ready', {
     await expect(page.locator('#stat-applied')).toHaveText('2');
     await expect(page.locator('#stat-total')).toHaveText('12');
     await expect(page.locator('#header-tracker-count')).toHaveText('10 / 12 active');
-    // The Memory badge starts at its static "0 saved" and is filled in (or set to "Empty")
-    // once storage answers; wait for the seeded count so the shot never lands in between.
+    // Fail on the seeded memory count, not on a pixel diff, if the demo state was wiped.
     await expect(page.locator('#learned-status')).toHaveText('6 saved');
     await expect(page.getByText('Are you open to relocation to Denver?')).toBeVisible();
   });
