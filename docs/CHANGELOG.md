@@ -9,6 +9,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- Playwright's `test-results/` folder is now fully ignored; the stray `.last-run.json` is no longer tracked.
+
 ### Added
 
 - Dedicated test file `tests/ats-detector.test.mjs` covering `detectAts` host rules, embedded sniffing, and edge cases (#289).
