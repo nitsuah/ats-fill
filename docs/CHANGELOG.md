@@ -11,6 +11,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- Dedicated test file `tests/ats-detector.test.mjs` covering `detectAts` host rules, embedded sniffing, and edge cases (#289).
+
 - Dedicated test file `tests/resume-parser.test.mjs` covering `structureResume` and `resumeDisplayName` behavior (#287).
 
 - Dedicated test file `tests/tracker-meta.test.mjs` covering `TRACKER_STATUS_META`, `TRACKER_STATUS_ORDER`, and `getTrackingStatusMeta` normalization and fallback behavior (#288).
