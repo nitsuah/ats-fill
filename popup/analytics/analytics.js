@@ -165,6 +165,9 @@ function renderResponseTimeSection(dist) {
     dist.unknownTimingCount
       ? `${dist.unknownTimingCount} response${dist.unknownTimingCount === 1 ? '' : 's'} could not be timed (no submission date recorded).`
       : '',
+    dist.estimatedTimingCount
+      ? `${dist.estimatedTimingCount} response time${dist.estimatedTimingCount === 1 ? '' : 's'} ${dist.estimatedTimingCount === 1 ? 'is an estimate' : 'are estimates'} (logged before first-response dates were recorded).`
+      : '',
   ].filter(Boolean);
 
   return sectionShell(
