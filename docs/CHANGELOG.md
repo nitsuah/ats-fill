@@ -11,6 +11,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- The accessibility E2E suite now settles CSS transitions before each axe scan, so a colour fade straight after a click can't produce a false contrast failure (flaked once on main).
 - The Journeys workflow now also runs on pull requests that touch `popup/**` or `manifest.json`, so a UI change that moves a visual baseline fails on its own PR instead of the next nightly. This was the cause of the reopened `bot:journey` issue #243: the Full auto submit card (#269) changed the Settings screen after the baselines were refreshed (#266), and the PR trigger didn't watch `popup/`. The baselines were refreshed in #271 and soak 5/5 on main in the pinned image.
 
 ### Added
