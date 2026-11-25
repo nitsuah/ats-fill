@@ -18,6 +18,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 
 - Opt-in "Full auto submit" (Settings, off by default): after Fill, submits on a known ATS only when nothing needs review, no CAPTCHA is present and the resume is attached, behind a 5-second Cancel banner; each auto-submit is recorded on the tracker entry.
+- Analytics: `computeResponseTimeDistribution` now returns `estimatedTimingCount`, the number of timed responses that fall back to `updated_at` because they predate `first_response_at`.
 
 ### Changed
 
