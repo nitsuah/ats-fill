@@ -24,6 +24,16 @@ const SW_STUB = () => {
   }
 };
 
+// Snap CSS transitions to their end state before scanning. The popup fades
+// button colours over ~0.15s, so a scan straight after a click can sample a
+// mid-transition colour and report a contrast failure that isn't real.
+async function scan(page) {
+  await page.addStyleTag({
+    content: '*, *::before, *::after { transition: none !important; animation: none !important; }',
+  });
+  return new AxeBuilder({ page }).analyze();
+}
+
 test.describe('Accessibility audit', () => {
   test.beforeEach(async () => {
     process.stdout.write('EXTENSION_PATH: ' + EXTENSION_PATH + '\n');
@@ -43,7 +53,7 @@ test.describe('Accessibility audit', () => {
     await page.goto(`chrome-extension://${extensionId}/popup/popup.html?standalone=1`);
     await expect(page.locator('.screen:not(.hidden)')).toBeVisible({ timeout: 30000 });
 
-    const accessibilityScanResults = await new AxeBuilder({ page }).analyze();
+    const accessibilityScanResults = await scan(page);
     expect(accessibilityScanResults.violations).toEqual([]);
   });
 
@@ -55,7 +65,7 @@ test.describe('Accessibility audit', () => {
     await page.locator('#header-tracker-btn').click();
     await expect(page.locator('#tracker-screen')).toBeVisible({ timeout: 10000 });
 
-    const accessibilityScanResults = await new AxeBuilder({ page }).analyze();
+    const accessibilityScanResults = await scan(page);
     expect(accessibilityScanResults.violations).toEqual([]);
   });
 
@@ -67,7 +77,7 @@ test.describe('Accessibility audit', () => {
     await page.locator('#header-profile-btn').click();
     await expect(page.locator('#setup-screen')).toBeVisible({ timeout: 10000 });
 
-    const accessibilityScanResults = await new AxeBuilder({ page }).analyze();
+    const accessibilityScanResults = await scan(page);
     expect(accessibilityScanResults.violations).toEqual([]);
   });
 
@@ -79,7 +89,7 @@ test.describe('Accessibility audit', () => {
     await page.locator('#header-job-search-btn').click();
     await expect(page.locator('#job-search-screen')).toBeVisible({ timeout: 10000 });
 
-    const accessibilityScanResults = await new AxeBuilder({ page }).analyze();
+    const accessibilityScanResults = await scan(page);
     expect(accessibilityScanResults.violations).toEqual([]);
   });
 
@@ -91,7 +101,7 @@ test.describe('Accessibility audit', () => {
     await page.locator('#header-analytics-btn').click();
     await expect(page.locator('#analytics-screen')).toBeVisible({ timeout: 10000 });
 
-    const accessibilityScanResults = await new AxeBuilder({ page }).analyze();
+    const accessibilityScanResults = await scan(page);
     expect(accessibilityScanResults.violations).toEqual([]);
   });
 
@@ -103,7 +113,7 @@ test.describe('Accessibility audit', () => {
     await page.locator('#header-ai-btn').click();
     await expect(page.locator('#ai-screen')).toBeVisible({ timeout: 10000 });
 
-    const accessibilityScanResults = await new AxeBuilder({ page }).analyze();
+    const accessibilityScanResults = await scan(page);
     expect(accessibilityScanResults.violations).toEqual([]);
   });
 });
