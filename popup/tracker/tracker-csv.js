@@ -4,7 +4,7 @@
 import { sendMessage } from '../../lib/utils.js';
 import { renderTracker } from './tracker-ui.js';
 import { showScreen } from '../ux/navigation.js';
-import { csvCell } from '../../lib/csv-cell.js';
+import { buildTrackerCsv } from '../../lib/csv-cell.js';
 
 function setTrackerScreenStatus(msg, type = '') {
   const el = document.getElementById('tracker-status');
@@ -14,28 +14,7 @@ function setTrackerScreenStatus(msg, type = '') {
 }
 
 export function exportCsv(applications) {
-  const header = 'Company,Role Title,Status,Date,Employment Type,Remote,Location,Pay Min,Pay Max,Salary Range,Scorecard,Verdict,URL,Notes';
-  const rows = applications.map((a) =>
-    [
-      a.company,
-      a.title,
-      a.status,
-      a.date,
-      a.employment_type,
-      a.remote ? 'Yes' : 'No',
-      a.location,
-      a.pay_min,
-      a.pay_max,
-      a.salary_range,
-      a.scorecard,
-      a.verdict,
-      a.url,
-      a.description || a.jd_snippet || '',
-    ]
-      .map((v) => csvCell(v))
-      .join(',')
-  );
-  const csv = [header, ...rows].join('\n');
+  const csv = buildTrackerCsv(applications);
   const blob = new Blob([csv], { type: 'text/csv' });
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
