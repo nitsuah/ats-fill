@@ -16,6 +16,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 
 - Tests for the learned-answer memory handlers.
+- Tests for the tracker CSV export builder.
 - Dedicated test file `tests/ats-detector.test.mjs` covering `detectAts` host rules, embedded sniffing, and edge cases (#289).
 
 - Dedicated test file `tests/resume-parser.test.mjs` covering `structureResume` and `resumeDisplayName` behavior (#287).
