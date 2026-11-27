@@ -11,6 +11,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- CI: pull requests now run the shared risk guard check (`.github/workflows/risk-guard.yml`) (#306).
 - Playwright's `test-results/` folder is now fully ignored; the stray `.last-run.json` is no longer tracked.
 
 ### Added
