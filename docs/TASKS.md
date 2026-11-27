@@ -12,6 +12,9 @@ _None._
 
 ## Todo
 
+- [ ] Refresh showcase media (#312): re-render the feature tour from the updated `video/storyboard.mjs` (its audio and captions still say ats-fill never submits), recreate a launch-video source, recapture the site stills (including `site/assets/dashboard.webp`), and add visuals for the AI writing tools.
+- [ ] Owner: the in-extension terms text says ats-fill never submits for you; update the consent wording to mention the opt-in Full auto submit setting.
+
 - [x] Fix the home masthead at phone width (journeys review, #142). Done 2026-10-15: standalone masthead stacks under 640px.
   - Priority: P2
   - Problem: at 390px the standalone home masthead (`popup/popup.css:894-902`) keeps its two-column grid, so the intro text is squeezed to one word per line and the stats bar overlaps it.

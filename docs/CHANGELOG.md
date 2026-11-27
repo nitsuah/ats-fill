@@ -11,6 +11,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- Pages site and README: submit wording now says you submit by default and describes the opt-in Full auto submit setting; added a platform support table, install steps for Web Store users (run-from-source is collapsed), the tracker tools, and wrapped command blocks on phones. The popup tagline no longer lists Workday as fully supported, the feature tour script matches the submit setting, and `promo/spots.json` lists the newer features and the tour video.
 - CI: pull requests now run the shared risk guard check (`.github/workflows/risk-guard.yml`) (#306).
 - Playwright's `test-results/` folder is now fully ignored; the stray `.last-run.json` is no longer tracked.
 
