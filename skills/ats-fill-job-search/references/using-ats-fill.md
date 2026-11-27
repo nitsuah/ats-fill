@@ -25,7 +25,7 @@ ats-fill is a local-first Chrome extension (Manifest V3). Everything it stores l
 2. Press **Preview** to see every answer it will use. Search the list, fix anything wrong, and note questions it flags.
 3. Press **Fill this form** (or fill from Preview). Fields are filled in place on the page.
 4. Read the **Last fill** card: *filled* / *kept* (existing values left alone) / *to review* (no saved answer, or file fields). Handle every "to review" item yourself.
-5. Upload files, answer attestations and legal/demographic questions, read the whole form, and **submit it yourself**. ats-fill never submits.
+5. Upload files, answer attestations and legal/demographic questions, read the whole form, and **submit it yourself**. By default ats-fill never submits; leave the optional Full auto submit setting off to keep it that way.
 6. Press **Mark submitted** so the pipeline records it.
 
 Tips:

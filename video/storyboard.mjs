@@ -33,7 +33,7 @@ export const OUTRO = {
   id: 'outro',
   kicker: 'Get it',
   title: 'Add ats-fill to Chrome.',
-  body: 'Free and open source (MIT). No server, no account, no subscription. You review every field and press submit.',
+  body: 'Free and open source (MIT). No server, no account, no subscription. You review every field, and by default you press submit.',
   hold: 8,
 };
 
@@ -83,8 +83,8 @@ export const SEGMENTS = [
         id: 'fill-filled',
         focus: '#application-form',
         stamp: 'Filled',
-        title: 'Filled in place. You press submit.',
-        body: 'Fields are filled on the page itself. File uploads, attestations and the submit button stay yours: ats-fill never submits an application.',
+        title: 'Filled in place. You review.',
+        body: 'Fields are filled on the page itself. Your saved resume attaches by default. Submitting stays with you unless you turn on the optional Full auto submit setting.',
       },
     ],
   },

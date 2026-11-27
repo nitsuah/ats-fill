@@ -4,12 +4,12 @@
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 <title>ats-fill — fill the form, keep the receipts</title>
-<meta name="description" content="A local-first Chrome extension that fills Greenhouse, Lever, Ashby and LinkedIn Easy Apply forms from your saved profile, with partial support for Workday, iCIMS, Jobvite and other application forms. You review every field and press submit. Pipeline tracker, job search across 16 boards, analytics and interview prep. No server, no account." />
+<meta name="description" content="A local-first Chrome extension that fills Greenhouse, Lever, Ashby and LinkedIn Easy Apply forms from your saved profile, with partial support for Workday, iCIMS, Jobvite and other application forms. You review and submit by default. Pipeline tracker, job search across 16 boards, analytics and interview prep. No server, no account." />
 <meta name="theme-color" content="#f4efe6" media="(prefers-color-scheme: light)" />
 <meta name="theme-color" content="#191816" media="(prefers-color-scheme: dark)" />
 <link rel="canonical" href="https://nitsuah.github.io/ats-fill/" />
 <meta property="og:title" content="ats-fill — fill the form, keep the receipts" />
-<meta property="og:description" content="The same 20 questions on 47 different forms. ats-fill fills them from your own profile, you review and submit, and every application lands in a local pipeline." />
+<meta property="og:description" content="The same 20 questions on 47 different forms. ats-fill fills them from your own profile, you review and submit by default, and every application lands in a local pipeline." />
 <meta property="og:type" content="website" />
 <meta property="og:url" content="https://nitsuah.github.io/ats-fill/" />
 <meta property="og:image" content="https://nitsuah.github.io/ats-fill/assets/og-share.jpg" />
@@ -17,7 +17,7 @@
 <meta property="og:image:height" content="630" />
 <meta name="twitter:card" content="summary_large_image" />
 <meta name="twitter:title" content="ats-fill — fill the form, keep the receipts" />
-<meta name="twitter:description" content="The same 20 questions on 47 different forms. ats-fill fills them from your own profile, you review and submit, and every application lands in a local pipeline." />
+<meta name="twitter:description" content="The same 20 questions on 47 different forms. ats-fill fills them from your own profile, you review and submit by default, and every application lands in a local pipeline." />
 <meta name="twitter:image" content="https://nitsuah.github.io/ats-fill/assets/og-share.jpg" />
 <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 24 24%22><g transform=%22rotate(-5 12 12)%22><rect x=%223%22 y=%223%22 width=%2218%22 height=%2218%22 rx=%222.5%22 fill=%22%23c4411a%22/><path d=%22m7.5 12.5 3 3 6-7%22 fill=%22none%22 stroke=%22%23fff%22 stroke-width=%222.4%22 stroke-linecap=%22round%22 stroke-linejoin=%22round%22/></g></svg>" />
 <link rel="preload" href="assets/fonts/fraunces-wght.woff2" as="font" type="font/woff2" crossorigin />
@@ -51,7 +51,7 @@
       <p class="eyebrow"><span class="dia" aria-hidden="true"></span>Local-first application assistant</p>
       <h1 class="hero-headline">The same 20 questions on 47 different forms.</h1>
       <p class="tagline">Fill the form. Keep the receipts.</p>
-      <p class="hero-sub">ats-fill is a Chrome extension that fills <strong>Greenhouse, Lever, Ashby and LinkedIn Easy Apply</strong> forms from the profile you saved once, with partial support for Workday, iCIMS, Jobvite and other application forms. <strong>You review every field and press submit.</strong> Every application lands in a pipeline that lives in your browser, not on someone's server.</p>
+      <p class="hero-sub">ats-fill is a Chrome extension that fills <strong>Greenhouse, Lever, Ashby and LinkedIn Easy Apply</strong> forms from the profile you saved once, with partial support for Workday, iCIMS, Jobvite and other application forms. <strong>By default, you review every field and press submit.</strong> Every application lands in a pipeline that lives in your browser, not on someone's server.</p>
       <div class="hero-ctas">
         <a class="btn btn-primary" href="https://chromewebstore.google.com/detail/ats-fill/amofaeopfmaicbiijgjaojenedkkadmn" target="_blank" rel="noopener"><svg class="btn-icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="10" fill="none" stroke="currentColor" stroke-width="2"/><circle cx="12" cy="12" r="4" fill="currentColor"/><path d="M12 8h9M8.5 14 4 6.2M15.5 14 11 21.8" fill="none" stroke="currentColor" stroke-width="2"/></svg> Add to Chrome</a>
         <a class="btn btn-ghost" href="https://github.com/nitsuah/ats-fill" target="_blank" rel="noopener">View on GitHub <span aria-hidden="true">↗</span></a>
@@ -79,7 +79,7 @@
     <li><span class="stat-num">4</span><span class="stat-label">ATS platforms with full form fill: Greenhouse, Lever, Ashby, LinkedIn Easy Apply</span></li>
     <li><span class="stat-num">16</span><span class="stat-label">job boards searched from one panel</span></li>
     <li><span class="stat-num">0</span><span class="stat-label">servers, accounts or subscriptions</span></li>
-    <li><span class="stat-num">1</span><span class="stat-label">person who presses submit: you</span></li>
+    <li><span class="stat-num">1</span><span class="stat-label">person who presses submit by default: you</span></li>
   </ul>
 </header>
 
@@ -91,11 +91,26 @@
       <p>Upload your resume and answer the usual questions one time. Land on an application, open ats-fill and press <strong>Fill this form</strong>. It detects the ATS, maps the fields and fills them in place.</p>
       <ul class="ticks">
         <li>Anything it can't answer is flagged for you, not guessed</li>
-        <li>Your saved resume attaches by default (off in Profile); the submit button stays yours</li>
+        <li>Your saved resume attaches by default (off in Profile); submit stays with you by default</li>
         <li>Answers you edit can be remembered, reviewed and removed in Profile</li>
       </ul>
     </div>
     <div class="shot shot-wide"><img src="assets/dashboard.webp" width="1280" height="800" alt="ats-fill home screen: Greenhouse detected, a Fill this form button, readiness checks, and a last-fill summary of 23 filled, 2 kept and 2 to review" loading="lazy" /></div>
+  </section>
+
+  <section class="support-sec" aria-labelledby="support-title">
+    <h2 id="support-title">Where it fills.</h2>
+    <div class="policy-table">
+      <table>
+        <thead><tr><th scope="col">Platform</th><th scope="col">Support</th></tr></thead>
+        <tbody>
+          <tr><td>Greenhouse, Lever, Ashby, LinkedIn Easy Apply</td><td>Full form fill</td></tr>
+          <tr><td>Workday, iCIMS, Jobvite, Circle Careers / Phenom</td><td>Partial</td></tr>
+          <tr><td>Other application forms</td><td>Partial</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p class="install-alt">Partial means ats-fill detects the form and fills the fields it recognizes. Expect to complete more of it yourself.</p>
   </section>
 
   <section class="feature feature-flip" aria-labelledby="f-track">
@@ -103,6 +118,11 @@
       <p class="kicker">Track</p>
       <h2 id="f-track">Every application, <span class="emph">on one board.</span></h2>
       <p>Save a job from the page or paste the description. The pipeline keeps pay bands, location, notes, verdicts and scorecards, and moves each job from drafted to submitted to interview to offer. Import and export CSV whenever you like.</p>
+      <ul class="ticks">
+        <li><strong>Remove Duplicates</strong> merges entries for the same posting, after showing you each merge</li>
+        <li>A <strong>tracker CLI and inbox sync</strong> reads the pipeline from a terminal and turns job emails into status updates</li>
+        <li>Optional <strong>AI assistant access</strong> lets an assistant on your computer add and update tracker entries; it can't delete</li>
+      </ul>
     </div>
     <div class="shot shot-wide"><img src="assets/pipeline.webp" width="1280" height="800" alt="Pipeline board with Drafts, Submitted and Later stages columns holding twelve fictional applications with pay bands and ratings" loading="lazy" /></div>
   </section>
@@ -135,7 +155,7 @@
   <section class="tour-sec" id="tour" aria-labelledby="tour-title">
     <p class="kicker">Feature tour</p>
     <h2 id="tour-title">Every feature, <span class="emph">start to finish.</span></h2>
-    <p class="tour-lead">A narrated walkthrough of the real extension on fictional demo data: profile, form fill, job search, pipeline, interview prep, analytics and privacy. Jump to a chapter below.</p>
+    <p class="tour-lead">A narrated walkthrough of the real extension on fictional demo data: profile, form fill, job search, pipeline, interview prep, analytics and privacy. Jump to a chapter below. The narration says ats-fill never submits an application; there is now an optional Full auto submit setting, off by default.</p>
     <figure class="tour-video">
       <video id="tour-vid" controls loading="lazy" preload="none" playsinline width="1920" height="1080" poster="assets/feature-tour.jpg" aria-label="Narrated ats-fill feature tour">
         <source src="assets/feature-tour.mp4" type="video/mp4" />
@@ -150,14 +170,15 @@
     <div class="privacy-copy">
       <p class="kicker">Privacy</p>
       <h2 id="privacy-title">Your job hunt <span class="emph">stays in your browser.</span></h2>
-      <p>No backend, no sign-up, no telemetry. Your profile, resume, answers and pipeline live in Chrome's local storage. Outside requests happen only when you trigger them: job boards you search, the optional LinkedIn or Google profile import, and Google's Gemini API if you add your own key. It never submits an application for you.</p>
+      <p>No backend, no sign-up, no telemetry. Your profile, resume, answers and pipeline live in Chrome's local storage. Outside requests happen only when you trigger them: job boards you search, the optional LinkedIn or Google profile import, and Google's Gemini API if you add your own key.</p>
+      <p>By default it never submits an application for you. If you turn on the optional <strong>Full auto submit</strong> setting, it can press Submit on a recognized job site after a countdown you can cancel, and not when something still needs your review.</p>
     </div>
     <dl class="ledger" aria-label="What ats-fill does and doesn't do">
       <div><dt>Server</dt><dd>None</dd></div>
       <div><dt>Account</dt><dd>None</dd></div>
       <div><dt>Data</dt><dd>Local to Chrome</dd></div>
       <div><dt>AI</dt><dd>Optional · your Gemini key</dd></div>
-      <div><dt>Submit</dt><dd>Always you</dd></div>
+      <div><dt>Submit</dt><dd>You, by default</dd></div>
       <div><dt>License</dt><dd>MIT</dd></div>
     </dl>
   </section>
@@ -168,15 +189,25 @@
     <div class="hero-ctas center">
       <a class="btn btn-primary btn-lg" href="https://chromewebstore.google.com/detail/ats-fill/amofaeopfmaicbiijgjaojenedkkadmn" target="_blank" rel="noopener"><svg class="btn-icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="10" fill="none" stroke="currentColor" stroke-width="2"/><circle cx="12" cy="12" r="4" fill="currentColor"/><path d="M12 8h9M8.5 14 4 6.2M15.5 14 11 21.8" fill="none" stroke="currentColor" stroke-width="2"/></svg> Add to Chrome, it's free</a>
     </div>
-    <p class="install-alt">Prefer to run it from source? Load it unpacked from the repo; it takes about two minutes.</p>
-    <pre class="install"><button class="copy" type="button" data-copy="git clone https://github.com/nitsuah/ats-fill.git">Copy</button><code><span class="prompt">$</span> git clone https://github.com/nitsuah/ats-fill.git</code></pre>
+    <h3 class="steps-title">After you add it</h3>
     <ol class="steps">
-      <li>Clone the repo (or <a href="https://github.com/nitsuah/ats-fill/archive/refs/heads/main.zip">download the ZIP</a> and unzip it).</li>
-      <li>Open <code>chrome://extensions</code> and turn on <strong>Developer mode</strong>.</li>
-      <li>Click <strong>Load unpacked</strong> and pick the <code>ats-fill</code> folder.</li>
-      <li>Open the extension, upload your resume and fill in your profile. Adding a <a href="https://aistudio.google.com/app/apikey" target="_blank" rel="noopener">free Gemini key</a> is optional.</li>
-      <li>Go to a job application and press <strong>Fill this form</strong>.</li>
+      <li>Open ats-fill from the Chrome toolbar and accept the privacy note. That unlocks Profile and Settings.</li>
+      <li>Fill in your profile and save it.</li>
+      <li>Optional: add a <a href="https://aistudio.google.com/app/apikey" target="_blank" rel="noopener">free Gemini key</a> in Settings for AI writing help. Form fill and tracking work without it.</li>
+      <li>Resume: reading a new resume needs the Gemini key. Without a key, leave the resume fields empty and save your typed profile; with a resume chosen but no key, the save stops and asks for one, so no resume is stored or attached.</li>
+      <li>Go to a job application, open ats-fill and press <strong>Fill this form</strong>. It worked when the <strong>Last fill</strong> card shows how many fields were filled, kept and left to review. Check every field, then submit.</li>
     </ol>
+    <details class="from-source">
+      <summary>Prefer to run it from source?</summary>
+      <p class="install-alt">Load it unpacked from the repo; it takes about two minutes.</p>
+      <pre class="install"><button class="copy" type="button" data-copy="git clone https://github.com/nitsuah/ats-fill.git">Copy</button><code><span class="prompt">$</span> git clone https://github.com/nitsuah/ats-fill.git</code></pre>
+      <ol class="steps">
+        <li>Clone the repo (or <a href="https://github.com/nitsuah/ats-fill/archive/refs/heads/main.zip">download the ZIP</a> and unzip it).</li>
+        <li>Open <code>chrome://extensions</code> and turn on <strong>Developer mode</strong>.</li>
+        <li>Click <strong>Load unpacked</strong> and pick the <code>ats-fill</code> folder.</li>
+        <li>Continue with the steps under <strong>After you add it</strong>.</li>
+      </ol>
+    </details>
     <div class="hero-ctas center">
       <a class="btn btn-primary" href="https://github.com/nitsuah/ats-fill" target="_blank" rel="noopener">View on GitHub</a>
       <a class="btn btn-ghost" href="https://github.com/nitsuah/ats-fill/blob/main/docs/FEATURES.md" target="_blank" rel="noopener">All features <span aria-hidden="true">↗</span></a>

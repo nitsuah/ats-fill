@@ -36,10 +36,12 @@ A Chrome extension that:
 
 ## Quick Start (< 5 minutes)
 
-1. Install from the [Chrome Web Store](https://chromewebstore.google.com/detail/ats-fill/amofaeopfmaicbiijgjaojenedkkadmn), or load it unpacked: clone this repo (or download the ZIP), open `chrome://extensions`, enable **Developer mode**, click **Load unpacked** and select the repo folder
-2. Click the extension icon → paste your [free Gemini API key](https://aistudio.google.com/app/apikey) and leave the model on **Auto**
-3. Upload your resume (PDF, DOCX, or paste text)
-4. Navigate to a job page → click the icon → **Fill Form**. By default you review and submit yourself; the optional **Full auto submit** setting (Settings, off by default) can submit after a 5-second cancelable countdown when nothing needs review
+1. Install from the [Chrome Web Store](https://chromewebstore.google.com/detail/ats-fill/amofaeopfmaicbiijgjaojenedkkadmn). To run from source instead, clone this repo (or download the ZIP), open `chrome://extensions`, enable **Developer mode**, click **Load unpacked** and select the repo folder
+2. Open ats-fill from the toolbar and accept the privacy note. That unlocks Profile and Settings
+3. Fill in your profile and save it
+4. Optional: add a [free Gemini API key](https://aistudio.google.com/app/apikey) in Settings and leave the model on **Auto**. Form fill and tracking work without it
+5. Resume: reading a new resume needs the key. Without one, leave the resume fields empty and save your typed profile (a save with a resume but no key stops with an error, so no resume is stored or attached)
+6. Go to a job application, open ats-fill and press **Fill this form**. The **Last fill** card shows how many fields were filled, kept and left to review. By default you review and submit yourself; the optional **Full auto submit** setting (Settings, off by default) can submit after a 5-second cancelable countdown when nothing needs review
 
 ---
 
@@ -88,17 +90,19 @@ ats-fill/
 
 ## Supported ATS Platforms
 
-| Platform | Detection | Form Fill | Status |
-|----------|-----------|-----------|--------|
-| Greenhouse | ✅ | ✅ | Phase 1 |
-| Ashby | ✅ | ✅ | Phase 1 |
-| Lever | ✅ | ✅ | Phase 1 |
-| LinkedIn Easy Apply | ✅ | ✅ | Phase 1 |
-| Jobvite | ✅ | 🔄 | Phase 2 |
-| Circle Careers / Phenom | ✅ | 🔄 | Phase 2 |
-| Workday | ✅ | 🔄 | Phase 2 |
-| iCIMS | ✅ | 🔄 | Phase 2 |
-| Generic (any form) | ✅ | 🔄 | Phase 2 |
+| Platform | Detection | Form Fill |
+|----------|-----------|-----------|
+| Greenhouse | ✅ | Full |
+| Ashby | ✅ | Full |
+| Lever | ✅ | Full |
+| LinkedIn Easy Apply | ✅ | Full |
+| Jobvite | ✅ | Partial |
+| Circle Careers / Phenom | ✅ | Partial |
+| Workday | ✅ | Partial |
+| iCIMS | ✅ | Partial |
+| Generic (any form) | ✅ | Partial |
+
+**Partial** means ats-fill detects the form and fills the fields it recognizes. Expect to complete more of it yourself.
 
 ---
 

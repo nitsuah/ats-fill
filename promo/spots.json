@@ -425,6 +425,78 @@
       "screenshots": [],
       "spots": [],
       "visual": "none"
+    },
+    {
+      "id": "your-answers-only",
+      "title": "Your Answers Only",
+      "category": "Candidate Profile Intelligence",
+      "screenshots": [],
+      "spots": [],
+      "visual": "none"
+    },
+    {
+      "id": "resume-attach",
+      "title": "Resume Attach",
+      "category": "Application Automation",
+      "screenshots": [],
+      "spots": [],
+      "visual": "none"
+    },
+    {
+      "id": "full-auto-submit-opt-in",
+      "title": "Full Auto Submit (opt-in)",
+      "category": "Application Automation",
+      "screenshots": [],
+      "spots": [],
+      "visual": "none"
+    },
+    {
+      "id": "type-ahead-dropdowns",
+      "title": "Type-Ahead Dropdowns",
+      "category": "Application Automation",
+      "screenshots": [],
+      "spots": [],
+      "visual": "none"
+    },
+    {
+      "id": "yes-no-button-questions",
+      "title": "Yes/No Button Questions",
+      "category": "Application Automation",
+      "screenshots": [],
+      "spots": [],
+      "visual": "none"
+    },
+    {
+      "id": "remove-duplicates",
+      "title": "Remove Duplicates",
+      "category": "Profile Import",
+      "screenshots": [],
+      "spots": [],
+      "visual": "none"
+    },
+    {
+      "id": "tracker-cli-and-inbox-sync",
+      "title": "Tracker CLI and inbox sync",
+      "category": "Profile Import",
+      "screenshots": [],
+      "spots": [],
+      "visual": "none"
+    },
+    {
+      "id": "ai-assistant-access",
+      "title": "AI assistant access",
+      "category": "Profile Import",
+      "screenshots": [],
+      "spots": [],
+      "visual": "none"
+    },
+    {
+      "id": "nightly-journeys",
+      "title": "Nightly Journeys",
+      "category": "UI/UX Enhancements",
+      "screenshots": [],
+      "spots": [],
+      "visual": "none"
     }
   ],
   "spots": [
@@ -436,6 +508,15 @@
       "features": [],
       "published": "site/assets/ats-fill.mp4",
       "rendered": "2026-10-01"
+    },
+    {
+      "id": "feature-tour",
+      "seconds": 297,
+      "format": "landscape",
+      "tool": "video/ (feature-video workflow)",
+      "features": [],
+      "published": "site/assets/feature-tour.mp4",
+      "rendered": "2026-10-08"
     }
   ],
   "reels": [

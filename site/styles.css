@@ -196,6 +196,13 @@ main { padding: 0 var(--gutter); }
 .steps li::before { content: counter(step, decimal-leading-zero); position: absolute; left: 18px; top: 14px; font-family: var(--mono); font-weight: 500; font-size: 0.85rem; color: var(--stamp); }
 .steps strong { color: var(--ink); }
 .install-alt { color: var(--muted); margin: 26px auto 0; max-width: 40em; font-size: 0.95rem; }
+.steps-title { margin-top: 40px; }
+.from-source { margin-top: 30px; }
+.from-source summary { cursor: pointer; color: var(--ink-2); }
+.support-sec { max-width: 820px; margin: clamp(64px, 9vw, 112px) auto 0; padding: 0 20px; text-align: center; }
+.support-sec table { border-collapse: collapse; width: 100%; font-size: 0.95rem; }
+.support-sec th, .support-sec td { text-align: left; vertical-align: top; padding: 12px 14px; border-top: 1px solid var(--rule); }
+.support-sec thead th { border-top: 0; }
 
 /* ---------- Skill ---------- */
 .tour-sec { max-width: var(--max); margin: clamp(80px, 11vw, 140px) auto 0; }
@@ -249,7 +256,7 @@ nav a[aria-current="page"] { color: var(--stamp); }
     nav { font-size: 0.9rem; gap: 6px 14px; }
     .stats li { padding: 16px; }
     .stat-num { font-size: 1.8rem; }
-    .install { padding-top: 52px; }
+    .install { padding-top: 52px; white-space: pre-wrap; overflow-wrap: anywhere; }
     .copy { top: 12px; transform: none; }
     .ledger { grid-template-columns: 1fr; }
     .ledger > div:nth-child(even) { border-left: 0; }
